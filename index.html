@@ -1,727 +1,91 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shop | Loading...</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        :root {
-            --primary: #3b82f6;
-            --primary-dark: #2563eb;
-            --light: #ffffff;
-            --dark: #1f2937;
-            --gray: #6b7280;
-            --light-gray: #f3f4f6;
-            --border: #e5e7eb;
-        }
-        
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            line-height: 1.6;
-            color: var(--dark);
-            background-color: var(--light);
-        }
-        
-        /* Loading Screen */
-        #loadingScreen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: var(--light);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-        }
-        
-        .loader {
-            width: 50px;
-            height: 50px;
-            border: 3px solid var(--light-gray);
-            border-radius: 50%;
-            border-top-color: var(--primary);
-            animation: spin 1s linear infinite;
-            margin-bottom: 1rem;
-        }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        
-        /* Header */
-        header {
-            background: var(--light);
-            border-bottom: 1px solid var(--border);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-        
-        .header-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 1rem 1.5rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .logo {
-            font-size: 1.8rem;
-            font-weight: 700;
-            color: var(--primary);
-            text-decoration: none;
-        }
-        
-        .nav-menu {
-            display: flex;
-            list-style: none;
-            gap: 2rem;
-        }
-        
-        .nav-menu a {
-            text-decoration: none;
-            color: var(--dark);
-            font-weight: 500;
-            transition: color 0.3s;
-        }
-        
-        .nav-menu a:hover {
-            color: var(--primary);
-        }
-        
-        .mobile-menu-btn {
-            display: none;
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            color: var(--dark);
-            cursor: pointer;
-        }
-        
-        /* Hero Section */
-        .hero {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-            color: var(--light);
-            padding: 4rem 1.5rem;
-            text-align: center;
-        }
-        
-        .hero-container {
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        
-        .hero h1 {
-            font-size: 3rem;
-            font-weight: 700;
-            margin-bottom: 1rem;
-        }
-        
-        .hero p {
-            font-size: 1.25rem;
-            opacity: 0.9;
-            margin-bottom: 2rem;
-        }
-        
-        .btn {
-            display: inline-block;
-            padding: 0.75rem 2rem;
-            background: var(--light);
-            color: var(--primary);
-            text-decoration: none;
-            border-radius: 6px;
-            font-weight: 600;
-            transition: transform 0.3s, box-shadow 0.3s;
-        }
-        
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        }
-        
-        /* Products Section */
-        .products-section {
-            max-width: 1200px;
-            margin: 4rem auto;
-            padding: 0 1.5rem;
-        }
-        
-        .section-title {
-            font-size: 2.25rem;
-            font-weight: 700;
-            margin-bottom: 3rem;
-            text-align: center;
-            color: var(--dark);
-        }
-        
-        .products-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 2rem;
-        }
-        
-        .product-card {
-            background: var(--light);
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            transition: transform 0.3s, box-shadow 0.3s;
-            border: 1px solid var(--border);
-        }
-        
-        .product-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.12);
-        }
-        
-        .product-image-container {
-            height: 200px;
-            overflow: hidden;
-            background: var(--light-gray);
-        }
-        
-        .product-image {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transition: transform 0.5s;
-        }
-        
-        .product-card:hover .product-image {
-            transform: scale(1.05);
-        }
-        
-        .product-content {
-            padding: 1.5rem;
-        }
-        
-        .product-title {
-            font-size: 1.25rem;
-            font-weight: 600;
-            margin-bottom: 0.75rem;
-            color: var(--dark);
-        }
-        
-        .product-description {
-            color: var(--gray);
-            line-height: 1.7;
-            font-size: 0.95rem;
-        }
-        
-        /* About Section */
-        .about-section {
-            background: var(--light-gray);
-            padding: 4rem 1.5rem;
-        }
-        
-        .about-container {
-            max-width: 800px;
-            margin: 0 auto;
-            text-align: center;
-        }
-        
-        .about-title {
-            font-size: 2.25rem;
-            font-weight: 700;
-            margin-bottom: 1.5rem;
-            color: var(--dark);
-        }
-        
-        .about-text {
-            font-size: 1.1rem;
-            color: var(--gray);
-            line-height: 1.8;
-            margin-bottom: 2rem;
-        }
-        
-        /* Contact Section */
-        .contact-section {
-            max-width: 1200px;
-            margin: 4rem auto;
-            padding: 0 1.5rem;
-            text-align: center;
-        }
-        
-        .contact-title {
-            font-size: 2.25rem;
-            font-weight: 700;
-            margin-bottom: 1.5rem;
-            color: var(--dark);
-        }
-        
-        .contact-info {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 2rem;
-            margin-top: 3rem;
-        }
-        
-        .contact-item {
-            padding: 2rem;
-            background: var(--light);
-            border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        }
-        
-        .contact-icon {
-            font-size: 2rem;
-            color: var(--primary);
-            margin-bottom: 1rem;
-        }
-        
-        /* Footer */
-        footer {
-            background: var(--dark);
-            color: var(--light);
-            padding: 3rem 1.5rem 2rem;
-        }
-        
-        .footer-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-        }
-        
-        .footer-logo {
-            font-size: 2rem;
-            font-weight: 700;
-            color: var(--light);
-            margin-bottom: 1.5rem;
-        }
-        
-        .footer-text {
-            color: rgba(255, 255, 255, 0.7);
-            margin-bottom: 2rem;
-            max-width: 600px;
-        }
-        
-        .social-links {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 2rem;
-        }
-        
-        .social-link {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--light);
-            text-decoration: none;
-            transition: background 0.3s;
-        }
-        
-        .social-link:hover {
-            background: var(--primary);
-        }
-        
-        .copyright {
-            padding-top: 2rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            color: rgba(255, 255, 255, 0.5);
-            width: 100%;
-        }
-        
-        /* Responsive */
-        @media (max-width: 768px) {
-            .nav-menu {
-                display: none;
-            }
-            
-            .mobile-menu-btn {
-                display: block;
-            }
-            
-            .hero h1 {
-                font-size: 2.5rem;
-            }
-            
-            .products-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .section-title {
-                font-size: 2rem;
-            }
-        }
-        
-        /* Empty State */
-        .empty-state {
-            text-align: center;
-            padding: 4rem 1rem;
-            grid-column: 1/-1;
-        }
-        
-        .empty-state-icon {
-            font-size: 4rem;
-            color: var(--light-gray);
-            margin-bottom: 1rem;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login Page</title>
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: Arial, sans-serif;
+}
+
+body {
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, #6a11cb, #2575fc);
+}
+
+.login-container {
+  background: #fff;
+  padding: 30px;
+  width: 100%;
+  max-width: 350px;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+
+.login-container h2 {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.input-box {
+  margin-bottom: 15px;
+}
+
+.input-box input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  outline: none;
+}
+
+.input-box input:focus {
+  border-color: #2575fc;
+}
+
+button {
+  width: 100%;
+  padding: 12px;
+  background: #2575fc;
+  border: none;
+  color: white;
+  font-size: 16px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #1a5edb;
+}
+
+@media (max-width: 400px) {
+  .login-container {
+    margin: 20px;
+  }
+}
+</style>
 </head>
 <body>
-    <!-- Loading Screen -->
-    <div id="loadingScreen">
-        <div class="loader"></div>
-        <h3 id="loadingText">Loading Shop...</h3>
+
+<div class="login-container">
+  <h2>Login</h2>
+  <form>
+    <div class="input-box">
+      <input type="text" placeholder="Username" required>
     </div>
-    
-    <!-- Header -->
-    <header>
-        <div class="header-container">
-            <a href="#" class="logo" id="shopLogo">Loading...</a>
-            
-            <ul class="nav-menu">
-                <li><a href="#home">Home</a></li>
-                <li><a href="#products">Products</a></li>
-                <li><a href="#about">About</a></li>
-                <li><a href="#contact">Contact</a></li>
-            </ul>
-            
-            <button class="mobile-menu-btn">
-                <i class="fas fa-bars"></i>
-            </button>
-        </div>
-    </header>
-    
-    <!-- Hero Section -->
-    <section class="hero" id="home">
-        <div class="hero-container">
-            <h1>Welcome to <span id="shopNameHero">Our Shop</span></h1>
-            <p id="shopTagline">Discover quality products that make life better</p>
-            <a href="#products" class="btn">View Products</a>
-        </div>
-    </section>
-    
-    <!-- Products Section -->
-    <section class="products-section" id="products">
-        <h2 class="section-title">Our Products</h2>
-        <div class="products-grid" id="productsGrid">
-            <!-- Products will be loaded here -->
-        </div>
-    </section>
-    
-    <!-- About Section -->
-    <section class="about-section" id="about">
-        <div class="about-container">
-            <h2 class="about-title">About Us</h2>
-            <p class="about-text" id="aboutText">
-                We are dedicated to providing quality products and excellent service to our customers. 
-                Our mission is to make shopping simple and enjoyable for everyone.
-            </p>
-            <a href="#contact" class="btn">Get in Touch</a>
-        </div>
-    </section>
-    
-    <!-- Contact Section -->
-    <section class="contact-section" id="contact">
-        <h2 class="contact-title">Contact Us</h2>
-        <p style="color: var(--gray); font-size: 1.1rem; max-width: 600px; margin: 0 auto 3rem;">
-            We'd love to hear from you. Get in touch with us for any inquiries or feedback.
-        </p>
-        
-        <div class="contact-info">
-            <div class="contact-item">
-                <div class="contact-icon">
-                    <i class="fas fa-map-marker-alt"></i>
-                </div>
-                <h3>Visit Us</h3>
-                <p style="color: var(--gray); margin-top: 0.5rem;">123 Shop Street<br>City, State 12345</p>
-            </div>
-            
-            <div class="contact-item">
-                <div class="contact-icon">
-                    <i class="fas fa-phone"></i>
-                </div>
-                <h3>Call Us</h3>
-                <p style="color: var(--gray); margin-top: 0.5rem;">(123) 456-7890<br>Mon-Fri, 9AM-6PM</p>
-            </div>
-            
-            <div class="contact-item">
-                <div class="contact-icon">
-                    <i class="fas fa-envelope"></i>
-                </div>
-                <h3>Email Us</h3>
-                <p style="color: var(--gray); margin-top: 0.5rem;">info@shop.com<br>We reply within 24 hours</p>
-            </div>
-        </div>
-    </section>
-    
-    <!-- Footer -->
-    <footer>
-        <div class="footer-container">
-            <div class="footer-logo" id="footerLogo">Loading...</div>
-            <p class="footer-text" id="footerDescription">
-                Your trusted destination for quality products
-            </p>
-            
-            <div class="social-links">
-                <a href="#" class="social-link"><i class="fab fa-facebook-f"></i></a>
-                <a href="#" class="social-link"><i class="fab fa-twitter"></i></a>
-                <a href="#" class="social-link"><i class="fab fa-instagram"></i></a>
-                <a href="#" class="social-link"><i class="fab fa-pinterest"></i></a>
-            </div>
-            
-            <div class="copyright">
-                <p>&copy; <span id="currentYear"></span> <span id="shopNameFooter">Shop</span>. All rights reserved.</p>
-            </div>
-        </div>
-    </footer>
-    
-    <script src="https://apis.google.com/js/api.js"></script>
-    <script>
-        // Google Sheets API Configuration
-        const XXX = 'AIzaSyByyiuwuJBysKl2xtvl6wCw6Gz9shyDzXs';
-        const YYY = '1XlOxCrQB-_J59Kv4oqcrnYRPcVutF0ISizsV1aadkTA';
-        const ZZZ = 'WebSite!A:Z';
-        
-        let shopData = {
-            name: 'Our Shop',
-            tagline: 'Discover quality products that make life better',
-            about: 'We are dedicated to providing quality products and excellent service to our customers. Our mission is to make shopping simple and enjoyable for everyone.',
-            description: 'Your trusted destination for quality products'
-        };
-        
-        let products = [];
-        
-        function getCodeFromURL() {
-            const params = new URLSearchParams(window.location.search);
-            const code = params.get('code');
-            return code || '10001';
-        }
-        
-        function initClient() {
-            gapi.client.init({
-                'apiKey': XXX,
-                'discoveryDocs': ["https://sheets.googleapis.com/$discovery/rest?version=v4"],
-            }).then(function() {
-                loadShopData();
-            }, function(error) {
-                console.log('Error initializing GAPI client: ' + error);
-                hideLoadingScreen();
-                updateShopUI();
-            });
-        }
-        
-        function loadShopData() {
-            gapi.client.sheets.spreadsheets.values.get({
-                spreadsheetId: YYY,
-                range: ZZZ
-            }).then(function(response) {
-                const data = response.result.values;
-                const searchCode = getCodeFromURL();
-                
-                let foundRow = null;
-                for (let i = 0; i < data.length; i++) {
-                    const row = data[i];
-                    if (row[0] && row[0].toString() === searchCode) {
-                        foundRow = row;
-                        break;
-                    }
-                }
-                
-                if (foundRow) {
-                    shopData.name = foundRow[2] || 'Our Shop';
-                    shopData.tagline = foundRow[10] || 'Discover quality products that make life better';
-                    shopData.about = foundRow[4] || 'We are dedicated to providing quality products and excellent service to our customers. Our mission is to make shopping simple and enjoyable for everyone.';
-                    shopData.description = foundRow[5] || 'Your trusted destination for quality products';
-                    
-                    // Parse products from 8th column (index 8)
-                    if (foundRow[8]) {
-                        products = parseProducts(foundRow[8]);
-                    }
-                }
-                
-                updateShopUI();
-                displayProducts();
-                hideLoadingScreen();
-                
-            }, function(response) {
-                console.error('Error: ' + response.result.error.message);
-                updateShopUI();
-                hideLoadingScreen();
-            });
-        }
-        
-        function updateShopUI() {
-            // Update logo
-            const shopLogo = document.getElementById('shopLogo');
-            if (shopLogo) shopLogo.textContent = shopData.name;
-            
-            // Update hero section
-            const shopNameHero = document.getElementById('shopNameHero');
-            if (shopNameHero) shopNameHero.textContent = shopData.name;
-            
-            const shopTagline = document.getElementById('shopTagline');
-            if (shopTagline) shopTagline.textContent = shopData.tagline;
-            
-            // Update about section
-            const aboutText = document.getElementById('aboutText');
-            if (aboutText) aboutText.textContent = shopData.about;
-            
-            // Update footer
-            const footerLogo = document.getElementById('footerLogo');
-            if (footerLogo) footerLogo.textContent = shopData.name;
-            
-            const footerDescription = document.getElementById('footerDescription');
-            if (footerDescription) footerDescription.textContent = shopData.description;
-            
-            const shopNameFooter = document.getElementById('shopNameFooter');
-            if (shopNameFooter) shopNameFooter.textContent = shopData.name;
-            
-            // Update page title
-            document.title = shopData.name + ' | Quality Products';
-            
-            // Update current year
-            const currentYear = document.getElementById('currentYear');
-            if (currentYear) currentYear.textContent = new Date().getFullYear();
-        }
-        
-        function hideLoadingScreen() {
-            const loadingScreen = document.getElementById('loadingScreen');
-            loadingScreen.style.opacity = '0';
-            loadingScreen.style.transition = 'opacity 0.3s';
-            
-            setTimeout(() => {
-                loadingScreen.style.display = 'none';
-            }, 300);
-        }
-        
-        function parseProducts(productString) {
-            const products = [];
-            const parts = productString.split('[::_-').filter(part => part.trim() !== '');
-            
-            for (let i = 0; i < parts.length; i += 3) {
-                if (i + 1 < parts.length) {
-                    const name = parts[i].replace('-_::]', '').trim();
-                    const description = parts[i + 1].replace('-_::]', '').trim();
-                    const image = parts[i + 2].replace('-_::]', '').trim();
-                    
-                    if (name && description) {
-                        products.push({
-                            id: i,
-                            name,
-                            description,
-                            image
-                        });
-                    }
-                }
-            }
-            
-            return products;
-        }
-        
-        function displayProducts() {
-            const productsGrid = document.getElementById('productsGrid');
-            
-            if (!productsGrid) return;
-            
-            // Clear existing content
-            productsGrid.innerHTML = '';
-            
-            // Check if we have products
-            if (products.length === 0) {
-                productsGrid.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-state-icon">
-                            <i class="fas fa-box-open"></i>
-                        </div>
-                        <h3 style="color: var(--dark); margin-bottom: 0.5rem;">No Products Available</h3>
-                        <p style="color: var(--gray);">Check back soon for new arrivals!</p>
-                    </div>
-                `;
-                return;
-            }
-            
-            // Display products
-            products.forEach(product => {
-                const productCard = document.createElement('div');
-                productCard.className = 'product-card';
-                
-                productCard.innerHTML = `
-                    <div class="product-image-container">
-                        <img src="${product.image}" 
-                             alt="${product.name}" 
-                             class="product-image"
-                             onerror="this.src='https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=300&fit=crop'; this.onerror=null;">
-                    </div>
-                    <div class="product-content">
-                        <h3 class="product-title">${product.name}</h3>
-                        <p class="product-description">${product.description}</p>
-                    </div>
-                `;
-                
-                productsGrid.appendChild(productCard);
-            });
-        }
-        
-        // Mobile menu toggle
-        document.querySelector('.mobile-menu-btn').addEventListener('click', function() {
-            const navMenu = document.querySelector('.nav-menu');
-            const icon = this.querySelector('i');
-            
-            if (navMenu.style.display === 'flex') {
-                navMenu.style.display = 'none';
-                icon.className = 'fas fa-bars';
-            } else {
-                navMenu.style.display = 'flex';
-                navMenu.style.flexDirection = 'column';
-                navMenu.style.position = 'absolute';
-                navMenu.style.top = '100%';
-                navMenu.style.left = '0';
-                navMenu.style.right = '0';
-                navMenu.style.background = 'var(--light)';
-                navMenu.style.padding = '1rem';
-                navMenu.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
-                icon.className = 'fas fa-times';
-            }
-        });
-        
-        // Smooth scrolling for anchor links
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function(e) {
-                e.preventDefault();
-                
-                const targetId = this.getAttribute('href');
-                if (targetId === '#') return;
-                
-                const targetElement = document.querySelector(targetId);
-                if (targetElement) {
-                    window.scrollTo({
-                        top: targetElement.offsetTop - 80,
-                        behavior: 'smooth'
-                    });
-                    
-                    // Close mobile menu if open
-                    const navMenu = document.querySelector('.nav-menu');
-                    const menuBtn = document.querySelector('.mobile-menu-btn i');
-                    if (navMenu.style.display === 'flex') {
-                        navMenu.style.display = 'none';
-                        menuBtn.className = 'fas fa-bars';
-                    }
-                }
-            });
-        });
-        
-        // Initialize Google API and shop
-        gapi.load('client', initClient);
-    </script>
+    <div class="input-box">
+      <input type="password" placeholder="Password" required>
+    </div>
+    <button type="submit">Login</button>
+  </form>
+</div>
+
 </body>
 </html>
