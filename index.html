@@ -78,14 +78,31 @@ button:hover {
   <h2>Login</h2>
   <form>
     <div class="input-box">
-      <input type="text" placeholder="Username" required>
+      <input id="username" type="text" placeholder="Username">
     </div>
     <div class="input-box">
-      <input type="password" placeholder="Password" required>
+      <input id="password" type="password" placeholder="Password">
     </div>
-    <button type="submit">Login</button>
+    <button onclick="loginUser()">Login</button>
   </form>
 </div>
 
+<script>
+function loginUser() {
+  let username = document.getElementById("username").value;
+  let password = document.getElementById("password").value;
+
+  fetch(`https://script.google.com/macros/s/AKfycbwT1vrEuMXzx5ypudvRQI76ogv-3Sd6End6cMPfvj-AdHaIdtIztiGsFK6jE8MQZvE/exec?username=${username}&password=${password}`)
+    .then(res => res.text())
+    .then(data => {
+      if (data.trim() === "success") {
+        alert("Login successful");
+        window.location.href = "home.html";
+      } else {
+        alert("Invalid login");
+      }
+    });
+}
+</script>
 </body>
 </html>
