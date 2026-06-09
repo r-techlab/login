@@ -84,39 +84,46 @@ button:disabled {
     <div class="input-box">
       <input id="password" type="password" placeholder="Password">
     </div>
-    <p class="error-msg" id="error-msg">Invalid username or password</p>
+    <p class="error-msg" id="error-msg"></p>
     <button type="button" id="login-btn" onclick="loginUser()">Login</button>
   </form>
 </div>
 
 <script>
-function loginUser() {
-  var username = document.getElementById("username").value.trim();
-  var password = document.getElementById("password").value.trim();
-  var errorMsg = document.getElementById("error-msg");
-  var btn = document.getElementById("login-btn");
+  var SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwZRNfsbSDQqyYpt0DQ1E7kUMb59XILhvur_fMIBQKGmsY-2XyRNkAx_xxlqq0sBqQ/exec";
 
-  // Hide previous error
-  errorMsg.style.display = "none";
+  function loginUser() {
+    var username = document.getElementById("username").value.trim();
+    var password = document.getElementById("password").value.trim();
+    var errorMsg = document.getElementById("error-msg");
+    var btn = document.getElementById("login-btn");
 
-  // Validate empty fields
-  if (!username || !password) {
-    errorMsg.textContent = "Please enter username and password";
-    errorMsg.style.display = "block";
-    return;
-  }
+    // Hide previous error
+    errorMsg.style.display = "none";
 
-  // Show loading state
-  btn.textContent = "Logging in...";
-  btn.disabled = true;
+    // Validate empty fields
+    if (!username || !password) {
+      errorMsg.textContent = "Please enter username and password";
+      errorMsg.style.display = "block";
+      return;
+    }
 
-  var url = "https://script.google.com/macros/s/AKfycbwZRNfsbSDQqyYpt0DQ1E7kUMb59XILhvur_fMIBQKGmsY-2XyRNkAx_xxlqq0sBqQ/exec"
-    + "?username=" + encodeURIComponent(username)
-    + "&password=" + encodeURIComponent(password);
+    // Show loading state
+    btn.textContent = "Logging in...";
+    btn.disabled = true;
 
-  fetch(url)
-    .then(function(res) { return res.json(); })
-    .then(function(data) {
+    // Use JSONP to avoid CORS
+    var callbackName = "jsonpCallback_" + Date.now();
+    var script = document.createElement("script");
+
+    // Define the callback function
+    window[callbackName] = function(data) {
+      clearTimeout(timeout);
+      document.body.removeChild(script);
+      delete window[callbackName];
+      btn.textContent = "Login";
+      btn.disabled = false;
+
       if (data.status === "success") {
         alert("Login successful!");
         window.location.href = "home.html";
@@ -127,22 +134,42 @@ function loginUser() {
         errorMsg.textContent = "Invalid username or password";
         errorMsg.style.display = "block";
       }
-    })
-    .catch(function(err) {
-      errorMsg.textContent = "Something went wrong. Please try again.";
-      errorMsg.style.display = "block";
-      console.error(err);
-    })
-    .finally(function() {
+    };
+
+    // Timeout in case script never loads
+    var timeout = setTimeout(function() {
+      if (window[callbackName]) {
+        document.body.removeChild(script);
+        delete window[callbackName];
+        btn.textContent = "Login";
+        btn.disabled = false;
+        errorMsg.textContent = "Request timed out. Please try again.";
+        errorMsg.style.display = "block";
+      }
+    }, 10000);
+
+    script.src = SCRIPT_URL
+      + "?username=" + encodeURIComponent(username)
+      + "&password=" + encodeURIComponent(password)
+      + "&callback=" + callbackName;
+
+    script.onerror = function() {
+      clearTimeout(timeout);
+      document.body.removeChild(script);
+      delete window[callbackName];
       btn.textContent = "Login";
       btn.disabled = false;
-    });
-}
+      errorMsg.textContent = "Something went wrong. Please try again.";
+      errorMsg.style.display = "block";
+    };
 
-// Allow pressing Enter to submit
-document.addEventListener("keydown", function(e) {
-  if (e.key === "Enter") loginUser();
-});
+    document.body.appendChild(script);
+  }
+
+  // Allow pressing Enter to submit
+  document.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") loginUser();
+  });
 </script>
 </body>
 </html>
