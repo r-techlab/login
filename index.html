@@ -9,168 +9,171 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: Arial, sans-serif;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 body {
   height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
-  background: linear-gradient(135deg, #6a11cb, #2575fc);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 .login-container {
   background: #fff;
-  padding: 30px;
+  padding: 40px;
   width: 100%;
-  max-width: 350px;
-  border-radius: 12px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  max-width: 400px;
+  border-radius: 16px;
+  box-shadow: 0 20px 35px rgba(0,0,0,0.2);
 }
 .login-container h2 {
   text-align: center;
-  margin-bottom: 20px;
+  margin-bottom: 30px;
+  color: #333;
 }
 .input-box {
-  margin-bottom: 15px;
+  margin-bottom: 20px;
 }
 .input-box input {
   width: 100%;
-  padding: 12px;
-  border: 1px solid #ccc;
+  padding: 12px 15px;
+  border: 2px solid #e0e0e0;
   border-radius: 8px;
   outline: none;
+  font-size: 14px;
+  transition: all 0.3s;
 }
 .input-box input:focus {
-  border-color: #2575fc;
+  border-color: #667eea;
 }
 .error-msg {
-  color: red;
+  color: #e74c3c;
   font-size: 13px;
-  margin-bottom: 12px;
+  margin-bottom: 15px;
   text-align: center;
   display: none;
+  padding: 8px;
+  background: #fee;
+  border-radius: 6px;
+}
+.success-msg {
+  color: #27ae60;
+  font-size: 13px;
+  margin-bottom: 15px;
+  text-align: center;
+  display: none;
+  padding: 8px;
+  background: #d5f4e6;
+  border-radius: 6px;
 }
 button {
   width: 100%;
   padding: 12px;
-  background: #2575fc;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border: none;
   color: white;
   font-size: 16px;
+  font-weight: bold;
   border-radius: 8px;
   cursor: pointer;
+  transition: transform 0.2s;
 }
-button:hover {
-  background: #1a5edb;
+button:hover:not(:disabled) {
+  transform: translateY(-2px);
 }
 button:disabled {
-  background: #90b8fc;
+  background: #ccc;
   cursor: not-allowed;
 }
-@media (max-width: 400px) {
-  .login-container {
-    margin: 20px;
-  }
+.loading {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  border-top-color: transparent;
+  animation: spin 0.6s linear infinite;
+  margin-right: 8px;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 </style>
 </head>
 <body>
 <div class="login-container">
-  <h2>Login</h2>
-  <form>
+  <h2>🔐 Login</h2>
+  <form id="loginForm">
     <div class="input-box">
-      <input id="username" type="text" placeholder="Username">
+      <input type="text" id="username" placeholder="Username" autocomplete="off">
     </div>
     <div class="input-box">
-      <input id="password" type="password" placeholder="Password">
+      <input type="password" id="password" placeholder="Password">
     </div>
-    <p class="error-msg" id="error-msg"></p>
-    <button type="button" id="login-btn" onclick="loginUser()">Login</button>
+    <div id="errorMsg" class="error-msg"></div>
+    <div id="successMsg" class="success-msg"></div>
+    <button type="submit" id="loginBtn">Login</button>
   </form>
 </div>
 
 <script>
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyDMJro8x1k1DvebniCuCDHeev7TlVDSR8av_X5OJlqZH_QPYI6Ubg5QeFG2bslLe4/exec";
+
+document.getElementById('loginForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
   
-  var SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyDMJro8x1k1DvebniCuCDHeev7TlVDSR8av_X5OJlqZH_QPYI6Ubg5QeFG2bslLe4/exec";
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value.trim();
+  const errorMsg = document.getElementById('errorMsg');
+  const successMsg = document.getElementById('successMsg');
+  const loginBtn = document.getElementById('loginBtn');
+  const originalBtnText = loginBtn.innerHTML;
   
-  function loginUser() {
-    var username = document.getElementById("username").value.trim();
-    var password = document.getElementById("password").value.trim();
-    var errorMsg = document.getElementById("error-msg");
-    var btn = document.getElementById("login-btn");
-
-    // Hide previous error
-    errorMsg.style.display = "none";
-
-    // Validate empty fields
-    if (!username || !password) {
-      errorMsg.textContent = "Please enter username and password";
-      errorMsg.style.display = "block";
-      return;
-    }
-
-    // Show loading state
-    btn.textContent = "Logging in...";
-    btn.disabled = true;
-
-    // Use JSONP to avoid CORS
-    var callbackName = "jsonpCallback_" + Date.now();
-    var script = document.createElement("script");
-
-    // Define the callback function
-    window[callbackName] = function(data) {
-      clearTimeout(timeout);
-      document.body.removeChild(script);
-      delete window[callbackName];
-      btn.textContent = "Login";
-      btn.disabled = false;
-
-      if (data.status === "success") {
-        alert("Login successful!");
-        window.location.href = "home.html";
-      } else if (data.status === "error") {
-        errorMsg.textContent = data.message;
-        errorMsg.style.display = "block";
-      } else {
-        errorMsg.textContent = "Invalid username or password";
-        errorMsg.style.display = "block";
-      }
-    };
-
-    // Timeout in case script never loads
-    var timeout = setTimeout(function() {
-      if (window[callbackName]) {
-        document.body.removeChild(script);
-        delete window[callbackName];
-        btn.textContent = "Login";
-        btn.disabled = false;
-        errorMsg.textContent = "Request timed out. Please try again.";
-        errorMsg.style.display = "block";
-      }
-    }, 10000);
-
-    script.src = SCRIPT_URL
-      + "?username=" + encodeURIComponent(username)
-      + "&password=" + encodeURIComponent(password)
-      + "&callback=" + callbackName;
-
-    script.onerror = function() {
-      clearTimeout(timeout);
-      document.body.removeChild(script);
-      delete window[callbackName];
-      btn.textContent = "Login";
-      btn.disabled = false;
-      errorMsg.textContent = "Something went wrong. Please try again.";
-      errorMsg.style.display = "block";
-    };
-
-    document.body.appendChild(script);
+  // Reset messages
+  errorMsg.style.display = 'none';
+  successMsg.style.display = 'none';
+  
+  // Validate inputs
+  if (!username || !password) {
+    errorMsg.textContent = '⚠️ Please enter both username and password';
+    errorMsg.style.display = 'block';
+    return;
   }
-
-  // Allow pressing Enter to submit
-  document.addEventListener("keydown", function(e) {
-    if (e.key === "Enter") loginUser();
-  });
+  
+  // Show loading state
+  loginBtn.innerHTML = '<span class="loading"></span> Logging in...';
+  loginBtn.disabled = true;
+  
+  try {
+    // Make the request to Google Apps Script
+    const response = await fetch(`${SCRIPT_URL}?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    if (data.status === "success") {
+      successMsg.textContent = '✅ Login successful! Redirecting...';
+      successMsg.style.display = 'block';
+      setTimeout(() => {
+        window.location.href = "home.html";
+      }, 1500);
+    } else {
+      errorMsg.textContent = data.message || '❌ Invalid username or password';
+      errorMsg.style.display = 'block';
+      loginBtn.innerHTML = originalBtnText;
+      loginBtn.disabled = false;
+    }
+  } catch (error) {
+    console.error('Login error:', error);
+    errorMsg.textContent = '⚠️ Connection error. Please check your internet and try again.';
+    errorMsg.style.display = 'block';
+    loginBtn.innerHTML = originalBtnText;
+    loginBtn.disabled = false;
+  }
+});
 </script>
 </body>
 </html>
