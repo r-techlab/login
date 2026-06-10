@@ -3,205 +3,242 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Login Page</title>
+<title>Login - Debug Version</title>
 <style>
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 body {
-  height: 100vh;
+  min-height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  font-family: Arial, sans-serif;
+  padding: 20px;
 }
 .login-container {
-  background: #fff;
+  background: white;
   padding: 40px;
+  border-radius: 16px;
   width: 100%;
   max-width: 400px;
-  border-radius: 16px;
   box-shadow: 0 20px 35px rgba(0,0,0,0.2);
 }
-.login-container h2 {
+h2 {
   text-align: center;
   margin-bottom: 30px;
   color: #333;
 }
-.input-box {
+.input-group {
   margin-bottom: 20px;
 }
-.input-box input {
+input {
   width: 100%;
-  padding: 12px 15px;
+  padding: 12px;
   border: 2px solid #e0e0e0;
   border-radius: 8px;
-  outline: none;
   font-size: 14px;
-  transition: all 0.3s;
 }
-.input-box input:focus {
+input:focus {
+  outline: none;
   border-color: #667eea;
-}
-.error-msg {
-  color: #e74c3c;
-  font-size: 13px;
-  margin-bottom: 15px;
-  text-align: center;
-  display: none;
-  padding: 8px;
-  background: #fee;
-  border-radius: 6px;
 }
 button {
   width: 100%;
   padding: 12px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border: none;
   color: white;
+  border: none;
+  border-radius: 8px;
   font-size: 16px;
   font-weight: bold;
-  border-radius: 8px;
   cursor: pointer;
-  transition: transform 0.2s;
-}
-button:hover:not(:disabled) {
-  transform: translateY(-2px);
 }
 button:disabled {
-  background: #ccc;
+  opacity: 0.6;
   cursor: not-allowed;
 }
-.loading {
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  border: 2px solid #fff;
-  border-radius: 50%;
-  border-top-color: transparent;
-  animation: spin 0.6s linear infinite;
-  margin-right: 8px;
+.message {
+  margin-top: 15px;
+  padding: 10px;
+  border-radius: 8px;
+  display: none;
+  font-size: 14px;
+  text-align: center;
 }
-@keyframes spin {
-  to { transform: rotate(360deg); }
+.error {
+  background: #fee;
+  color: #c33;
+  border-left: 4px solid #c33;
+}
+.success {
+  background: #efe;
+  color: #3c3;
+  border-left: 4px solid #3c3;
+}
+.info {
+  background: #e3f2fd;
+  color: #1976d2;
+  border-left: 4px solid #1976d2;
+  display: block;
+  margin-bottom: 20px;
+  font-size: 12px;
+}
+.debug {
+  background: #f5f5f5;
+  color: #666;
+  font-family: monospace;
+  font-size: 11px;
+  margin-top: 20px;
+  padding: 10px;
+  border-radius: 8px;
+  display: none;
+  word-break: break-all;
 }
 </style>
 </head>
 <body>
 <div class="login-container">
   <h2>🔐 Login</h2>
-  <form id="loginForm">
-    <div class="input-box">
-      <input type="text" id="username" placeholder="Username" autocomplete="off">
-    </div>
-    <div class="input-box">
-      <input type="password" id="password" placeholder="Password">
-    </div>
-    <div id="errorMsg" class="error-msg"></div>
-    <button type="submit" id="loginBtn">Login</button>
-  </form>
+  
+  <div class="message info" id="infoMsg">
+    ⚡ Testing connection...
+  </div>
+  
+  <div class="input-group">
+    <input type="text" id="username" placeholder="Username" autocomplete="off">
+  </div>
+  <div class="input-group">
+    <input type="password" id="password" placeholder="Password">
+  </div>
+  
+  <button id="loginBtn" onclick="login()">Login</button>
+  
+  <div class="message error" id="errorMsg"></div>
+  <div class="message success" id="successMsg"></div>
+  <div class="debug" id="debugMsg"></div>
 </div>
 
 <script>
-// ✅ CORRECT URL (no /u/1/ path)
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwuHgoMmRY9ZM1seWMnEB_3RPpvfueMEo2mRIVBKsWIaDLVvz0eKDLUn4hz6go4h14/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyDMJro8x1k1DvebniCuCDHeev7TlVDSR8av_X5OJlqZH_QPYI6Ubg5QeFG2bslLe4/exec";
 
-document.getElementById('loginForm').addEventListener('submit', function(e) {
-  e.preventDefault();
-  
+// Test the connection when page loads
+window.addEventListener('load', function() {
+  document.getElementById('infoMsg').innerHTML = '✅ Ready to login. Enter credentials and click Login.';
+  console.log('Page loaded. Script URL:', SCRIPT_URL);
+});
+
+function login() {
   const username = document.getElementById('username').value.trim();
   const password = document.getElementById('password').value.trim();
   const errorMsg = document.getElementById('errorMsg');
+  const successMsg = document.getElementById('successMsg');
+  const debugMsg = document.getElementById('debugMsg');
   const loginBtn = document.getElementById('loginBtn');
-  const originalBtnText = loginBtn.innerHTML;
   
-  // Reset error
+  // Hide previous messages
   errorMsg.style.display = 'none';
+  successMsg.style.display = 'none';
+  debugMsg.style.display = 'none';
   
-  // Validate inputs
+  // Validate
   if (!username || !password) {
-    errorMsg.textContent = '⚠️ Please enter both username and password';
+    errorMsg.innerHTML = '❌ Please enter username and password';
     errorMsg.style.display = 'block';
     return;
   }
   
-  // Show loading state
-  loginBtn.innerHTML = '<span class="loading"></span> Logging in...';
+  // Show loading
+  const originalText = loginBtn.textContent;
+  loginBtn.textContent = 'Logging in...';
   loginBtn.disabled = true;
   
-  // Generate unique callback name
-  const callbackName = 'jsonp_callback_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8);
+  // Generate unique callback
+  const callbackName = 'callback_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8);
   
-  // Create timeout (10 seconds)
+  // Setup timeout
   const timeout = setTimeout(function() {
     if (window[callbackName]) {
-      window[callbackName] = function() {}; // No-op to avoid errors
       delete window[callbackName];
-      if (document.getElementById('jsonp_script')) {
-        document.getElementById('jsonp_script').remove();
-      }
-      loginBtn.innerHTML = originalBtnText;
+      if (script) script.remove();
+      loginBtn.textContent = originalText;
       loginBtn.disabled = false;
-      errorMsg.textContent = '⏱️ Request timed out. Please try again.';
+      errorMsg.innerHTML = '⏰ Request timeout (10 seconds). Check your internet connection.';
       errorMsg.style.display = 'block';
+      debugMsg.innerHTML = 'Debug: Request took too long to respond.';
+      debugMsg.style.display = 'block';
     }
   }, 10000);
   
-  // Define the callback function
+  // Create callback function
   window[callbackName] = function(response) {
-    // Clear timeout
+    console.log('Response received:', response);
     clearTimeout(timeout);
     
-    // Remove script tag
-    const scriptTag = document.getElementById('jsonp_script');
-    if (scriptTag) scriptTag.remove();
+    // Show debug info
+    debugMsg.innerHTML = 'Debug Info:<br>' +
+      '📡 Response type: ' + typeof response + '<br>' +
+      '📝 Response content: ' + JSON.stringify(response) + '<br>' +
+      '🔗 URL called: ' + SCRIPT_URL + '<br>' +
+      '👤 Username: ' + username;
+    debugMsg.style.display = 'block';
     
-    // Clean up callback
-    delete window[callbackName];
+    // Remove script
+    if (script) script.remove();
     
-    // Process response
-    console.log('Response received:', response);
-    
-    if (response && response.status === "success") {
-      // Login successful
-      errorMsg.style.display = 'none';
-      loginBtn.innerHTML = '✅ Success! Redirecting...';
-      setTimeout(function() {
-        window.location.href = "home.html";
-      }, 1000);
+    // Check response
+    if (response && response.status === 'success') {
+      successMsg.innerHTML = '✅ Login successful! Redirecting...';
+      successMsg.style.display = 'block';
+      setTimeout(() => {
+        window.location.href = 'home.html';
+      }, 1500);
     } else {
-      // Login failed
-      loginBtn.innerHTML = originalBtnText;
+      loginBtn.textContent = originalText;
       loginBtn.disabled = false;
-      const message = (response && response.message) ? response.message : '❌ Invalid username or password';
-      errorMsg.textContent = message;
+      const msg = (response && response.message) ? response.message : '❌ Invalid username or password';
+      errorMsg.innerHTML = msg;
       errorMsg.style.display = 'block';
     }
+    
+    // Cleanup
+    delete window[callbackName];
   };
   
-  // Create and append JSONP script
-  const script = document.createElement('script');
-  script.id = 'jsonp_script';
-  script.src = SCRIPT_URL + '?username=' + encodeURIComponent(username) + 
-               '&password=' + encodeURIComponent(password) + 
-               '&callback=' + callbackName;
+  // Create script tag
+  const url = SCRIPT_URL + '?username=' + encodeURIComponent(username) + 
+              '&password=' + encodeURIComponent(password) + 
+              '&callback=' + callbackName;
   
+  console.log('Request URL:', url);
+  debugMsg.innerHTML = 'Debug: Sending request...<br>URL: ' + url;
+  debugMsg.style.display = 'block';
+  
+  const script = document.createElement('script');
+  script.src = url;
   script.onerror = function() {
     clearTimeout(timeout);
-    if (window[callbackName]) delete window[callbackName];
-    if (document.getElementById('jsonp_script')) {
-      document.getElementById('jsonp_script').remove();
-    }
-    loginBtn.innerHTML = originalBtnText;
+    delete window[callbackName];
+    script.remove();
+    loginBtn.textContent = originalText;
     loginBtn.disabled = false;
-    errorMsg.textContent = '🌐 Network error. Please check your connection.';
+    errorMsg.innerHTML = '🌐 Network error. Cannot reach the server.';
     errorMsg.style.display = 'block';
+    debugMsg.innerHTML = 'Debug: Script failed to load. Check URL and CORS.';
+    debugMsg.style.display = 'block';
   };
   
   document.head.appendChild(script);
+}
+
+// Allow Enter key
+document.addEventListener('keypress', function(e) {
+  if (e.key === 'Enter') {
+    login();
+  }
 });
 </script>
 </body>
