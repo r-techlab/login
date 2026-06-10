@@ -56,16 +56,6 @@ body {
   background: #fee;
   border-radius: 6px;
 }
-.success-msg {
-  color: #27ae60;
-  font-size: 13px;
-  margin-bottom: 15px;
-  text-align: center;
-  display: none;
-  padding: 8px;
-  background: #d5f4e6;
-  border-radius: 6px;
-}
 button {
   width: 100%;
   padding: 12px;
@@ -111,27 +101,25 @@ button:disabled {
       <input type="password" id="password" placeholder="Password">
     </div>
     <div id="errorMsg" class="error-msg"></div>
-    <div id="successMsg" class="success-msg"></div>
     <button type="submit" id="loginBtn">Login</button>
   </form>
 </div>
 
 <script>
+// ✅ CORRECT URL (no /u/1/ path)
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyDMJro8x1k1DvebniCuCDHeev7TlVDSR8av_X5OJlqZH_QPYI6Ubg5QeFG2bslLe4/exec";
 
-document.getElementById('loginForm').addEventListener('submit', async function(e) {
+document.getElementById('loginForm').addEventListener('submit', function(e) {
   e.preventDefault();
   
   const username = document.getElementById('username').value.trim();
   const password = document.getElementById('password').value.trim();
   const errorMsg = document.getElementById('errorMsg');
-  const successMsg = document.getElementById('successMsg');
   const loginBtn = document.getElementById('loginBtn');
   const originalBtnText = loginBtn.innerHTML;
   
-  // Reset messages
+  // Reset error
   errorMsg.style.display = 'none';
-  successMsg.style.display = 'none';
   
   // Validate inputs
   if (!username || !password) {
@@ -144,35 +132,76 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
   loginBtn.innerHTML = '<span class="loading"></span> Logging in...';
   loginBtn.disabled = true;
   
-  try {
-    // Make the request to Google Apps Script
-    const response = await fetch(`${SCRIPT_URL}?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`);
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    
-    if (data.status === "success") {
-      successMsg.textContent = '✅ Login successful! Redirecting...';
-      successMsg.style.display = 'block';
-      setTimeout(() => {
-        window.location.href = "home.html";
-      }, 1500);
-    } else {
-      errorMsg.textContent = data.message || '❌ Invalid username or password';
-      errorMsg.style.display = 'block';
+  // Generate unique callback name
+  const callbackName = 'jsonp_callback_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8);
+  
+  // Create timeout (10 seconds)
+  const timeout = setTimeout(function() {
+    if (window[callbackName]) {
+      window[callbackName] = function() {}; // No-op to avoid errors
+      delete window[callbackName];
+      if (document.getElementById('jsonp_script')) {
+        document.getElementById('jsonp_script').remove();
+      }
       loginBtn.innerHTML = originalBtnText;
       loginBtn.disabled = false;
+      errorMsg.textContent = '⏱️ Request timed out. Please try again.';
+      errorMsg.style.display = 'block';
     }
-  } catch (error) {
-    console.error('Login error:', error);
-    errorMsg.textContent = '⚠️ Connection error. Please check your internet and try again.';
-    errorMsg.style.display = 'block';
+  }, 10000);
+  
+  // Define the callback function
+  window[callbackName] = function(response) {
+    // Clear timeout
+    clearTimeout(timeout);
+    
+    // Remove script tag
+    const scriptTag = document.getElementById('jsonp_script');
+    if (scriptTag) scriptTag.remove();
+    
+    // Clean up callback
+    delete window[callbackName];
+    
+    // Process response
+    console.log('Response received:', response);
+    
+    if (response && response.status === "success") {
+      // Login successful
+      errorMsg.style.display = 'none';
+      loginBtn.innerHTML = '✅ Success! Redirecting...';
+      setTimeout(function() {
+        window.location.href = "home.html";
+      }, 1000);
+    } else {
+      // Login failed
+      loginBtn.innerHTML = originalBtnText;
+      loginBtn.disabled = false;
+      const message = (response && response.message) ? response.message : '❌ Invalid username or password';
+      errorMsg.textContent = message;
+      errorMsg.style.display = 'block';
+    }
+  };
+  
+  // Create and append JSONP script
+  const script = document.createElement('script');
+  script.id = 'jsonp_script';
+  script.src = SCRIPT_URL + '?username=' + encodeURIComponent(username) + 
+               '&password=' + encodeURIComponent(password) + 
+               '&callback=' + callbackName;
+  
+  script.onerror = function() {
+    clearTimeout(timeout);
+    if (window[callbackName]) delete window[callbackName];
+    if (document.getElementById('jsonp_script')) {
+      document.getElementById('jsonp_script').remove();
+    }
     loginBtn.innerHTML = originalBtnText;
     loginBtn.disabled = false;
-  }
+    errorMsg.textContent = '🌐 Network error. Please check your connection.';
+    errorMsg.style.display = 'block';
+  };
+  
+  document.head.appendChild(script);
 });
 </script>
 </body>
