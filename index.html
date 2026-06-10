@@ -1,63 +1,91 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Test Login</title>
+<title>Login Page</title>
+
 <style>
 body {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  font-family: Arial;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    font-family: Arial;
+    background: #f2f2f2;
+    display: flex;
+    height: 100vh;
+    justify-content: center;
+    align-items: center;
 }
-.container {
-  background: white;
-  padding: 40px;
-  border-radius: 16px;
-  width: 300px;
+
+.login-box {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    width: 300px;
+    box-shadow: 0px 0px 10px rgba(0,0,0,0.2);
 }
-input, button {
-  width: 100%;
-  padding: 10px;
-  margin: 10px 0;
+
+input {
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
 }
+
 button {
-  background: #667eea;
-  color: white;
-  border: none;
-  cursor: pointer;
+    width: 100%;
+    padding: 10px;
+    background: blue;
+    color: white;
+    border: none;
+    cursor: pointer;
 }
-.error {
-  color: red;
-  margin-top: 10px;
+
+.message {
+    margin-top: 10px;
+    text-align: center;
+    font-weight: bold;
 }
 </style>
 </head>
+
 <body>
-<div class="container">
-  <h2>Test Login</h2>
-  <input type="text" id="username" placeholder="Username">
-  <input type="password" id="password" placeholder="Password">
-  <button onclick="login()">Login</button>
-  <div class="error" id="error"></div>
+
+<div class="login-box">
+    <h2>Login</h2>
+
+    <input type="text" id="username" placeholder="Username">
+    <input type="password" id="password" placeholder="Password">
+
+    <button onclick="login()">Login</button>
+
+    <div class="message" id="msg"></div>
 </div>
 
 <script>
+const API_URL = "https://script.google.com/macros/s/AKfycbz--GwHMOQQ7fXfl4L7qXMBE1hBofXomnnHL4bGCTCvFTABO64nFKEikyoaCC5N4Kg/exec";
+
 function login() {
-  const username = document.getElementById('username').value;
-  const password = document.getElementById('password').value;
-  const error = document.getElementById('error');
-  
-  // Test credentials (change these as needed)
-  if (username === 'admin' && password === '1234') {
-    alert('Login successful!');
-    // window.location.href = 'home.html';
-  } else {
-    error.innerHTML = 'Invalid credentials. Try: admin / 1234';
-  }
+    let username = document.getElementById("username").value;
+    let password = document.getElementById("password").value;
+
+    document.getElementById("msg").innerText = "Loading...";
+
+    // JSONP approach to avoid CORS issue
+    let script = document.createElement("script");
+    script.src = `${API_URL}?username=${username}&password=${password}&callback=handleResponse`;
+    document.body.appendChild(script);
+}
+
+// This function will be called by Google Script
+function handleResponse(response) {
+    if (response.status === "success") {
+        alert("Login Successful ✅");
+        document.getElementById("msg").innerText = "Welcome!";
+        document.getElementById("msg").style.color = "green";
+    } else {
+        alert("Login Failed ❌");
+        document.getElementById("msg").innerText = response.message;
+        document.getElementById("msg").style.color = "red";
+    }
 }
 </script>
+
 </body>
 </html>
