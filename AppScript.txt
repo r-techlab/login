@@ -1,0 +1,94 @@
+// POST endpoint for secure login authentication
+function doPost(e) {
+  try {
+    // Parse JSON request body
+    var requestData = JSON.parse(e.postData.contents);
+    var loginid = requestData.loginid;
+    var password = requestData.password;
+
+    // Validate input
+    if (!loginid || !password) {
+      return createJsonResponse({ 
+        status: "error", 
+        message: "Missing credentials" 
+      });
+    }
+
+    // Open Google Sheet database
+    var ss = SpreadsheetApp.openById("1mZlKmBLoLXwYNeIBcqDvE1NZgd1KQ3rXYDh_UfxLApI");
+    var sheet = ss.getSheetByName("LogIn");
+    var data = sheet.getDataRange().getValues();
+
+    // Check credentials (Column A = loginid, Column C = password)
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][0] == loginid && data[i][2] == password) {
+        // Login successful - return userId
+        return createJsonResponse({ 
+          status: "success", 
+          userId: loginid 
+        });
+      }
+    }
+
+    // No match found
+    return createJsonResponse({ 
+      status: "error", 
+      message: "Invalid credentials" 
+    });
+
+  } catch (error) {
+    return createJsonResponse({ 
+      status: "error", 
+      message: "Server error" 
+    });
+  }
+}
+
+// Helper function to create JSON response with CORS headers
+function createJsonResponse(data) {
+  var output = ContentService.createTextOutput(JSON.stringify(data))
+    .setMimeType(ContentService.MimeType.JSON);
+  
+  return output;
+}
+
+// GET endpoint for JSONP requests (handles CORS)
+function doGet(e) {
+  var loginid = e.parameter.loginid;
+  var password = e.parameter.password;
+  var callback = e.parameter.callback;
+
+  // Validate input
+  if (!loginid || !password) {
+    var errorResult = { status: "error", message: "Missing credentials" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+
+  // Open Google Sheet database
+  var ss = SpreadsheetApp.openById("1mZlKmBLoLXwYNeIBcqDvE1NZgd1KQ3rXYDh_UfxLApI");
+  var sheet = ss.getSheetByName("LogIn");
+  var data = sheet.getDataRange().getValues();
+
+  var result = { status: "error", message: "Invalid credentials" };
+
+  // Check credentials (Column A = loginid, Column C = password)
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] == loginid && data[i][2] == password) {
+      // Login successful - return userId
+      result = { status: "success", userId: loginid };
+      break;
+    }
+  }
+
+  // Return JSONP response if callback provided
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+
+  return createJsonResponse(result);
+}

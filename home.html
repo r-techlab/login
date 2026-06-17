@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard - Home</title>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    margin: 0;
+    padding: 20px;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 20px;
+    margin-bottom: 30px;
+}
+
+h1 {
+    color: #333;
+    margin: 0;
+}
+
+.logout-btn {
+    background: #e74c3c;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.logout-btn:hover {
+    background: #c0392b;
+}
+
+.user-info {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.info-row:last-child {
+    border-bottom: none;
+}
+
+.info-label {
+    font-weight: bold;
+    color: #555;
+}
+
+.info-value {
+    color: #333;
+}
+
+.welcome-message {
+    font-size: 24px;
+    color: #667eea;
+    margin-bottom: 20px;
+}
+
+.session-status {
+    background: #d4edda;
+    color: #155724;
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 4px solid #28a745;
+    margin-top: 20px;
+}
+
+.content-area {
+    margin-top: 30px;
+    padding: 20px;
+    background: #fff;
+    border: 2px dashed #dee2e6;
+    border-radius: 10px;
+    text-align: center;
+    color: #666;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>🏠 Dashboard</h1>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+
+    <div class="welcome-message" id="welcomeMsg">
+        Welcome, <span id="userId"></span>!
+    </div>
+
+    <div class="user-info">
+        <h3>Session Information</h3>
+        <div class="info-row">
+            <span class="info-label">User ID:</span>
+            <span class="info-value" id="userIdDisplay"></span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Login Time:</span>
+            <span class="info-value" id="loginTime"></span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Session Expires:</span>
+            <span class="info-value" id="expiryTime"></span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Session Token:</span>
+            <span class="info-value" id="sessionToken"></span>
+        </div>
+    </div>
+
+    <div class="session-status">
+        ✅ Your session is active and will expire in <strong id="timeRemaining"></strong>
+    </div>
+
+    <div class="content-area">
+        <h3>Protected Content Area</h3>
+        <p>This page is protected by session authentication.</p>
+        <p>Only logged-in users can access this content.</p>
+    </div>
+</div>
+
+<script src="session.js"></script>
+<script>
+// Protect this page - redirect if no valid session
+if (!protectPage()) {
+    // protectPage() already handles redirect
+} else {
+    // Load and display session information
+    const session = getSession();
+    
+    if (session) {
+        // Display user information
+        document.getElementById('userId').innerText = session.userId;
+        document.getElementById('userIdDisplay').innerText = session.userId;
+        document.getElementById('sessionToken').innerText = session.token;
+        
+        // Format and display times
+        const loginDate = new Date(session.loginTime);
+        const expiryDate = new Date(session.expiryTime);
+        
+        document.getElementById('loginTime').innerText = loginDate.toLocaleString();
+        document.getElementById('expiryTime').innerText = expiryDate.toLocaleString();
+        
+        // Update remaining time
+        updateTimeRemaining();
+        setInterval(updateTimeRemaining, 1000); // Update every second
+    }
+}
+
+function updateTimeRemaining() {
+    const session = getSession();
+    if (!session) return;
+    
+    const now = Date.now();
+    const remaining = session.expiryTime - now;
+    
+    if (remaining <= 0) {
+        clearSession();
+        alert('Session expired. Please login again.');
+        window.location.href = 'index.html';
+        return;
+    }
+    
+    // Convert to minutes and seconds
+    const minutes = Math.floor(remaining / 60000);
+    const seconds = Math.floor((remaining % 60000) / 1000);
+    
+    document.getElementById('timeRemaining').innerText = `${minutes}m ${seconds}s`;
+}
+
+function logout() {
+    if (confirm('Are you sure you want to logout?')) {
+        clearSession();
+        window.location.href = 'index.html';
+    }
+}
+</script>
+
+</body>
+</html>
