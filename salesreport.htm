@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Sales Report</title>
+<link rel="stylesheet" href="menu.css">
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    margin: 0;
+    padding: 20px;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 20px;
+    margin-bottom: 30px;
+}
+
+h1 {
+    color: #333;
+    margin: 0;
+}
+
+.btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    margin-left: 10px;
+}
+
+.btn:hover {
+    background: #2980b9;
+}
+
+.btn-danger {
+    background: #e74c3c;
+}
+
+.btn-danger:hover {
+    background: #c0392b;
+}
+
+.layout-with-sidebar {
+    display: flex;
+    gap: 20px;
+}
+
+.sidebar {
+    width: 280px;
+    flex-shrink: 0;
+}
+
+.main-content {
+    flex: 1;
+}
+
+.page-content {
+    background: #f8f9fa;
+    padding: 30px;
+    border-radius: 10px;
+    min-height: 400px;
+}
+
+.page-icon {
+    font-size: 48px;
+    margin-bottom: 20px;
+}
+
+.report-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.report-card {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+}
+
+.report-card h3 {
+    margin: 0 0 5px 0;
+    font-size: 28px;
+}
+
+.report-card p {
+    margin: 0;
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+@media (max-width: 992px) {
+    .layout-with-sidebar {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>📊 Sales Report</h1>
+        <div>
+            <button class="btn" onclick="window.location.href='home.html'">🏠 Home</button>
+            <button class="btn btn-danger" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div id="breadcrumbContainer" class="breadcrumb-container"></div>
+
+    <div class="layout-with-sidebar">
+        <div class="sidebar">
+            <h3>Navigation Menu</h3>
+            <div id="menuContainer"></div>
+        </div>
+
+        <div class="main-content">
+            <div class="page-content">
+                <div class="page-icon">📊</div>
+                <h2>Sales Report</h2>
+                <p>View comprehensive sales analytics and reports.</p>
+                
+                <div class="report-cards">
+                    <div class="report-card">
+                        <h3>$45,230</h3>
+                        <p>Total Sales</p>
+                    </div>
+                    <div class="report-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                        <h3>1,234</h3>
+                        <p>Orders</p>
+                    </div>
+                    <div class="report-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                        <h3>567</h3>
+                        <p>Customers</p>
+                    </div>
+                    <div class="report-card" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                        <h3>$36.67</h3>
+                        <p>Avg Order Value</p>
+                    </div>
+                </div>
+                
+                <h3>Available Reports:</h3>
+                <ul>
+                    <li>Daily Sales Summary</li>
+                    <li>Monthly Sales Trends</li>
+                    <li>Product Performance Analysis</li>
+                    <li>Customer Purchase History</li>
+                    <li>Sales by Region</li>
+                    <li>Top Selling Products</li>
+                </ul>
+                <p><strong>Note:</strong> This is a sample page demonstrating role-based access control.</p>
+                <p>Only users with access to this menu item can view this page.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="api.js"></script>
+<script src="session.js"></script>
+<script src="menu.js"></script>
+<script>
+// Protect this page with server validation
+protectPage(function(isValid) {
+    if (isValid) {
+        // Render menu and breadcrumb
+        renderMenu('menuContainer');
+        renderBreadcrumb('breadcrumbContainer');
+    }
+});
+
+function logout() {
+    if (confirm('Are you sure you want to logout?')) {
+        performLogout();
+    }
+}
+</script>
+
+</body>
+</html>

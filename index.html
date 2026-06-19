@@ -82,20 +82,13 @@ button:disabled {
     <div class="message" id="msg"></div>
 </div>
 
+<script src="api.js"></script>
 <script src="session.js"></script>
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbwx8ZwbsknSi87e8VMidQvyCj4SYpGpxG64PJjmrRAfobQZZSKTahdrYaFsSOQ-gC8/exec";
-
-// Check if already logged in - but clear any corrupted sessions first
+// Check if already logged in
 window.onload = function() {
-    // Try to validate session, if it fails, clear it
-    try {
-        if (isSessionValid()) {
-            window.location.href = 'home.html';
-        }
-    } catch(e) {
-        // Clear corrupted session
-        clearSession();
+    if (hasLocalSession()) {
+        window.location.href = 'home.html';
     }
 };
 
@@ -117,29 +110,13 @@ function login() {
     msgElement.className = "message loading";
     loginButton.disabled = true;
 
-    // Use JSONP approach for Google Apps Script (avoids CORS)
-    const callbackName = 'handleLoginResponse_' + Date.now(); // Unique callback name
-    const timeoutDuration = 10000; // 10 second timeout
-    
-    let timeoutId = setTimeout(function() {
-        if (window[callbackName]) {
-            loginButton.disabled = false;
-            msgElement.innerText = "Request timeout. Please try again.";
-            msgElement.className = "message error";
-            delete window[callbackName];
-            if (script && script.parentNode) {
-                document.body.removeChild(script);
-            }
-        }
-    }, timeoutDuration);
-    
-    window[callbackName] = function(data) {
-        clearTimeout(timeoutId);
+    // Use the secure API function
+    apiLogin(loginid, password, function(data) {
         loginButton.disabled = false;
         
         if (data.status === "success") {
-            // Create session with userId
-            createSession(data.userId);
+            // Create session with server-generated sessionId
+            createSession(data);
             
             msgElement.innerText = "Login Successful! Redirecting...";
             msgElement.className = "message success";
@@ -152,28 +129,7 @@ function login() {
             msgElement.innerText = data.message || "Invalid credentials";
             msgElement.className = "message error";
         }
-        
-        // Cleanup
-        delete window[callbackName];
-        if (script && script.parentNode) {
-            document.body.removeChild(script);
-        }
-    };
-
-    // Create script tag for JSONP request
-    const script = document.createElement('script');
-    script.src = `${API_URL}?loginid=${encodeURIComponent(loginid)}&password=${encodeURIComponent(password)}&callback=${callbackName}`;
-    script.onerror = function() {
-        clearTimeout(timeoutId);
-        loginButton.disabled = false;
-        msgElement.innerText = "Connection error. Check your internet or Apps Script deployment.";
-        msgElement.className = "message error";
-        delete window[callbackName];
-        if (script && script.parentNode) {
-            document.body.removeChild(script);
-        }
-    };
-    document.body.appendChild(script);
+    });
 }
 
 // Allow Enter key to submit
