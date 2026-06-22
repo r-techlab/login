@@ -136,6 +136,49 @@ function protectPage(callback) {
     return true; // Temporary return while validation is in progress
 }
 
+// Protect page with menu-based access control
+function protectPageWithMenuAccess(callback) {
+    // First check if local session exists
+    if (!hasLocalSession()) {
+        window.location.href = 'index.html';
+        return false;
+    }
+    
+    // Then validate with server
+    validateSessionWithServer(function(result) {
+        if (!result.valid) {
+            alert(result.message || 'Session expired. Please login again.');
+            window.location.href = 'index.html';
+            if (callback) callback(false);
+            return;
+        }
+        
+        // Session is valid, now check menu access
+        const currentPage = window.location.pathname.split('/').pop();
+        
+        // Get user's menu access
+        const menuAccess = getUserMenuAccess();
+        
+        // Check if user has access to this page
+        const hasAccess = menuAccess.some(menu => {
+            // Match by pageUrl
+            return menu.pageUrl && menu.pageUrl.toLowerCase() === currentPage.toLowerCase();
+        });
+        
+        if (!hasAccess) {
+            alert('Access Denied: You do not have permission to access this page.');
+            window.location.href = 'home.html';
+            if (callback) callback(false);
+            return;
+        }
+        
+        // User has access
+        if (callback) callback(true);
+    });
+    
+    return true; // Temporary return while validation is in progress
+}
+
 // ============================================
 // MENU FUNCTIONS
 // ============================================

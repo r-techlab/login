@@ -141,8 +141,8 @@ h1 {
 <script src="session.js"></script>
 <script src="menu.js"></script>
 <script>
-// Protect this page with server validation
-protectPage(function(isValid) {
+// Protect this page with menu-based access control
+protectPageWithMenuAccess(function(isValid) {
     if (isValid) {
         // Render menu and breadcrumb
         renderMenu('menuContainer');

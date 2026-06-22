@@ -503,8 +503,8 @@ let allRoles = [];
 let roleUsage = {};
 let editingRoleId = null;
 
-// Protect this page with server validation
-protectPage(function(isValid) {
+// Protect this page with menu-based access control
+protectPageWithMenuAccess(function(isValid) {
     if (isValid) {
         // Check if user has admin access
         const session = getSession();
