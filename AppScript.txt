@@ -1,94 +1,1632 @@
+// ============================================
+// SECURE SESSION MANAGEMENT SYSTEM
+// Google Apps Script Backend with Server-Side Sessions
+// ============================================
+
+// Configuration
+var SHEET_ID = "1mZlKmBLoLXwYNeIBcqDvE1NZgd1KQ3rXYDh_UfxLApI";
+var SESSION_DURATION = 30 * 60 * 1000; // 30 minutes in milliseconds
+var MAX_LOGIN_ATTEMPTS = 5; // Max attempts per 15 minutes
+var ATTEMPT_WINDOW = 15 * 60 * 1000; // 15 minutes in milliseconds
+
+// ============================================
+// MAIN ENDPOINTS
+// ============================================
+
 // POST endpoint for secure login authentication
 function doPost(e) {
   try {
-    // Parse JSON request body
     var requestData = JSON.parse(e.postData.contents);
-    var loginid = requestData.loginid;
-    var password = requestData.password;
-
-    // Validate input
-    if (!loginid || !password) {
+    var action = requestData.action || "login";
+    
+    if (action === "login") {
+      return handleLogin(requestData, e);
+    } else if (action === "validateSession") {
+      return handleValidateSession(requestData, e);
+    } else if (action === "logout") {
+      return handleLogout(requestData, e);
+    } else {
       return createJsonResponse({ 
         status: "error", 
-        message: "Missing credentials" 
+        message: "Invalid action" 
       });
     }
-
-    // Open Google Sheet database
-    var ss = SpreadsheetApp.openById("1mZlKmBLoLXwYNeIBcqDvE1NZgd1KQ3rXYDh_UfxLApI");
-    var sheet = ss.getSheetByName("LogIn");
-    var data = sheet.getDataRange().getValues();
-
-    // Check credentials (Column A = loginid, Column C = password)
-    for (var i = 1; i < data.length; i++) {
-      if (data[i][0] == loginid && data[i][2] == password) {
-        // Login successful - return userId
-        return createJsonResponse({ 
-          status: "success", 
-          userId: loginid 
-        });
-      }
-    }
-
-    // No match found
-    return createJsonResponse({ 
-      status: "error", 
-      message: "Invalid credentials" 
-    });
-
   } catch (error) {
     return createJsonResponse({ 
       status: "error", 
-      message: "Server error" 
+      message: "Server error: " + error.toString()
     });
   }
 }
 
-// Helper function to create JSON response with CORS headers
-function createJsonResponse(data) {
-  var output = ContentService.createTextOutput(JSON.stringify(data))
-    .setMimeType(ContentService.MimeType.JSON);
-  
-  return output;
-}
-
 // GET endpoint for JSONP requests (handles CORS)
 function doGet(e) {
-  var loginid = e.parameter.loginid;
-  var password = e.parameter.password;
-  var callback = e.parameter.callback;
-
-  // Validate input
-  if (!loginid || !password) {
-    var errorResult = { status: "error", message: "Missing credentials" };
+  var action = e.parameter.action || "login";
+  
+  if (action === "login") {
+    return handleLoginGet(e);
+  } else if (action === "validateSession") {
+    return handleValidateSessionGet(e);
+  } else if (action === "logout") {
+    return handleLogoutGet(e);
+  } else if (action === "getUsers") {
+    return handleGetUsersGet(e);
+  } else if (action === "getRoles") {
+    return handleGetRolesGet(e);
+  } else if (action === "createUser") {
+    return handleCreateUserGet(e);
+  } else if (action === "updateUser") {
+    return handleUpdateUserGet(e);
+  } else if (action === "deleteUser") {
+    return handleDeleteUserGet(e);
+  } else if (action === "createRole") {
+    return handleCreateRoleGet(e);
+  } else if (action === "updateRole") {
+    return handleUpdateRoleGet(e);
+  } else if (action === "deleteRole") {
+    return handleDeleteRoleGet(e);
+  } else if (action === "getRoleUsage") {
+    return handleGetRoleUsageGet(e);
+  } else if (action === "getAllMenus") {
+    return handleGetAllMenusGet(e);
+  } else if (action === "getRoleMenuAccess") {
+    return handleGetRoleMenuAccessGet(e);
+  } else if (action === "updateRoleMenuAccess") {
+    return handleUpdateRoleMenuAccessGet(e);
+  } else if (action === "createMenu") {
+    return handleCreateMenuGet(e);
+  } else if (action === "updateMenu") {
+    return handleUpdateMenuGet(e);
+  } else if (action === "deleteMenu") {
+    return handleDeleteMenuGet(e);
+  } else {
+    var errorResult = { status: "error", message: "Invalid action" };
+    var callback = e.parameter.callback;
     if (callback) {
       return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
         .setMimeType(ContentService.MimeType.JAVASCRIPT);
     }
     return createJsonResponse(errorResult);
   }
+}
 
-  // Open Google Sheet database
-  var ss = SpreadsheetApp.openById("1mZlKmBLoLXwYNeIBcqDvE1NZgd1KQ3rXYDh_UfxLApI");
-  var sheet = ss.getSheetByName("LogIn");
-  var data = sheet.getDataRange().getValues();
+// ============================================
+// LOGIN HANDLER
+// ============================================
 
+function handleLogin(requestData, e) {
+  var loginid = requestData.loginid;
+  var password = requestData.password;
+  var ipAddress = getClientIP(e);
+  
+  // Validate input
+  if (!loginid || !password) {
+    logLoginAttempt(ipAddress, loginid, false, "Missing credentials");
+    return createJsonResponse({ 
+      status: "error", 
+      message: "Missing credentials" 
+    });
+  }
+  
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  
+  // Check rate limiting
+  var rateLimitResult = checkRateLimit(ss, ipAddress, loginid);
+  if (!rateLimitResult.allowed) {
+    logLoginAttempt(ipAddress, loginid, false, rateLimitResult.message);
+    return createJsonResponse({ 
+      status: "error", 
+      message: rateLimitResult.message
+    });
+  }
+  
+  // Check credentials
+  var loginSheet = ss.getSheetByName("LogIn");
+  var loginData = loginSheet.getDataRange().getValues();
+  
+  for (var i = 1; i < loginData.length; i++) {
+    if (loginData[i][0] == loginid && loginData[i][2] == password) {
+      var roleId = loginData[i][3];
+      var userName = loginData[i][1];
+      
+      // Get role name
+      var rolesSheet = ss.getSheetByName("Roles");
+      var rolesData = rolesSheet.getDataRange().getValues();
+      var roleName = "";
+      
+      for (var j = 1; j < rolesData.length; j++) {
+        if (rolesData[j][0] == roleId) {
+          roleName = rolesData[j][1];
+          break;
+        }
+      }
+      
+      // Get menu access
+      var menuAccess = getRoleMenuAccess(ss, roleId);
+      
+      // Create session
+      var sessionId = generateSessionId();
+      var now = new Date().getTime();
+      var expiryTime = now + SESSION_DURATION;
+      
+      // Store session in ActiveSessions tab
+      var sessionsSheet = ss.getSheetByName("ActiveSessions");
+      sessionsSheet.appendRow([
+        sessionId,
+        loginid,
+        userName,
+        roleId,
+        new Date(now),
+        new Date(expiryTime),
+        ipAddress,
+        new Date(now)
+      ]);
+      
+      // Log successful login
+      logLoginAttempt(ipAddress, loginid, true, "Login successful");
+      
+      // Return session data
+      return createJsonResponse({ 
+        status: "success", 
+        sessionId: sessionId,
+        userId: loginid,
+        userName: userName,
+        roleId: roleId,
+        roleName: roleName,
+        menuAccess: menuAccess,
+        expiryTime: expiryTime
+      });
+    }
+  }
+  
+  // Invalid credentials
+  logLoginAttempt(ipAddress, loginid, false, "Invalid credentials");
+  return createJsonResponse({ 
+    status: "error", 
+    message: "Invalid credentials" 
+  });
+}
+
+// GET version of login (JSONP)
+function handleLoginGet(e) {
+  var loginid = e.parameter.loginid;
+  var password = e.parameter.password;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  if (!loginid || !password) {
+    var errorResult = { status: "error", message: "Missing credentials" };
+    logLoginAttempt(ipAddress, loginid, false, "Missing credentials");
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  
+  // Check rate limiting
+  var rateLimitResult = checkRateLimit(ss, ipAddress, loginid);
+  if (!rateLimitResult.allowed) {
+    logLoginAttempt(ipAddress, loginid, false, rateLimitResult.message);
+    var result = { status: "error", message: rateLimitResult.message };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(result);
+  }
+  
+  var loginSheet = ss.getSheetByName("LogIn");
+  var loginData = loginSheet.getDataRange().getValues();
   var result = { status: "error", message: "Invalid credentials" };
-
-  // Check credentials (Column A = loginid, Column C = password)
-  for (var i = 1; i < data.length; i++) {
-    if (data[i][0] == loginid && data[i][2] == password) {
-      // Login successful - return userId
-      result = { status: "success", userId: loginid };
+  
+  for (var i = 1; i < loginData.length; i++) {
+    if (loginData[i][0] == loginid && loginData[i][2] == password) {
+      var roleId = loginData[i][3];
+      var userName = loginData[i][1];
+      
+      var rolesSheet = ss.getSheetByName("Roles");
+      var rolesData = rolesSheet.getDataRange().getValues();
+      var roleName = "";
+      
+      for (var j = 1; j < rolesData.length; j++) {
+        if (rolesData[j][0] == roleId) {
+          roleName = rolesData[j][1];
+          break;
+        }
+      }
+      
+      var menuAccess = getRoleMenuAccess(ss, roleId);
+      var sessionId = generateSessionId();
+      var now = new Date().getTime();
+      var expiryTime = now + SESSION_DURATION;
+      
+      var sessionsSheet = ss.getSheetByName("ActiveSessions");
+      sessionsSheet.appendRow([
+        sessionId,
+        loginid,
+        userName,
+        roleId,
+        new Date(now),
+        new Date(expiryTime),
+        ipAddress,
+        new Date(now)
+      ]);
+      
+      logLoginAttempt(ipAddress, loginid, true, "Login successful");
+      
+      result = { 
+        status: "success", 
+        sessionId: sessionId,
+        userId: loginid,
+        userName: userName,
+        roleId: roleId,
+        roleName: roleName,
+        menuAccess: menuAccess,
+        expiryTime: expiryTime
+      };
       break;
     }
   }
-
-  // Return JSONP response if callback provided
+  
+  if (result.status === "error") {
+    logLoginAttempt(ipAddress, loginid, false, "Invalid credentials");
+  }
+  
   if (callback) {
     return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
       .setMimeType(ContentService.MimeType.JAVASCRIPT);
   }
-
   return createJsonResponse(result);
+}
+
+// ============================================
+// SESSION VALIDATION HANDLER
+// ============================================
+
+function handleValidateSession(requestData, e) {
+  var sessionId = requestData.sessionId;
+  var userId = requestData.userId;
+  var ipAddress = getClientIP(e);
+  
+  if (!sessionId || !userId) {
+    return createJsonResponse({ 
+      status: "error",
+      valid: false,
+      message: "Missing session data" 
+    });
+  }
+  
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  return createJsonResponse(validation);
+}
+
+function handleValidateSessionGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  if (!sessionId || !userId) {
+    var errorResult = { status: "error", valid: false, message: "Missing session data" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(validation) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(validation);
+}
+
+// ============================================
+// LOGOUT HANDLER
+// ============================================
+
+function handleLogout(requestData, e) {
+  var sessionId = requestData.sessionId;
+  
+  if (!sessionId) {
+    return createJsonResponse({ 
+      status: "error", 
+      message: "Missing session ID" 
+    });
+  }
+  
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var sessionsSheet = ss.getSheetByName("ActiveSessions");
+  var data = sessionsSheet.getDataRange().getValues();
+  
+  // Find and delete session
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] == sessionId) {
+      sessionsSheet.deleteRow(i + 1);
+      return createJsonResponse({ 
+        status: "success", 
+        message: "Logged out successfully" 
+      });
+    }
+  }
+  
+  return createJsonResponse({ 
+    status: "success", 
+    message: "Session not found or already expired" 
+  });
+}
+
+function handleLogoutGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var callback = e.parameter.callback;
+  
+  if (!sessionId) {
+    var errorResult = { status: "error", message: "Missing session ID" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var sessionsSheet = ss.getSheetByName("ActiveSessions");
+  var data = sessionsSheet.getDataRange().getValues();
+  
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] == sessionId) {
+      sessionsSheet.deleteRow(i + 1);
+      var result = { status: "success", message: "Logged out successfully" };
+      if (callback) {
+        return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+          .setMimeType(ContentService.MimeType.JAVASCRIPT);
+      }
+      return createJsonResponse(result);
+    }
+  }
+  
+  var result = { status: "success", message: "Session not found or already expired" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// ============================================
+// HELPER FUNCTIONS
+// ============================================
+
+// Validate session
+function validateSession(ss, sessionId, userId, ipAddress) {
+  var sessionsSheet = ss.getSheetByName("ActiveSessions");
+  var data = sessionsSheet.getDataRange().getValues();
+  var now = new Date().getTime();
+  
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] == sessionId && data[i][1] == userId) {
+      var expiryTime = new Date(data[i][5]).getTime();
+      var sessionIP = data[i][6];
+      
+      // Check if expired
+      if (now > expiryTime) {
+        sessionsSheet.deleteRow(i + 1);
+        return { 
+          status: "error",
+          valid: false, 
+          message: "Session expired" 
+        };
+      }
+      
+      // Check IP address match
+      if (sessionIP !== ipAddress) {
+        return { 
+          status: "error",
+          valid: false, 
+          message: "IP address mismatch - security violation" 
+        };
+      }
+      
+      // Update last activity
+      sessionsSheet.getRange(i + 1, 8).setValue(new Date());
+      
+      // Get user data
+      var userName = data[i][2];
+      var roleId = data[i][3];
+      
+      // Get role name
+      var rolesSheet = ss.getSheetByName("Roles");
+      var rolesData = rolesSheet.getDataRange().getValues();
+      var roleName = "";
+      
+      for (var j = 1; j < rolesData.length; j++) {
+        if (rolesData[j][0] == roleId) {
+          roleName = rolesData[j][1];
+          break;
+        }
+      }
+      
+      // Get menu access
+      var menuAccess = getRoleMenuAccess(ss, roleId);
+      
+      return { 
+        status: "success",
+        valid: true,
+        userId: userId,
+        userName: userName,
+        roleId: roleId,
+        roleName: roleName,
+        menuAccess: menuAccess,
+        expiryTime: expiryTime
+      };
+    }
+  }
+  
+  return { 
+    status: "error",
+    valid: false, 
+    message: "Invalid session" 
+  };
+}
+
+// Check rate limiting
+function checkRateLimit(ss, ipAddress, userId) {
+  var attemptsSheet = ss.getSheetByName("LoginAttempts");
+  var data = attemptsSheet.getDataRange().getValues();
+  var now = new Date().getTime();
+  var windowStart = now - ATTEMPT_WINDOW;
+  
+  var ipAttempts = 0;
+  var userAttempts = 0;
+  
+  for (var i = 1; i < data.length; i++) {
+    var attemptTime = new Date(data[i][0]).getTime();
+    if (attemptTime > windowStart) {
+      var attemptIP = data[i][1];
+      var attemptUser = data[i][2];
+      var success = data[i][3];
+      
+      if (!success) {
+        if (attemptIP === ipAddress) {
+          ipAttempts++;
+        }
+        if (attemptUser === userId) {
+          userAttempts++;
+        }
+      }
+    }
+  }
+  
+  if (ipAttempts >= MAX_LOGIN_ATTEMPTS) {
+    return { 
+      allowed: false, 
+      message: "Too many failed attempts from this IP. Try again in 15 minutes." 
+    };
+  }
+  
+  if (userAttempts >= MAX_LOGIN_ATTEMPTS) {
+    return { 
+      allowed: false, 
+      message: "Too many failed attempts for this user. Try again in 15 minutes." 
+    };
+  }
+  
+  return { allowed: true };
+}
+
+// Log login attempt
+function logLoginAttempt(ipAddress, userId, success, message) {
+  try {
+    var ss = SpreadsheetApp.openById(SHEET_ID);
+    var attemptsSheet = ss.getSheetByName("LoginAttempts");
+    attemptsSheet.appendRow([
+      new Date(),
+      ipAddress,
+      userId,
+      success,
+      message
+    ]);
+  } catch (error) {
+    // Fail silently if logging fails
+  }
+}
+
+// Generate secure session ID
+function generateSessionId() {
+  return 'sess_' + Utilities.getUuid();
+}
+
+// Get client IP address
+function getClientIP(e) {
+  try {
+    // Try to get real IP from headers
+    if (e.parameter && e.parameter['X-Forwarded-For']) {
+      return e.parameter['X-Forwarded-For'].split(',')[0].trim();
+    }
+    // Fallback to a placeholder
+    return 'unknown';
+  } catch (error) {
+    return 'unknown';
+  }
+}
+
+// Get menu access for role
+function getRoleMenuAccess(ss, roleId) {
+  var roleMenuSheet = ss.getSheetByName("RoleMenuAccess");
+  var roleMenuData = roleMenuSheet.getDataRange().getValues();
+  
+  var menuMasterSheet = ss.getSheetByName("MenuMaster");
+  var menuMasterData = menuMasterSheet.getDataRange().getValues();
+  
+  var allowedMenuIds = [];
+  for (var i = 1; i < roleMenuData.length; i++) {
+    if (roleMenuData[i][0] == roleId) {
+      allowedMenuIds.push(roleMenuData[i][1]);
+    }
+  }
+  
+  var menus = [];
+  for (var j = 1; j < menuMasterData.length; j++) {
+    var menuId = menuMasterData[j][0];
+    
+    if (allowedMenuIds.indexOf(menuId) !== -1) {
+      menus.push({
+        menuId: menuId,
+        parentMenuId: menuMasterData[j][1],
+        menuType: menuMasterData[j][2],
+        menuName: menuMasterData[j][3],
+        pageUrl: menuMasterData[j][4],
+        sortOrder: menuMasterData[j][5]
+      });
+    }
+  }
+  
+  menus.sort(function(a, b) {
+    return a.sortOrder - b.sortOrder;
+  });
+  
+  return menus;
+}
+
+// Create JSON response
+function createJsonResponse(data) {
+  var output = ContentService.createTextOutput(JSON.stringify(data))
+    .setMimeType(ContentService.MimeType.JSON);
+  return output;
+}
+
+// ============================================
+// USER MANAGEMENT HANDLERS (LOGIN MASTER)
+// ============================================
+
+// Get all users
+function handleGetUsersGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Check if user is admin
+  if (validation.roleName !== "Admin") {
+    var errorResult = { status: "error", message: "Access denied: Admin role required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get all users from LogIn sheet
+  var loginSheet = ss.getSheetByName("LogIn");
+  var loginData = loginSheet.getDataRange().getValues();
+  var users = [];
+  
+  for (var i = 1; i < loginData.length; i++) {
+    users.push({
+      loginId: loginData[i][0],
+      userName: loginData[i][1],
+      password: loginData[i][2],
+      roleId: loginData[i][3]
+    });
+  }
+  
+  var result = { status: "success", users: users };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Get all roles
+function handleGetRolesGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Check if user is admin
+  if (validation.roleName !== "Admin") {
+    var errorResult = { status: "error", message: "Access denied: Admin role required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get all roles from Roles sheet
+  var rolesSheet = ss.getSheetByName("Roles");
+  var rolesData = rolesSheet.getDataRange().getValues();
+  var roles = [];
+  
+  for (var i = 1; i < rolesData.length; i++) {
+    roles.push({
+      roleId: rolesData[i][0],
+      roleName: rolesData[i][1]
+    });
+  }
+  
+  var result = { status: "success", roles: roles };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Create new user
+function handleCreateUserGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var loginId = e.parameter.loginId;
+  var userName = e.parameter.userName;
+  var password = e.parameter.password;
+  var roleId = e.parameter.roleId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Check if user is admin
+  if (validation.roleName !== "Admin") {
+    var errorResult = { status: "error", message: "Access denied: Admin role required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!loginId || !userName || !password || !roleId) {
+    var errorResult = { status: "error", message: "All fields are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Check if loginId already exists
+  var loginSheet = ss.getSheetByName("LogIn");
+  var loginData = loginSheet.getDataRange().getValues();
+  
+  for (var i = 1; i < loginData.length; i++) {
+    if (loginData[i][0] == loginId) {
+      var errorResult = { status: "error", message: "Login ID already exists" };
+      if (callback) {
+        return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+          .setMimeType(ContentService.MimeType.JAVASCRIPT);
+      }
+      return createJsonResponse(errorResult);
+    }
+  }
+  
+  // Add new user
+  loginSheet.appendRow([loginId, userName, password, roleId]);
+  
+  var result = { status: "success", message: "User created successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Update existing user
+function handleUpdateUserGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var loginId = e.parameter.loginId;
+  var userName = e.parameter.userName;
+  var password = e.parameter.password;
+  var roleId = e.parameter.roleId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Check if user is admin
+  if (validation.roleName !== "Admin") {
+    var errorResult = { status: "error", message: "Access denied: Admin role required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!loginId || !userName || !password || !roleId) {
+    var errorResult = { status: "error", message: "All fields are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Find and update user
+  var loginSheet = ss.getSheetByName("LogIn");
+  var loginData = loginSheet.getDataRange().getValues();
+  var found = false;
+  
+  for (var i = 1; i < loginData.length; i++) {
+    if (loginData[i][0] == loginId) {
+      loginSheet.getRange(i + 1, 2).setValue(userName);
+      loginSheet.getRange(i + 1, 3).setValue(password);
+      loginSheet.getRange(i + 1, 4).setValue(roleId);
+      found = true;
+      break;
+    }
+  }
+  
+  if (!found) {
+    var errorResult = { status: "error", message: "User not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var result = { status: "success", message: "User updated successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Delete user
+function handleDeleteUserGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var loginId = e.parameter.loginId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Check if user is admin
+  if (validation.roleName !== "Admin") {
+    var errorResult = { status: "error", message: "Access denied: Admin role required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Prevent deleting own account
+  if (loginId == userId) {
+    var errorResult = { status: "error", message: "Cannot delete your own account" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Find and delete user
+  var loginSheet = ss.getSheetByName("LogIn");
+  var loginData = loginSheet.getDataRange().getValues();
+  var found = false;
+  
+  for (var i = 1; i < loginData.length; i++) {
+    if (loginData[i][0] == loginId) {
+      loginSheet.deleteRow(i + 1);
+      found = true;
+      break;
+    }
+  }
+  
+  if (!found) {
+    var errorResult = { status: "error", message: "User not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var result = { status: "success", message: "User deleted successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// ============================================
+// ROLE MANAGEMENT HANDLERS (ROLE MASTER)
+// ============================================
+
+// Create new role
+function handleCreateRoleGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var rolesName = e.parameter.rolesName;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Check if user is admin
+  if (validation.roleName !== "Admin") {
+    var errorResult = { status: "error", message: "Access denied: Admin role required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!rolesName) {
+    var errorResult = { status: "error", message: "Role name is required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var rolesSheet = ss.getSheetByName("Roles");
+  var rolesData = rolesSheet.getDataRange().getValues();
+  
+  // Check if role name already exists
+  for (var i = 1; i < rolesData.length; i++) {
+    if (rolesData[i][1] == rolesName) {
+      var errorResult = { status: "error", message: "Role name already exists" };
+      if (callback) {
+        return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+          .setMimeType(ContentService.MimeType.JAVASCRIPT);
+      }
+      return createJsonResponse(errorResult);
+    }
+  }
+  
+  // Find max RolesId and increment
+  var maxId = 0;
+  for (var i = 1; i < rolesData.length; i++) {
+    if (rolesData[i][0] > maxId) {
+      maxId = rolesData[i][0];
+    }
+  }
+  var newRolesId = maxId + 1;
+  
+  // Add new role
+  rolesSheet.appendRow([newRolesId, rolesName]);
+  
+  var result = { status: "success", message: "Role created successfully", rolesId: newRolesId };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Update existing role
+function handleUpdateRoleGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var rolesId = e.parameter.rolesId;
+  var rolesName = e.parameter.rolesName;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Check if user is admin
+  if (validation.roleName !== "Admin") {
+    var errorResult = { status: "error", message: "Access denied: Admin role required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!rolesId || !rolesName) {
+    var errorResult = { status: "error", message: "Role ID and name are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var rolesSheet = ss.getSheetByName("Roles");
+  var rolesData = rolesSheet.getDataRange().getValues();
+  
+  // Check if new role name already exists (excluding current role)
+  for (var i = 1; i < rolesData.length; i++) {
+    if (rolesData[i][1] == rolesName && rolesData[i][0] != rolesId) {
+      var errorResult = { status: "error", message: "Role name already exists" };
+      if (callback) {
+        return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+          .setMimeType(ContentService.MimeType.JAVASCRIPT);
+      }
+      return createJsonResponse(errorResult);
+    }
+  }
+  
+  // Find and update role
+  var found = false;
+  for (var i = 1; i < rolesData.length; i++) {
+    if (rolesData[i][0] == rolesId) {
+      rolesSheet.getRange(i + 1, 2).setValue(rolesName);
+      found = true;
+      break;
+    }
+  }
+  
+  if (!found) {
+    var errorResult = { status: "error", message: "Role not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var result = { status: "success", message: "Role updated successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Delete role
+function handleDeleteRoleGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var rolesId = e.parameter.rolesId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Check if user is admin
+  if (validation.roleName !== "Admin") {
+    var errorResult = { status: "error", message: "Access denied: Admin role required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Find and delete role
+  var rolesSheet = ss.getSheetByName("Roles");
+  var rolesData = rolesSheet.getDataRange().getValues();
+  var found = false;
+  
+  for (var i = 1; i < rolesData.length; i++) {
+    if (rolesData[i][0] == rolesId) {
+      rolesSheet.deleteRow(i + 1);
+      found = true;
+      break;
+    }
+  }
+  
+  if (!found) {
+    var errorResult = { status: "error", message: "Role not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var result = { status: "success", message: "Role deleted successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Get role usage statistics
+function handleGetRoleUsageGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Check if user is admin
+  if (validation.roleName !== "Admin") {
+    var errorResult = { status: "error", message: "Access denied: Admin role required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get all roles
+  var rolesSheet = ss.getSheetByName("Roles");
+  var rolesData = rolesSheet.getDataRange().getValues();
+  
+  // Get all users
+  var loginSheet = ss.getSheetByName("LogIn");
+  var loginData = loginSheet.getDataRange().getValues();
+  
+  // Count users per role
+  var usage = {};
+  for (var i = 1; i < rolesData.length; i++) {
+    var roleId = rolesData[i][0];
+    usage[roleId] = 0;
+  }
+  
+  for (var i = 1; i < loginData.length; i++) {
+    var roleId = loginData[i][3];
+    if (usage.hasOwnProperty(roleId)) {
+      usage[roleId]++;
+    } else {
+      usage[roleId] = 1;
+    }
+  }
+  
+  var result = { status: "success", usage: usage };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// ============================================
+// MENU ACCESS MANAGEMENT HANDLERS
+// ============================================
+
+// Get all menus from MenuMaster
+function handleGetAllMenusGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Check if user is admin
+  if (validation.roleName !== "Admin") {
+    var errorResult = { status: "error", message: "Access denied: Admin role required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get all menus from MenuMaster sheet
+  var menuMasterSheet = ss.getSheetByName("MenuMaster");
+  var menuMasterData = menuMasterSheet.getDataRange().getValues();
+  var menus = [];
+  
+  for (var i = 1; i < menuMasterData.length; i++) {
+    menus.push({
+      menuId: menuMasterData[i][0],
+      parentMenuId: menuMasterData[i][1],
+      menuType: menuMasterData[i][2],
+      menuName: menuMasterData[i][3],
+      pageUrl: menuMasterData[i][4],
+      sortOrder: menuMasterData[i][5]
+    });
+  }
+  
+  var result = { status: "success", menus: menus };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Get role menu access
+function handleGetRoleMenuAccessGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var roleId = e.parameter.roleId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Check if user is admin
+  if (validation.roleName !== "Admin") {
+    var errorResult = { status: "error", message: "Access denied: Admin role required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get menu IDs for this role from RoleMenuAccess sheet
+  var roleMenuSheet = ss.getSheetByName("RoleMenuAccess");
+  var roleMenuData = roleMenuSheet.getDataRange().getValues();
+  var menuIds = [];
+  
+  for (var i = 1; i < roleMenuData.length; i++) {
+    if (roleMenuData[i][0] == roleId) {
+      menuIds.push(roleMenuData[i][1]);
+    }
+  }
+  
+  var result = { status: "success", menuIds: menuIds };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Update role menu access
+function handleUpdateRoleMenuAccessGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var roleId = e.parameter.roleId;
+  var menuIdsJson = e.parameter.menuIds;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Check if user is admin
+  if (validation.roleName !== "Admin") {
+    var errorResult = { status: "error", message: "Access denied: Admin role required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Parse menu IDs
+  var menuIds = [];
+  try {
+    menuIds = JSON.parse(menuIdsJson);
+  } catch (error) {
+    var errorResult = { status: "error", message: "Invalid menu IDs format" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var roleMenuSheet = ss.getSheetByName("RoleMenuAccess");
+  var roleMenuData = roleMenuSheet.getDataRange().getValues();
+  
+  // Delete existing assignments for this role (from bottom to top)
+  for (var i = roleMenuData.length - 1; i >= 1; i--) {
+    if (roleMenuData[i][0] == roleId) {
+      roleMenuSheet.deleteRow(i + 1);
+    }
+  }
+  
+  // Add new assignments
+  for (var j = 0; j < menuIds.length; j++) {
+    roleMenuSheet.appendRow([roleId, menuIds[j]]);
+  }
+  
+  var result = { status: "success", message: "Menu access updated successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// ============================================
+// MENU MASTER MANAGEMENT HANDLERS
+// ============================================
+
+// Create new menu
+function handleCreateMenuGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var menuName = e.parameter.menuName;
+  var menuType = e.parameter.menuType;
+  var parentMenuId = e.parameter.parentMenuId;
+  var pageUrl = e.parameter.pageUrl;
+  var sortOrder = e.parameter.sortOrder;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Check if user is admin
+  if (validation.roleName !== "Admin") {
+    var errorResult = { status: "error", message: "Access denied: Admin role required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!menuName || !menuType || !sortOrder) {
+    var errorResult = { status: "error", message: "Menu name, type, and sort order are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var menuMasterSheet = ss.getSheetByName("MenuMaster");
+  var menuMasterData = menuMasterSheet.getDataRange().getValues();
+  
+  // Find max MenuId and increment
+  var maxId = 0;
+  for (var i = 1; i < menuMasterData.length; i++) {
+    if (menuMasterData[i][0] > maxId) {
+      maxId = menuMasterData[i][0];
+    }
+  }
+  var newMenuId = maxId + 1;
+  
+  // Add new menu
+  menuMasterSheet.appendRow([
+    newMenuId,
+    parentMenuId === 'NULL' ? '' : parentMenuId,
+    menuType,
+    menuName,
+    pageUrl === 'NULL' ? '' : pageUrl,
+    sortOrder
+  ]);
+  
+  var result = { status: "success", message: "Menu created successfully", menuId: newMenuId };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Update existing menu
+function handleUpdateMenuGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var menuId = e.parameter.menuId;
+  var menuName = e.parameter.menuName;
+  var menuType = e.parameter.menuType;
+  var parentMenuId = e.parameter.parentMenuId;
+  var pageUrl = e.parameter.pageUrl;
+  var sortOrder = e.parameter.sortOrder;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Check if user is admin
+  if (validation.roleName !== "Admin") {
+    var errorResult = { status: "error", message: "Access denied: Admin role required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!menuId || !menuName || !menuType || !sortOrder) {
+    var errorResult = { status: "error", message: "All fields are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var menuMasterSheet = ss.getSheetByName("MenuMaster");
+  var menuMasterData = menuMasterSheet.getDataRange().getValues();
+  
+  // Find and update menu
+  var found = false;
+  for (var i = 1; i < menuMasterData.length; i++) {
+    if (menuMasterData[i][0] == menuId) {
+      menuMasterSheet.getRange(i + 1, 2).setValue(parentMenuId === 'NULL' ? '' : parentMenuId);
+      menuMasterSheet.getRange(i + 1, 3).setValue(menuType);
+      menuMasterSheet.getRange(i + 1, 4).setValue(menuName);
+      menuMasterSheet.getRange(i + 1, 5).setValue(pageUrl === 'NULL' ? '' : pageUrl);
+      menuMasterSheet.getRange(i + 1, 6).setValue(sortOrder);
+      found = true;
+      break;
+    }
+  }
+  
+  if (!found) {
+    var errorResult = { status: "error", message: "Menu not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var result = { status: "success", message: "Menu updated successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Delete menu
+function handleDeleteMenuGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var menuId = e.parameter.menuId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Check if user is admin
+  if (validation.roleName !== "Admin") {
+    var errorResult = { status: "error", message: "Access denied: Admin role required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var menuMasterSheet = ss.getSheetByName("MenuMaster");
+  var menuMasterData = menuMasterSheet.getDataRange().getValues();
+  
+  // Find and delete menu
+  var found = false;
+  for (var i = 1; i < menuMasterData.length; i++) {
+    if (menuMasterData[i][0] == menuId) {
+      menuMasterSheet.deleteRow(i + 1);
+      found = true;
+      break;
+    }
+  }
+  
+  if (!found) {
+    var errorResult = { status: "error", message: "Menu not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var result = { status: "success", message: "Menu deleted successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// ============================================
+// CLEANUP FUNCTION (Run periodically)
+// ============================================
+
+function cleanupExpiredSessions() {
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var sessionsSheet = ss.getSheetByName("ActiveSessions");
+  var data = sessionsSheet.getDataRange().getValues();
+  var now = new Date().getTime();
+  
+  // Delete from bottom to top to avoid index issues
+  for (var i = data.length - 1; i >= 1; i--) {
+    var expiryTime = new Date(data[i][5]).getTime();
+    if (now > expiryTime) {
+      sessionsSheet.deleteRow(i + 1);
+    }
+  }
+  
+  Logger.log("Cleaned up expired sessions");
 }

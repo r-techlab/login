@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Role Master - Role Management</title>
+<link rel="stylesheet" href="menu.css">
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    margin: 0;
+    padding: 20px;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 20px;
+    margin-bottom: 30px;
+}
+
+h1 {
+    color: #333;
+    margin: 0;
+}
+
+.btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    margin-left: 10px;
+}
+
+.btn:hover {
+    background: #2980b9;
+}
+
+.btn-success {
+    background: #27ae60;
+}
+
+.btn-success:hover {
+    background: #229954;
+}
+
+.btn-danger {
+    background: #e74c3c;
+}
+
+.btn-danger:hover {
+    background: #c0392b;
+}
+
+.btn-warning {
+    background: #f39c12;
+}
+
+.btn-warning:hover {
+    background: #e67e22;
+}
+
+.btn:disabled {
+    background: #95a5a6;
+    cursor: not-allowed;
+}
+
+.layout-with-sidebar {
+    display: flex;
+    gap: 20px;
+}
+
+.sidebar {
+    width: 280px;
+    flex-shrink: 0;
+}
+
+.main-content {
+    flex: 1;
+}
+
+.toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.search-box {
+    flex: 1;
+    max-width: 400px;
+}
+
+.search-box input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+.table-container {
+    overflow-x: auto;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+thead {
+    background: #667eea;
+    color: white;
+}
+
+th {
+    padding: 15px;
+    text-align: left;
+    font-weight: bold;
+}
+
+td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #eee;
+}
+
+tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 5px;
+}
+
+.btn-small {
+    padding: 5px 10px;
+    font-size: 12px;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-content {
+    background: white;
+    margin: 5% auto;
+    padding: 30px;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    animation: slideDown 0.3s;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #667eea;
+}
+
+.modal-header h2 {
+    margin: 0;
+    color: #333;
+}
+
+.close {
+    font-size: 28px;
+    font-weight: bold;
+    color: #999;
+    cursor: pointer;
+    line-height: 20px;
+}
+
+.close:hover {
+    color: #333;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #555;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.form-group input:disabled {
+    background: #f5f5f5;
+    cursor: not-allowed;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 25px;
+}
+
+.message {
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    font-weight: bold;
+}
+
+.message.success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.message.error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.message.warning {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+}
+
+.loading::after {
+    content: '...';
+    animation: dots 1.5s steps(4, end) infinite;
+}
+
+@keyframes dots {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    60%, 100% { content: '...'; }
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #999;
+}
+
+.empty-state-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+}
+
+.badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.badge-admin {
+    background: #e74c3c;
+    color: white;
+}
+
+.badge-user {
+    background: #3498db;
+    color: white;
+}
+
+.badge-manager {
+    background: #f39c12;
+    color: white;
+}
+
+.badge-default {
+    background: #27ae60;
+    color: white;
+}
+
+.usage-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: #666;
+    font-size: 13px;
+}
+
+.usage-count.has-users {
+    color: #e67e22;
+    font-weight: bold;
+}
+
+.stats-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-around;
+    text-align: center;
+}
+
+.stat-item h3 {
+    margin: 0;
+    font-size: 32px;
+}
+
+.stat-item p {
+    margin: 5px 0 0 0;
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+@media (max-width: 992px) {
+    .layout-with-sidebar {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+    }
+    
+    .toolbar {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .search-box {
+        max-width: 100%;
+    }
+    
+    .stats-card {
+        flex-direction: column;
+        gap: 15px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>🎭 Role Master - Role Management</h1>
+        <div>
+            <button class="btn" onclick="window.location.href='home.html'">🏠 Home</button>
+            <button class="btn btn-danger" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div id="breadcrumbContainer" class="breadcrumb-container"></div>
+
+    <div class="layout-with-sidebar">
+        <div class="sidebar">
+            <h3>Navigation Menu</h3>
+            <div id="menuContainer"></div>
+        </div>
+
+        <div class="main-content">
+            <div id="messageContainer"></div>
+
+            <div class="stats-card" id="statsCard" style="display: none;">
+                <div class="stat-item">
+                    <h3 id="totalRoles">0</h3>
+                    <p>Total Roles</p>
+                </div>
+                <div class="stat-item">
+                    <h3 id="totalUsers">0</h3>
+                    <p>Total Users</p>
+                </div>
+            </div>
+
+            <div class="toolbar">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="🔍 Search by Role ID or Name..." onkeyup="filterRoles()">
+                </div>
+                <button class="btn btn-success" onclick="openAddRoleModal()">➕ Add New Role</button>
+            </div>
+
+            <div class="table-container">
+                <div id="loadingIndicator" class="loading">Loading roles</div>
+                <div id="emptyState" class="empty-state" style="display: none;">
+                    <div class="empty-state-icon">🎭</div>
+                    <h3>No Roles Found</h3>
+                    <p>Start by adding your first role.</p>
+                </div>
+                <table id="rolesTable" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th>Role ID</th>
+                            <th>Role Name</th>
+                            <th>Users</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rolesTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Role Modal -->
+<div id="roleModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Add New Role</h2>
+            <span class="close" onclick="closeRoleModal()">&times;</span>
+        </div>
+        <form id="roleForm" onsubmit="saveRole(event)">
+            <div class="form-group" id="roleIdGroup" style="display: none;">
+                <label for="rolesId">Role ID</label>
+                <input type="text" id="rolesId" disabled>
+                <small style="color: #666;">Auto-generated</small>
+            </div>
+            <div class="form-group">
+                <label for="rolesName">Role Name *</label>
+                <input type="text" id="rolesName" required maxlength="50" placeholder="e.g., Manager, Supervisor">
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn" onclick="closeRoleModal()">Cancel</button>
+                <button type="submit" class="btn btn-success" id="saveButton">Save Role</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="api.js"></script>
+<script src="session.js"></script>
+<script src="menu.js"></script>
+<script>
+// Global variables
+let allRoles = [];
+let roleUsage = {};
+let editingRoleId = null;
+
+// Protect this page with server validation
+protectPage(function(isValid) {
+    if (isValid) {
+        // Check if user has admin access
+        const session = getSession();
+        if (!session || session.roleName !== 'Admin') {
+            alert('Access Denied: Only administrators can access this page.');
+            window.location.href = 'home.html';
+            return;
+        }
+        
+        // Render menu and breadcrumb
+        renderMenu('menuContainer');
+        renderBreadcrumb('breadcrumbContainer');
+        
+        // Load initial data
+        loadRoles();
+    }
+});
+
+// Load all roles
+function loadRoles() {
+    document.getElementById('loadingIndicator').style.display = 'block';
+    document.getElementById('rolesTable').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('statsCard').style.display = 'none';
+    
+    apiGetRoles(function(response) {
+        document.getElementById('loadingIndicator').style.display = 'none';
+        
+        if (response.status === 'success') {
+            allRoles = response.roles;
+            loadRoleUsage();
+        } else {
+            showMessage('Error loading roles: ' + response.message, 'error');
+            document.getElementById('emptyState').style.display = 'block';
+        }
+    });
+}
+
+// Load role usage statistics
+function loadRoleUsage() {
+    apiGetRoleUsage(function(response) {
+        if (response.status === 'success') {
+            roleUsage = response.usage;
+            displayRoles(allRoles);
+            updateStats();
+        } else {
+            // If usage fails, still display roles
+            displayRoles(allRoles);
+        }
+    });
+}
+
+// Update statistics
+function updateStats() {
+    const totalUsers = Object.values(roleUsage).reduce((sum, count) => sum + count, 0);
+    document.getElementById('totalRoles').textContent = allRoles.length;
+    document.getElementById('totalUsers').textContent = totalUsers;
+    document.getElementById('statsCard').style.display = 'flex';
+}
+
+// Display roles in table
+function displayRoles(roles) {
+    const tbody = document.getElementById('rolesTableBody');
+    tbody.innerHTML = '';
+    
+    if (roles.length === 0) {
+        document.getElementById('rolesTable').style.display = 'none';
+        document.getElementById('emptyState').style.display = 'block';
+        return;
+    }
+    
+    document.getElementById('rolesTable').style.display = 'table';
+    document.getElementById('emptyState').style.display = 'none';
+    
+    roles.forEach(role => {
+        const row = document.createElement('tr');
+        const userCount = roleUsage[role.roleId] || 0;
+        const roleBadgeClass = role.roleName.toLowerCase().replace(/\s+/g, '-');
+        
+        row.innerHTML = `
+            <td><strong>${escapeHtml(role.roleId)}</strong></td>
+            <td><span class="badge badge-${roleBadgeClass}">${escapeHtml(role.roleName)}</span></td>
+            <td>
+                <span class="usage-count ${userCount > 0 ? 'has-users' : ''}">
+                    👥 ${userCount} user${userCount !== 1 ? 's' : ''}
+                </span>
+            </td>
+            <td>
+                <div class="action-buttons">
+                    <button class="btn btn-warning btn-small" onclick="openEditRoleModal(${role.roleId})">✏️ Edit</button>
+                    <button class="btn btn-danger btn-small" onclick="deleteRole(${role.roleId})">🗑️ Delete</button>
+                </div>
+            </td>
+        `;
+        
+        tbody.appendChild(row);
+    });
+}
+
+// Filter roles based on search
+function filterRoles() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    
+    const filtered = allRoles.filter(role => {
+        return role.roleId.toString().includes(searchTerm) ||
+               role.roleName.toLowerCase().includes(searchTerm);
+    });
+    
+    displayRoles(filtered);
+}
+
+// Open add role modal
+function openAddRoleModal() {
+    editingRoleId = null;
+    document.getElementById('modalTitle').textContent = 'Add New Role';
+    document.getElementById('roleForm').reset();
+    document.getElementById('roleIdGroup').style.display = 'none';
+    document.getElementById('saveButton').textContent = 'Save Role';
+    document.getElementById('roleModal').style.display = 'block';
+}
+
+// Open edit role modal
+function openEditRoleModal(roleId) {
+    const role = allRoles.find(r => r.roleId == roleId);
+    if (!role) return;
+    
+    editingRoleId = roleId;
+    document.getElementById('modalTitle').textContent = 'Edit Role';
+    document.getElementById('rolesId').value = role.roleId;
+    document.getElementById('rolesName').value = role.roleName;
+    document.getElementById('roleIdGroup').style.display = 'block';
+    document.getElementById('saveButton').textContent = 'Update Role';
+    document.getElementById('roleModal').style.display = 'block';
+}
+
+// Close role modal
+function closeRoleModal() {
+    document.getElementById('roleModal').style.display = 'none';
+    document.getElementById('roleForm').reset();
+    editingRoleId = null;
+}
+
+// Save role (add or update)
+function saveRole(event) {
+    event.preventDefault();
+    
+    const rolesName = document.getElementById('rolesName').value.trim();
+    
+    if (!rolesName) {
+        showMessage('Please enter a role name', 'error');
+        return;
+    }
+    
+    const saveButton = document.getElementById('saveButton');
+    saveButton.disabled = true;
+    saveButton.textContent = editingRoleId ? 'Updating...' : 'Saving...';
+    
+    const roleData = {
+        rolesName: rolesName
+    };
+    
+    if (editingRoleId) {
+        // Update existing role
+        roleData.rolesId = editingRoleId;
+        apiUpdateRole(roleData, function(response) {
+            saveButton.disabled = false;
+            saveButton.textContent = 'Update Role';
+            
+            if (response.status === 'success') {
+                showMessage('Role updated successfully!', 'success');
+                closeRoleModal();
+                loadRoles();
+            } else {
+                showMessage('Error: ' + response.message, 'error');
+            }
+        });
+    } else {
+        // Create new role
+        apiCreateRole(roleData, function(response) {
+            saveButton.disabled = false;
+            saveButton.textContent = 'Save Role';
+            
+            if (response.status === 'success') {
+                showMessage('Role created successfully!', 'success');
+                closeRoleModal();
+                loadRoles();
+            } else {
+                showMessage('Error: ' + response.message, 'error');
+            }
+        });
+    }
+}
+
+// Delete role
+function deleteRole(roleId) {
+    const role = allRoles.find(r => r.roleId == roleId);
+    if (!role) return;
+    
+    const userCount = roleUsage[roleId] || 0;
+    
+    let confirmMsg = `Are you sure you want to delete role "${role.roleName}" (ID: ${roleId})?`;
+    
+    if (userCount > 0) {
+        confirmMsg += `\n\n⚠️ WARNING: This role is currently assigned to ${userCount} user${userCount !== 1 ? 's' : ''}!`;
+        confirmMsg += '\nDeleting this role may affect user access.';
+    }
+    
+    confirmMsg += '\n\nThis action cannot be undone.';
+    
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+    
+    apiDeleteRole(roleId, function(response) {
+        if (response.status === 'success') {
+            showMessage('Role deleted successfully!', 'success');
+            loadRoles();
+        } else {
+            showMessage('Error: ' + response.message, 'error');
+        }
+    });
+}
+
+// Show message
+function showMessage(message, type) {
+    const container = document.getElementById('messageContainer');
+    container.innerHTML = `<div class="message ${type}">${escapeHtml(message)}</div>`;
+    
+    setTimeout(() => {
+        container.innerHTML = '';
+    }, 5000);
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Logout function
+function logout() {
+    if (confirm('Are you sure you want to logout?')) {
+        performLogout();
+    }
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('roleModal');
+    if (event.target === modal) {
+        closeRoleModal();
+    }
+}
+</script>
+
+</body>
+</html>

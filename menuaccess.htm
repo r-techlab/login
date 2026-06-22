@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Menu Access Manager</title>
+<link rel="stylesheet" href="menu.css">
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    margin: 0;
+    padding: 20px;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 1600px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 20px;
+    margin-bottom: 30px;
+}
+
+h1 {
+    color: #333;
+    margin: 0;
+}
+
+.btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    margin-left: 10px;
+}
+
+.btn:hover {
+    background: #2980b9;
+}
+
+.btn-success {
+    background: #27ae60;
+}
+
+.btn-success:hover {
+    background: #229954;
+}
+
+.btn-danger {
+    background: #e74c3c;
+}
+
+.btn-danger:hover {
+    background: #c0392b;
+}
+
+.btn-warning {
+    background: #f39c12;
+}
+
+.btn-warning:hover {
+    background: #e67e22;
+}
+
+.btn:disabled {
+    background: #95a5a6;
+    cursor: not-allowed;
+}
+
+.layout-with-sidebar {
+    display: flex;
+    gap: 20px;
+}
+
+.sidebar {
+    width: 280px;
+    flex-shrink: 0;
+}
+
+.main-content {
+    flex: 1;
+}
+
+.control-panel {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #555;
+}
+
+.form-group select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+.button-group {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.split-panel {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.panel {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 20px;
+    min-height: 500px;
+}
+
+.panel-header {
+    font-size: 18px;
+    font-weight: bold;
+    color: #667eea;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #667eea;
+}
+
+.menu-tree {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.menu-item {
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.menu-item:last-child {
+    border-bottom: none;
+}
+
+.menu-item-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.menu-item-content:hover {
+    background: #f8f9fa;
+}
+
+.menu-item-content.changed {
+    background: #fff3cd;
+}
+
+.menu-checkbox {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.menu-icon {
+    font-size: 16px;
+}
+
+.menu-label {
+    flex: 1;
+    cursor: pointer;
+    user-select: none;
+}
+
+.menu-label.group {
+    font-weight: bold;
+    color: #667eea;
+}
+
+.menu-stats {
+    font-size: 12px;
+    color: #999;
+}
+
+.menu-children {
+    list-style: none;
+    padding-left: 30px;
+    margin: 5px 0;
+}
+
+.preview-menu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.preview-item {
+    padding: 10px;
+    margin: 5px 0;
+    background: #f8f9fa;
+    border-radius: 5px;
+    border-left: 3px solid #667eea;
+}
+
+.preview-item.group {
+    background: #e8eaf6;
+    font-weight: bold;
+}
+
+.preview-children {
+    list-style: none;
+    padding-left: 20px;
+    margin: 5px 0;
+}
+
+.status-bar {
+    background: #f8f9fa;
+    padding: 15px 20px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.status-info {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 5px 12px;
+    border-radius: 15px;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+.status-badge.success {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-badge.warning {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.status-badge.info {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+.message {
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    font-weight: bold;
+}
+
+.message.success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.message.error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.message.warning {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+}
+
+.loading::after {
+    content: '...';
+    animation: dots 1.5s steps(4, end) infinite;
+}
+
+@keyframes dots {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    60%, 100% { content: '...'; }
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    animation: fadeIn 0.3s;
+}
+
+.modal-content {
+    background: white;
+    margin: 10% auto;
+    padding: 30px;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #667eea;
+}
+
+.modal-header h2 {
+    margin: 0;
+    color: #333;
+}
+
+.close {
+    font-size: 28px;
+    font-weight: bold;
+    color: #999;
+    cursor: pointer;
+    line-height: 20px;
+}
+
+.close:hover {
+    color: #333;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px;
+    color: #999;
+}
+
+@media (max-width: 1200px) {
+    .split-panel {
+        grid-template-columns: 1fr;
+    }
+    
+    .layout-with-sidebar {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>🎭 Menu Access Manager</h1>
+        <div>
+            <button class="btn" onclick="window.location.href='home.html'">🏠 Home</button>
+            <button class="btn btn-danger" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div id="breadcrumbContainer" class="breadcrumb-container"></div>
+
+    <div class="layout-with-sidebar">
+        <div class="sidebar">
+            <h3>Navigation Menu</h3>
+            <div id="menuContainer"></div>
+        </div>
+
+        <div class="main-content">
+            <div id="messageContainer"></div>
+
+            <div class="control-panel">
+                <div class="form-group">
+                    <label for="roleSelect">Manage Role:</label>
+                    <select id="roleSelect" onchange="loadRoleMenuAccess()">
+                        <option value="">-- Select Role --</option>
+                    </select>
+                </div>
+                <div class="button-group">
+                    <button class="btn" onclick="openCopyModal()">📋 Copy from Role</button>
+                    <button class="btn" onclick="selectAll()">✓ Select All</button>
+                    <button class="btn" onclick="clearAll()">✗ Clear All</button>
+                </div>
+            </div>
+
+            <div id="loadingIndicator" class="loading">Loading menu data</div>
+
+            <div id="mainPanel" style="display: none;">
+                <div class="split-panel">
+                    <div class="panel">
+                        <div class="panel-header">📝 Menu Assignment</div>
+                        <div id="menuTreeContainer"></div>
+                    </div>
+                    <div class="panel">
+                        <div class="panel-header">👁️ Preview</div>
+                        <div id="previewContainer"></div>
+                    </div>
+                </div>
+
+                <div class="status-bar">
+                    <div class="status-info">
+                        <span id="statusText">Select a role to begin</span>
+                        <span id="changesBadge" class="status-badge info" style="display: none;">Unsaved changes</span>
+                    </div>
+                    <button class="btn btn-success" id="saveButton" onclick="saveChanges()" disabled>💾 Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Copy from Role Modal -->
+<div id="copyModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Copy Menu Access</h2>
+            <span class="close" onclick="closeCopyModal()">&times;</span>
+        </div>
+        <div class="form-group">
+            <label for="sourceRoleSelect">Copy from:</label>
+            <select id="sourceRoleSelect">
+                <option value="">-- Select Source Role --</option>
+            </select>
+        </div>
+        <p style="color: #856404; background: #fff3cd; padding: 10px; border-radius: 5px;">
+            ⚠️ This will replace current menu assignments with the selected role's permissions.
+        </p>
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+            <button class="btn" onclick="closeCopyModal()">Cancel</button>
+            <button class="btn btn-success" onclick="copyFromRole()">Copy</button>
+        </div>
+    </div>
+</div>
+
+<script src="api.js"></script>
+<script src="session.js"></script>
+<script src="menu.js"></script>
+<script>
+// Global variables
+let allRoles = [];
+let allMenus = [];
+let menuHierarchy = [];
+let currentRoleId = null;
+let currentAssignments = [];
+let originalAssignments = [];
+let hasChanges = false;
+
+// Protect this page with server validation
+protectPage(function(isValid) {
+    if (isValid) {
+        // Check if user has admin access
+        const session = getSession();
+        if (!session || session.roleName !== 'Admin') {
+            alert('Access Denied: Only administrators can access this page.');
+            window.location.href = 'home.html';
+            return;
+        }
+        
+        // Render menu and breadcrumb
+        renderMenu('menuContainer');
+        renderBreadcrumb('breadcrumbContainer');
+        
+        // Load initial data
+        loadInitialData();
+    }
+});
+
+// Load roles and menus
+function loadInitialData() {
+    document.getElementById('loadingIndicator').style.display = 'block';
+    document.getElementById('mainPanel').style.display = 'none';
+    
+    // Load roles
+    apiGetRoles(function(response) {
+        if (response.status === 'success') {
+            allRoles = response.roles;
+            populateRoleDropdowns();
+            
+            // Load menus
+            apiGetAllMenus(function(menuResponse) {
+                document.getElementById('loadingIndicator').style.display = 'none';
+                
+                if (menuResponse.status === 'success') {
+                    allMenus = menuResponse.menus;
+                    document.getElementById('mainPanel').style.display = 'block';
+                } else {
+                    showMessage('Error loading menus: ' + menuResponse.message, 'error');
+                }
+            });
+        } else {
+            document.getElementById('loadingIndicator').style.display = 'none';
+            showMessage('Error loading roles: ' + response.message, 'error');
+        }
+    });
+}
+
+// Populate role dropdowns
+function populateRoleDropdowns() {
+    const roleSelect = document.getElementById('roleSelect');
+    const sourceRoleSelect = document.getElementById('sourceRoleSelect');
+    
+    roleSelect.innerHTML = '<option value="">-- Select Role --</option>';
+    sourceRoleSelect.innerHTML = '<option value="">-- Select Source Role --</option>';
+    
+    allRoles.forEach(role => {
+        const option1 = document.createElement('option');
+        option1.value = role.roleId;
+        option1.textContent = role.roleName;
+        roleSelect.appendChild(option1);
+        
+        const option2 = document.createElement('option');
+        option2.value = role.roleId;
+        option2.textContent = role.roleName;
+        sourceRoleSelect.appendChild(option2);
+    });
+}
+
+// Load role menu access
+function loadRoleMenuAccess() {
+    const roleId = document.getElementById('roleSelect').value;
+    
+    if (!roleId) {
+        currentRoleId = null;
+        currentAssignments = [];
+        originalAssignments = [];
+        hasChanges = false;
+        updateUI();
+        return;
+    }
+    
+    currentRoleId = roleId;
+    
+    apiGetRoleMenuAccess(roleId, function(response) {
+        if (response.status === 'success') {
+            currentAssignments = response.menuIds || [];
+            originalAssignments = [...currentAssignments];
+            hasChanges = false;
+            updateUI();
+        } else {
+            showMessage('Error loading menu access: ' + response.message, 'error');
+        }
+    });
+}
+
+// Update UI
+function updateUI() {
+    renderMenuTree();
+    renderPreview();
+    updateStatus();
+    updateSaveButton();
+}
+
+// Render menu tree with checkboxes
+function renderMenuTree() {
+    const container = document.getElementById('menuTreeContainer');
+    
+    if (!currentRoleId) {
+        container.innerHTML = '<div class="empty-state">Select a role to manage menu access</div>';
+        return;
+    }
+    
+    const tree = buildMenuHierarchy();
+    container.innerHTML = '<ul class="menu-tree">' + renderMenuTreeItems(tree) + '</ul>';
+}
+
+// Build menu hierarchy
+function buildMenuHierarchy() {
+    const menuMap = {};
+    const rootMenus = [];
+    
+    allMenus.forEach(menu => {
+        menuMap[menu.menuId] = {
+            ...menu,
+            children: []
+        };
+    });
+    
+    allMenus.forEach(menu => {
+        if (!menu.parentMenuId || menu.parentMenuId === 'NULL' || menu.parentMenuId === '') {
+            rootMenus.push(menuMap[menu.menuId]);
+        } else {
+            const parent = menuMap[menu.parentMenuId];
+            if (parent) {
+                parent.children.push(menuMap[menu.menuId]);
+            }
+        }
+    });
+    
+    // Store hierarchy globally for use in toggleMenu
+    menuHierarchy = rootMenus;
+    
+    return rootMenus;
+}
+
+// Render menu tree items recursively
+function renderMenuTreeItems(items) {
+    let html = '';
+    
+    items.forEach(item => {
+        const isChecked = currentAssignments.includes(item.menuId);
+        const isGroup = item.menuType === 'G';
+        const icon = isGroup ? '📁' : '📄';
+        const labelClass = isGroup ? 'group' : '';
+        
+        html += '<li class="menu-item">';
+        html += '<div class="menu-item-content">';
+        html += `<input type="checkbox" class="menu-checkbox" ${isChecked ? 'checked' : ''} onchange="toggleMenu('${item.menuId}', this.checked)" data-menu-id="${item.menuId}">`;
+        html += `<span class="menu-icon">${icon}</span>`;
+        html += `<span class="menu-label ${labelClass}">${escapeHtml(item.menuName)}</span>`;
+        html += '</div>';
+        
+        if (item.children && item.children.length > 0) {
+            html += '<ul class="menu-children">' + renderMenuTreeItems(item.children) + '</ul>';
+        }
+        
+        html += '</li>';
+    });
+    
+    return html;
+}
+
+// Toggle menu assignment
+function toggleMenu(menuId, checked) {
+    // Convert menuId to number if it's numeric (fixes type mismatch)
+    menuId = isNaN(menuId) ? menuId : Number(menuId);
+    
+    // Find menu in hierarchy (with children property)
+    const menuInHierarchy = findMenuInHierarchy(menuId);
+    if (!menuInHierarchy) return;
+    
+    // Also get flat menu for parent info
+    const menu = findMenu(menuId);
+    if (!menu) return;
+    
+    if (checked) {
+        // Add menu
+        if (!currentAssignments.includes(menuId)) {
+            currentAssignments.push(menuId);
+        }
+        
+        // If it's a group, add all children
+        if (menu.menuType === 'G') {
+            addAllChildren(menuInHierarchy);
+        }
+        
+        // Add parent if exists
+        if (menu.parentMenuId && menu.parentMenuId !== 'NULL' && menu.parentMenuId !== '') {
+            const parentId = isNaN(menu.parentMenuId) ? menu.parentMenuId : Number(menu.parentMenuId);
+            if (!currentAssignments.includes(parentId)) {
+                currentAssignments.push(parentId);
+            }
+        }
+    } else {
+        // Remove menu
+        const index = currentAssignments.indexOf(menuId);
+        if (index > -1) {
+            currentAssignments.splice(index, 1);
+        }
+        
+        // If it's a group, remove all children
+        if (menu.menuType === 'G') {
+            removeAllChildren(menuInHierarchy);
+        }
+    }
+    
+    hasChanges = !arraysEqual(currentAssignments, originalAssignments);
+    updateUI();
+}
+
+// Add all children recursively
+function addAllChildren(menu) {
+    if (menu.children) {
+        menu.children.forEach(child => {
+            if (!currentAssignments.includes(child.menuId)) {
+                currentAssignments.push(child.menuId);
+            }
+            if (child.children) {
+                addAllChildren(child);
+            }
+        });
+    }
+}
+
+// Remove all children recursively
+function removeAllChildren(menu) {
+    if (menu.children) {
+        menu.children.forEach(child => {
+            const index = currentAssignments.indexOf(child.menuId);
+            if (index > -1) {
+                currentAssignments.splice(index, 1);
+            }
+            if (child.children) {
+                removeAllChildren(child);
+            }
+        });
+    }
+}
+
+// Find menu by ID in flat array
+function findMenu(menuId) {
+    return allMenus.find(m => m.menuId == menuId);
+}
+
+// Find menu in hierarchy (with children)
+function findMenuInHierarchy(menuId, items) {
+    if (!items) items = menuHierarchy;
+    
+    for (let item of items) {
+        if (item.menuId == menuId) {
+            return item;
+        }
+        if (item.children && item.children.length > 0) {
+            const found = findMenuInHierarchy(menuId, item.children);
+            if (found) return found;
+        }
+    }
+    return null;
+}
+
+// Render preview
+function renderPreview() {
+    const container = document.getElementById('previewContainer');
+    
+    if (!currentRoleId) {
+        container.innerHTML = '<div class="empty-state">Preview will appear here</div>';
+        return;
+    }
+    
+    const assignedMenus = allMenus.filter(m => currentAssignments.includes(m.menuId));
+    const tree = buildPreviewHierarchy(assignedMenus);
+    
+    if (tree.length === 0) {
+        container.innerHTML = '<div class="empty-state">No menus assigned</div>';
+    } else {
+        container.innerHTML = '<ul class="preview-menu">' + renderPreviewItems(tree) + '</ul>';
+    }
+}
+
+// Build preview hierarchy
+function buildPreviewHierarchy(menus) {
+    const menuMap = {};
+    const rootMenus = [];
+    
+    menus.forEach(menu => {
+        menuMap[menu.menuId] = {
+            ...menu,
+            children: []
+        };
+    });
+    
+    menus.forEach(menu => {
+        if (!menu.parentMenuId || menu.parentMenuId === 'NULL' || menu.parentMenuId === '') {
+            rootMenus.push(menuMap[menu.menuId]);
+        } else {
+            const parent = menuMap[menu.parentMenuId];
+            if (parent) {
+                parent.children.push(menuMap[menu.menuId]);
+            }
+        }
+    });
+    
+    return rootMenus;
+}
+
+// Render preview items
+function renderPreviewItems(items) {
+    let html = '';
+    
+    items.forEach(item => {
+        const isGroup = item.menuType === 'G';
+        const icon = isGroup ? '📁' : '📄';
+        const className = isGroup ? 'group' : '';
+        
+        html += `<li class="preview-item ${className}">`;
+        html += `${icon} ${escapeHtml(item.menuName)}`;
+        
+        if (item.children && item.children.length > 0) {
+            html += '<ul class="preview-children">' + renderPreviewItems(item.children) + '</ul>';
+        }
+        
+        html += '</li>';
+    });
+    
+    return html;
+}
+
+// Update status
+function updateStatus() {
+    const roleName = allRoles.find(r => r.roleId == currentRoleId)?.roleName || '';
+    const count = currentAssignments.length;
+    
+    if (currentRoleId) {
+        document.getElementById('statusText').textContent = `${roleName}: ${count} menu${count !== 1 ? 's' : ''} assigned`;
+    } else {
+        document.getElementById('statusText').textContent = 'Select a role to begin';
+    }
+    
+    const changesBadge = document.getElementById('changesBadge');
+    if (hasChanges) {
+        changesBadge.style.display = 'inline-block';
+    } else {
+        changesBadge.style.display = 'none';
+    }
+}
+
+// Update save button
+function updateSaveButton() {
+    const saveButton = document.getElementById('saveButton');
+    saveButton.disabled = !hasChanges || !currentRoleId;
+}
+
+// Select all menus
+function selectAll() {
+    if (!currentRoleId) {
+        showMessage('Please select a role first', 'warning');
+        return;
+    }
+    
+    currentAssignments = allMenus.map(m => m.menuId);
+    hasChanges = !arraysEqual(currentAssignments, originalAssignments);
+    updateUI();
+}
+
+// Clear all menus
+function clearAll() {
+    if (!currentRoleId) {
+        showMessage('Please select a role first', 'warning');
+        return;
+    }
+    
+    if (!confirm('Are you sure you want to remove all menu access for this role?')) {
+        return;
+    }
+    
+    currentAssignments = [];
+    hasChanges = !arraysEqual(currentAssignments, originalAssignments);
+    updateUI();
+}
+
+// Open copy modal
+function openCopyModal() {
+    if (!currentRoleId) {
+        showMessage('Please select a role first', 'warning');
+        return;
+    }
+    
+    document.getElementById('copyModal').style.display = 'block';
+}
+
+// Close copy modal
+function closeCopyModal() {
+    document.getElementById('copyModal').style.display = 'none';
+    document.getElementById('sourceRoleSelect').value = '';
+}
+
+// Copy from role
+function copyFromRole() {
+    const sourceRoleId = document.getElementById('sourceRoleSelect').value;
+    
+    if (!sourceRoleId) {
+        showMessage('Please select a source role', 'warning');
+        return;
+    }
+    
+    if (sourceRoleId == currentRoleId) {
+        showMessage('Cannot copy from the same role', 'warning');
+        return;
+    }
+    
+    apiGetRoleMenuAccess(sourceRoleId, function(response) {
+        if (response.status === 'success') {
+            currentAssignments = response.menuIds || [];
+            hasChanges = !arraysEqual(currentAssignments, originalAssignments);
+            updateUI();
+            closeCopyModal();
+            showMessage('Menu access copied successfully! Click Save to apply changes.', 'success');
+        } else {
+            showMessage('Error copying menu access: ' + response.message, 'error');
+        }
+    });
+}
+
+// Save changes
+function saveChanges() {
+    if (!currentRoleId || !hasChanges) return;
+    
+    const saveButton = document.getElementById('saveButton');
+    saveButton.disabled = true;
+    saveButton.textContent = '💾 Saving...';
+    
+    apiUpdateRoleMenuAccess(currentRoleId, currentAssignments, function(response) {
+        saveButton.disabled = false;
+        saveButton.textContent = '💾 Save Changes';
+        
+        if (response.status === 'success') {
+            originalAssignments = [...currentAssignments];
+            hasChanges = false;
+            updateUI();
+            showMessage('Menu access saved successfully!', 'success');
+        } else {
+            showMessage('Error saving menu access: ' + response.message, 'error');
+        }
+    });
+}
+
+// Show message
+function showMessage(message, type) {
+    const container = document.getElementById('messageContainer');
+    container.innerHTML = `<div class="message ${type}">${escapeHtml(message)}</div>`;
+    
+    setTimeout(() => {
+        container.innerHTML = '';
+    }, 5000);
+}
+
+// Escape HTML
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Compare arrays
+function arraysEqual(a, b) {
+    if (a.length !== b.length) return false;
+    const sortedA = [...a].sort();
+    const sortedB = [...b].sort();
+    return sortedA.every((val, index) => val == sortedB[index]);
+}
+
+// Logout function
+function logout() {
+    if (hasChanges) {
+        if (!confirm('You have unsaved changes. Are you sure you want to logout?')) {
+            return;
+        }
+    }
+    
+    if (confirm('Are you sure you want to logout?')) {
+        performLogout();
+    }
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('copyModal');
+    if (event.target === modal) {
+        closeCopyModal();
+    }
+}
+
+// Warn before leaving with unsaved changes
+window.onbeforeunload = function() {
+    if (hasChanges) {
+        return 'You have unsaved changes. Are you sure you want to leave?';
+    }
+}
+</script>
+
+</body>
+</html>

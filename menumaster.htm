@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Menu Master - Menu Management</title>
+<link rel="stylesheet" href="menu.css">
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    margin: 0;
+    padding: 20px;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 20px;
+    margin-bottom: 30px;
+}
+
+h1 {
+    color: #333;
+    margin: 0;
+}
+
+.btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    margin-left: 10px;
+}
+
+.btn:hover {
+    background: #2980b9;
+}
+
+.btn-success {
+    background: #27ae60;
+}
+
+.btn-success:hover {
+    background: #229954;
+}
+
+.btn-danger {
+    background: #e74c3c;
+}
+
+.btn-danger:hover {
+    background: #c0392b;
+}
+
+.btn-warning {
+    background: #f39c12;
+}
+
+.btn-warning:hover {
+    background: #e67e22;
+}
+
+.btn:disabled {
+    background: #95a5a6;
+    cursor: not-allowed;
+}
+
+.layout-with-sidebar {
+    display: flex;
+    gap: 20px;
+}
+
+.sidebar {
+    width: 280px;
+    flex-shrink: 0;
+}
+
+.main-content {
+    flex: 1;
+}
+
+.toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.search-box {
+    flex: 1;
+    max-width: 400px;
+}
+
+.search-box input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+.table-container {
+    overflow-x: auto;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+thead {
+    background: #667eea;
+    color: white;
+}
+
+th {
+    padding: 15px;
+    text-align: left;
+    font-weight: bold;
+}
+
+td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #eee;
+}
+
+tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 5px;
+}
+
+.btn-small {
+    padding: 5px 10px;
+    font-size: 12px;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-content {
+    background: white;
+    margin: 3% auto;
+    padding: 30px;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 600px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    animation: slideDown 0.3s;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #667eea;
+}
+
+.modal-header h2 {
+    margin: 0;
+    color: #333;
+}
+
+.close {
+    font-size: 28px;
+    font-weight: bold;
+    color: #999;
+    cursor: pointer;
+    line-height: 20px;
+}
+
+.close:hover {
+    color: #333;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #555;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.form-group input:disabled {
+    background: #f5f5f5;
+    cursor: not-allowed;
+}
+
+.form-group small {
+    display: block;
+    margin-top: 5px;
+    color: #666;
+    font-size: 12px;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 25px;
+}
+
+.message {
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    font-weight: bold;
+}
+
+.message.success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.message.error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.message.warning {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+}
+
+.loading::after {
+    content: '...';
+    animation: dots 1.5s steps(4, end) infinite;
+}
+
+@keyframes dots {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    60%, 100% { content: '...'; }
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #999;
+}
+
+.empty-state-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+}
+
+.badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.badge-group {
+    background: #667eea;
+    color: white;
+}
+
+.badge-page {
+    background: #27ae60;
+    color: white;
+}
+
+.menu-hierarchy {
+    padding-left: 20px;
+    color: #666;
+    font-size: 13px;
+}
+
+.stats-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-around;
+    text-align: center;
+}
+
+.stat-item h3 {
+    margin: 0;
+    font-size: 32px;
+}
+
+.stat-item p {
+    margin: 5px 0 0 0;
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+@media (max-width: 992px) {
+    .layout-with-sidebar {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+    }
+    
+    .toolbar {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .search-box {
+        max-width: 100%;
+    }
+    
+    .stats-card {
+        flex-direction: column;
+        gap: 15px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>📋 Menu Master - Menu Management</h1>
+        <div>
+            <button class="btn" onclick="window.location.href='home.html'">🏠 Home</button>
+            <button class="btn btn-danger" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div id="breadcrumbContainer" class="breadcrumb-container"></div>
+
+    <div class="layout-with-sidebar">
+        <div class="sidebar">
+            <h3>Navigation Menu</h3>
+            <div id="menuContainer"></div>
+        </div>
+
+        <div class="main-content">
+            <div id="messageContainer"></div>
+
+            <div class="stats-card" id="statsCard" style="display: none;">
+                <div class="stat-item">
+                    <h3 id="totalMenus">0</h3>
+                    <p>Total Menus</p>
+                </div>
+                <div class="stat-item">
+                    <h3 id="totalGroups">0</h3>
+                    <p>Groups</p>
+                </div>
+                <div class="stat-item">
+                    <h3 id="totalPages">0</h3>
+                    <p>Pages</p>
+                </div>
+            </div>
+
+            <div class="toolbar">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="🔍 Search by Menu ID or Name..." onkeyup="filterMenus()">
+                </div>
+                <button class="btn btn-success" onclick="openAddMenuModal()">➕ Add New Menu</button>
+            </div>
+
+            <div class="table-container">
+                <div id="loadingIndicator" class="loading">Loading menus</div>
+                <div id="emptyState" class="empty-state" style="display: none;">
+                    <div class="empty-state-icon">📋</div>
+                    <h3>No Menus Found</h3>
+                    <p>Start by adding your first menu item.</p>
+                </div>
+                <table id="menusTable" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th>Menu ID</th>
+                            <th>Menu Name</th>
+                            <th>Type</th>
+                            <th>Parent</th>
+                            <th>Page URL</th>
+                            <th>Sort Order</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="menusTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Menu Modal -->
+<div id="menuModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Add New Menu</h2>
+            <span class="close" onclick="closeMenuModal()">&times;</span>
+        </div>
+        <form id="menuForm" onsubmit="saveMenu(event)">
+            <div class="form-group" id="menuIdGroup" style="display: none;">
+                <label for="menuId">Menu ID</label>
+                <input type="text" id="menuId" disabled>
+                <small>Auto-generated</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="menuName">Menu Name *</label>
+                <input type="text" id="menuName" required maxlength="100" placeholder="e.g., Dashboard, Reports">
+            </div>
+            
+            <div class="form-group">
+                <label for="menuType">Menu Type *</label>
+                <select id="menuType" required onchange="togglePageUrlField()">
+                    <option value="">-- Select Type --</option>
+                    <option value="G">Group (Container)</option>
+                    <option value="P">Page (Link)</option>
+                </select>
+                <small>Group = Container with children, Page = Actual link</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="parentMenuId">Parent Menu</label>
+                <select id="parentMenuId">
+                    <option value="">-- Root Level (No Parent) --</option>
+                </select>
+                <small>Select a parent group to create hierarchy</small>
+            </div>
+            
+            <div class="form-group" id="pageUrlGroup">
+                <label for="pageUrl">Page URL</label>
+                <input type="text" id="pageUrl" maxlength="200" placeholder="e.g., dashboard.htm, reports.htm">
+                <small>Required for Page type, leave empty for Group type</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="sortOrder">Sort Order *</label>
+                <input type="number" id="sortOrder" required min="1" value="1">
+                <small>Lower numbers appear first</small>
+            </div>
+            
+            <div class="form-actions">
+                <button type="button" class="btn" onclick="closeMenuModal()">Cancel</button>
+                <button type="submit" class="btn btn-success" id="saveButton">Save Menu</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="api.js"></script>
+<script src="session.js"></script>
+<script src="menu.js"></script>
+<script>
+// Global variables
+let allMenus = [];
+let editingMenuId = null;
+
+// Protect this page with server validation
+protectPage(function(isValid) {
+    if (isValid) {
+        // Check if user has admin access
+        const session = getSession();
+        if (!session || session.roleName !== 'Admin') {
+            alert('Access Denied: Only administrators can access this page.');
+            window.location.href = 'home.html';
+            return;
+        }
+        
+        // Render menu and breadcrumb
+        renderMenu('menuContainer');
+        renderBreadcrumb('breadcrumbContainer');
+        
+        // Load initial data
+        loadMenus();
+    }
+});
+
+// Load all menus
+function loadMenus() {
+    document.getElementById('loadingIndicator').style.display = 'block';
+    document.getElementById('menusTable').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('statsCard').style.display = 'none';
+    
+    apiGetAllMenus(function(response) {
+        document.getElementById('loadingIndicator').style.display = 'none';
+        
+        if (response.status === 'success') {
+            allMenus = response.menus;
+            displayMenus(allMenus);
+            updateStats();
+        } else {
+            showMessage('Error loading menus: ' + response.message, 'error');
+            document.getElementById('emptyState').style.display = 'block';
+        }
+    });
+}
+
+// Update statistics
+function updateStats() {
+    const totalMenus = allMenus.length;
+    const totalGroups = allMenus.filter(m => m.menuType === 'G').length;
+    const totalPages = allMenus.filter(m => m.menuType === 'P').length;
+    
+    document.getElementById('totalMenus').textContent = totalMenus;
+    document.getElementById('totalGroups').textContent = totalGroups;
+    document.getElementById('totalPages').textContent = totalPages;
+    document.getElementById('statsCard').style.display = 'flex';
+}
+
+// Display menus in table
+function displayMenus(menus) {
+    const tbody = document.getElementById('menusTableBody');
+    tbody.innerHTML = '';
+    
+    if (menus.length === 0) {
+        document.getElementById('menusTable').style.display = 'none';
+        document.getElementById('emptyState').style.display = 'block';
+        return;
+    }
+    
+    document.getElementById('menusTable').style.display = 'table';
+    document.getElementById('emptyState').style.display = 'none';
+    
+    // Sort by sortOrder
+    const sortedMenus = [...menus].sort((a, b) => a.sortOrder - b.sortOrder);
+    
+    sortedMenus.forEach(menu => {
+        const row = document.createElement('tr');
+        const typeBadge = menu.menuType === 'G' ? 'badge-group' : 'badge-page';
+        const typeText = menu.menuType === 'G' ? '📁 Group' : '📄 Page';
+        const parentMenu = allMenus.find(m => m.menuId == menu.parentMenuId);
+        const parentText = parentMenu ? parentMenu.menuName : '-';
+        const pageUrl = menu.pageUrl || '-';
+        
+        row.innerHTML = `
+            <td><strong>${escapeHtml(menu.menuId)}</strong></td>
+            <td>${escapeHtml(menu.menuName)}</td>
+            <td><span class="badge ${typeBadge}">${typeText}</span></td>
+            <td class="menu-hierarchy">${escapeHtml(parentText)}</td>
+            <td>${escapeHtml(pageUrl)}</td>
+            <td>${escapeHtml(menu.sortOrder)}</td>
+            <td>
+                <div class="action-buttons">
+                    <button class="btn btn-warning btn-small" onclick="openEditMenuModal(${menu.menuId})">✏️ Edit</button>
+                    <button class="btn btn-danger btn-small" onclick="deleteMenu(${menu.menuId})">🗑️ Delete</button>
+                </div>
+            </td>
+        `;
+        
+        tbody.appendChild(row);
+    });
+}
+
+// Filter menus based on search
+function filterMenus() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    
+    const filtered = allMenus.filter(menu => {
+        return menu.menuId.toString().includes(searchTerm) ||
+               menu.menuName.toLowerCase().includes(searchTerm);
+    });
+    
+    displayMenus(filtered);
+}
+
+// Toggle page URL field based on menu type
+function togglePageUrlField() {
+    const menuType = document.getElementById('menuType').value;
+    const pageUrlGroup = document.getElementById('pageUrlGroup');
+    const pageUrlInput = document.getElementById('pageUrl');
+    
+    if (menuType === 'G') {
+        pageUrlInput.value = '';
+        pageUrlInput.removeAttribute('required');
+    } else if (menuType === 'P') {
+        pageUrlInput.setAttribute('required', 'required');
+    }
+}
+
+// Populate parent menu dropdown
+function populateParentMenuDropdown(excludeMenuId = null) {
+    const parentSelect = document.getElementById('parentMenuId');
+    parentSelect.innerHTML = '<option value="">-- Root Level (No Parent) --</option>';
+    
+    // Only show groups as parent options
+    const groups = allMenus.filter(m => m.menuType === 'G' && m.menuId != excludeMenuId);
+    
+    groups.forEach(group => {
+        const option = document.createElement('option');
+        option.value = group.menuId;
+        option.textContent = group.menuName;
+        parentSelect.appendChild(option);
+    });
+}
+
+// Open add menu modal
+function openAddMenuModal() {
+    editingMenuId = null;
+    document.getElementById('modalTitle').textContent = 'Add New Menu';
+    document.getElementById('menuForm').reset();
+    document.getElementById('menuIdGroup').style.display = 'none';
+    document.getElementById('saveButton').textContent = 'Save Menu';
+    populateParentMenuDropdown();
+    togglePageUrlField();
+    document.getElementById('menuModal').style.display = 'block';
+}
+
+// Open edit menu modal
+function openEditMenuModal(menuId) {
+    const menu = allMenus.find(m => m.menuId == menuId);
+    if (!menu) return;
+    
+    editingMenuId = menuId;
+    document.getElementById('modalTitle').textContent = 'Edit Menu';
+    document.getElementById('menuId').value = menu.menuId;
+    document.getElementById('menuName').value = menu.menuName;
+    document.getElementById('menuType').value = menu.menuType;
+    document.getElementById('pageUrl').value = menu.pageUrl || '';
+    document.getElementById('sortOrder').value = menu.sortOrder;
+    
+    populateParentMenuDropdown(menuId);
+    document.getElementById('parentMenuId').value = menu.parentMenuId || '';
+    
+    document.getElementById('menuIdGroup').style.display = 'block';
+    document.getElementById('saveButton').textContent = 'Update Menu';
+    togglePageUrlField();
+    document.getElementById('menuModal').style.display = 'block';
+}
+
+// Close menu modal
+function closeMenuModal() {
+    document.getElementById('menuModal').style.display = 'none';
+    document.getElementById('menuForm').reset();
+    editingMenuId = null;
+}
+
+// Save menu (add or update)
+function saveMenu(event) {
+    event.preventDefault();
+    
+    const menuName = document.getElementById('menuName').value.trim();
+    const menuType = document.getElementById('menuType').value;
+    const parentMenuId = document.getElementById('parentMenuId').value;
+    const pageUrl = document.getElementById('pageUrl').value.trim();
+    const sortOrder = document.getElementById('sortOrder').value;
+    
+    if (!menuName || !menuType || !sortOrder) {
+        showMessage('Please fill in all required fields', 'error');
+        return;
+    }
+    
+    // Validate page URL for Page type
+    if (menuType === 'P' && !pageUrl) {
+        showMessage('Page URL is required for Page type menus', 'error');
+        return;
+    }
+    
+    const saveButton = document.getElementById('saveButton');
+    saveButton.disabled = true;
+    saveButton.textContent = editingMenuId ? 'Updating...' : 'Saving...';
+    
+    const menuData = {
+        menuName: menuName,
+        menuType: menuType,
+        parentMenuId: parentMenuId || 'NULL',
+        pageUrl: pageUrl || 'NULL',
+        sortOrder: sortOrder
+    };
+    
+    if (editingMenuId) {
+        // Update existing menu
+        menuData.menuId = editingMenuId;
+        apiUpdateMenu(menuData, function(response) {
+            saveButton.disabled = false;
+            saveButton.textContent = 'Update Menu';
+            
+            if (response.status === 'success') {
+                showMessage('Menu updated successfully!', 'success');
+                closeMenuModal();
+                loadMenus();
+            } else {
+                showMessage('Error: ' + response.message, 'error');
+            }
+        });
+    } else {
+        // Create new menu
+        apiCreateMenu(menuData, function(response) {
+            saveButton.disabled = false;
+            saveButton.textContent = 'Save Menu';
+            
+            if (response.status === 'success') {
+                showMessage('Menu created successfully!', 'success');
+                closeMenuModal();
+                loadMenus();
+            } else {
+                showMessage('Error: ' + response.message, 'error');
+            }
+        });
+    }
+}
+
+// Delete menu
+function deleteMenu(menuId) {
+    const menu = allMenus.find(m => m.menuId == menuId);
+    if (!menu) return;
+    
+    // Check if menu has children
+    const hasChildren = allMenus.some(m => m.parentMenuId == menuId);
+    
+    let confirmMsg = `Are you sure you want to delete menu "${menu.menuName}" (ID: ${menuId})?`;
+    
+    if (hasChildren) {
+        confirmMsg += `\n\n⚠️ WARNING: This menu has child items!`;
+        confirmMsg += '\nDeleting this menu will orphan its children.';
+        confirmMsg += '\nConsider reassigning children first.';
+    }
+    
+    confirmMsg += '\n\nThis action cannot be undone.';
+    
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+    
+    apiDeleteMenu(menuId, function(response) {
+        if (response.status === 'success') {
+            showMessage('Menu deleted successfully!', 'success');
+            loadMenus();
+        } else {
+            showMessage('Error: ' + response.message, 'error');
+        }
+    });
+}
+
+// Show message
+function showMessage(message, type) {
+    const container = document.getElementById('messageContainer');
+    container.innerHTML = `<div class="message ${type}">${escapeHtml(message)}</div>`;
+    
+    setTimeout(() => {
+        container.innerHTML = '';
+    }, 5000);
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Logout function
+function logout() {
+    if (confirm('Are you sure you want to logout?')) {
+        performLogout();
+    }
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('menuModal');
+    if (event.target === modal) {
+        closeMenuModal();
+    }
+}
+</script>
+
+</body>
+</html>
