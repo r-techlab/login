@@ -173,7 +173,10 @@ h1 {
 <div class="container">
     <div class="header">
         <h1>🏠 Dashboard</h1>
-        <button class="logout-btn" onclick="logout()">Logout</button>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <div id="userInfoHeader" class="user-info-header"></div>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
     </div>
 
     <div class="welcome-message" id="welcomeMsg">
@@ -199,7 +202,9 @@ h1 {
     <div class="layout-with-sidebar">
         <div class="sidebar">
             <h3>Navigation Menu</h3>
-            <div id="menuContainer"></div>
+            <div id="menuContainer">
+                <!-- Skeleton loader will appear here initially -->
+            </div>
         </div>
 
         <div class="main-content">
@@ -249,6 +254,9 @@ h1 {
 <script src="session.js"></script>
 <script src="menu.js"></script>
 <script>
+// Show skeleton loader immediately
+showMenuSkeleton('menuContainer');
+
 // Protect this page - validate session with server
 protectPage(function(isValid) {
     if (isValid) {
@@ -256,6 +264,9 @@ protectPage(function(isValid) {
         const session = getSession();
         
         if (session) {
+        // Display user information in header
+        renderUserInfo('userInfoHeader');
+        
         // Display user information
         document.getElementById('userName').innerText = session.userName || session.userId;
         document.getElementById('userIdDisplay').innerText = session.userId;
@@ -278,7 +289,7 @@ protectPage(function(isValid) {
         document.getElementById('menuGroups').innerText = menuStats.groups;
         document.getElementById('menuPages').innerText = menuStats.pages;
         
-        // Render the dynamic menu
+        // Render the dynamic menu (replaces skeleton)
         renderMenu('menuContainer');
         
         // Update remaining time

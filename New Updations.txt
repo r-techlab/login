@@ -1,5 +1,6 @@
 
 	
 
-	1. Pages to be checked against Role permission
-	2. 
+	1. Pages to be checked against Role permission	-	Done
+	2. When loading menu is filling delay. So need to set the master page accordingly. - Done
+	3. 

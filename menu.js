@@ -1,6 +1,24 @@
 // Menu Rendering Component
 // Dynamically builds and renders menu based on user's role access
 
+// Show skeleton loader while menu is loading
+function showMenuSkeleton(containerId = 'menuContainer') {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    const skeletonHtml = `
+        <div class="menu-skeleton">
+            <div class="skeleton-item"></div>
+            <div class="skeleton-item"></div>
+            <div class="skeleton-item"></div>
+            <div class="skeleton-item"></div>
+            <div class="skeleton-item"></div>
+            <p class="menu-loading-text">Loading menu...</p>
+        </div>
+    `;
+    container.innerHTML = skeletonHtml;
+}
+
 // Render the main navigation menu
 function renderMenu(containerId = 'menuContainer') {
     const container = document.getElementById(containerId);
@@ -168,4 +186,20 @@ function getMenuStats() {
         pages: menuAccess.filter(m => m.menuType === 'P').length
     };
     return stats;
+}
+
+// Render user info in header
+function renderUserInfo(containerId = 'userInfoHeader') {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    const session = getSession();
+    if (!session) return;
+    
+    const userInfoHtml = `
+        <span class="user-icon">👤</span>
+        <span class="user-name">${session.userName || session.userId}</span>
+        <span class="role-badge">${session.roleName || 'User'}</span>
+    `;
+    container.innerHTML = userInfoHtml;
 }

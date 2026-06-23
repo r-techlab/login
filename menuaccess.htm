@@ -396,7 +396,8 @@ h1 {
 <div class="container">
     <div class="header">
         <h1>🎭 Menu Access Manager</h1>
-        <div>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <div id="userInfoHeader" class="user-info-header"></div>
             <button class="btn" onclick="window.location.href='home.html'">🏠 Home</button>
             <button class="btn btn-danger" onclick="logout()">Logout</button>
         </div>
@@ -407,7 +408,9 @@ h1 {
     <div class="layout-with-sidebar">
         <div class="sidebar">
             <h3>Navigation Menu</h3>
-            <div id="menuContainer"></div>
+            <div id="menuContainer">
+                <!-- Skeleton loader will appear here initially -->
+            </div>
         </div>
 
         <div class="main-content">
@@ -489,6 +492,9 @@ let currentAssignments = [];
 let originalAssignments = [];
 let hasChanges = false;
 
+// Show skeleton loader immediately
+showMenuSkeleton('menuContainer');
+
 // Protect this page with menu-based access control
 protectPageWithMenuAccess(function(isValid) {
     if (isValid) {
@@ -500,7 +506,10 @@ protectPageWithMenuAccess(function(isValid) {
             return;
         }
         
-        // Render menu and breadcrumb
+        // Display user information in header
+        renderUserInfo('userInfoHeader');
+        
+        // Render menu and breadcrumb (replaces skeleton)
         renderMenu('menuContainer');
         renderBreadcrumb('breadcrumbContainer');
         

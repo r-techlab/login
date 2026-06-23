@@ -1,5 +1,48 @@
 /* Menu Styles - Role-based Navigation Menu */
 
+/* Skeleton Loader for Menu */
+.menu-skeleton {
+    background: #2c3e50;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+    padding: 10px;
+}
+
+.skeleton-item {
+    background: linear-gradient(90deg, #34495e 25%, #3d566e 50%, #34495e 75%);
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s infinite;
+    height: 45px;
+    margin: 8px 0;
+    border-radius: 6px;
+}
+
+.skeleton-item:first-child {
+    margin-top: 0;
+}
+
+.skeleton-item:last-child {
+    margin-bottom: 0;
+}
+
+@keyframes skeleton-loading {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+.menu-loading-text {
+    text-align: center;
+    color: #95a5a6;
+    font-size: 13px;
+    padding: 10px;
+    font-style: italic;
+}
+
 .main-menu {
     background: #2c3e50;
     border-radius: 8px;
@@ -217,4 +260,34 @@
     .sidebar {
         width: 100%;
     }
+}
+
+/* User Info Header Styles */
+.user-info-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 10px 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.user-info-header .user-name {
+    font-weight: bold;
+    color: #333;
+}
+
+.user-info-header .role-badge {
+    display: inline-block;
+    background: #3498db;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.user-info-header .user-icon {
+    font-size: 20px;
 }
