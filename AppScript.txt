@@ -79,6 +79,14 @@ function doGet(e) {
     return handleUpdateMenuGet(e);
   } else if (action === "deleteMenu") {
     return handleDeleteMenuGet(e);
+  } else if (action === "getSystemParameters") {
+    return handleGetSystemParametersGet(e);
+  } else if (action === "createSystemParameter") {
+    return handleCreateSystemParameterGet(e);
+  } else if (action === "updateSystemParameter") {
+    return handleUpdateSystemParameterGet(e);
+  } else if (action === "deleteSystemParameter") {
+    return handleDeleteSystemParameterGet(e);
   } else {
     var errorResult = { status: "error", message: "Invalid action" };
     var callback = e.parameter.callback;
@@ -1603,6 +1611,265 @@ function handleDeleteMenuGet(e) {
   }
   
   var result = { status: "success", message: "Menu deleted successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// ============================================
+// SYSTEM PARAMETERS MANAGEMENT HANDLERS
+// ============================================
+
+// Get all system parameters
+function handleGetSystemParametersGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Check if user is admin
+  if (validation.roleName !== "Admin") {
+    var errorResult = { status: "error", message: "Access denied: Admin role required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get all parameters from SystemParameters sheet
+  var paramsSheet = ss.getSheetByName("SystemParameters");
+  var paramsData = paramsSheet.getDataRange().getValues();
+  var parameters = [];
+  
+  for (var i = 1; i < paramsData.length; i++) {
+    parameters.push({
+      code: paramsData[i][0],
+      value: paramsData[i][1],
+      description: paramsData[i][2]
+    });
+  }
+  
+  var result = { status: "success", parameters: parameters };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Create new system parameter
+function handleCreateSystemParameterGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var code = e.parameter.code;
+  var value = e.parameter.value;
+  var description = e.parameter.description;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Check if user is admin
+  if (validation.roleName !== "Admin") {
+    var errorResult = { status: "error", message: "Access denied: Admin role required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!code || !value || !description) {
+    var errorResult = { status: "error", message: "All fields are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var paramsSheet = ss.getSheetByName("SystemParameters");
+  var paramsData = paramsSheet.getDataRange().getValues();
+  
+  // Check if code already exists
+  for (var i = 1; i < paramsData.length; i++) {
+    if (paramsData[i][0] == code) {
+      var errorResult = { status: "error", message: "Parameter code already exists" };
+      if (callback) {
+        return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+          .setMimeType(ContentService.MimeType.JAVASCRIPT);
+      }
+      return createJsonResponse(errorResult);
+    }
+  }
+  
+  // Add new parameter
+  paramsSheet.appendRow([code, value, description]);
+  
+  var result = { status: "success", message: "Parameter created successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Update existing system parameter
+function handleUpdateSystemParameterGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var code = e.parameter.code;
+  var value = e.parameter.value;
+  var description = e.parameter.description;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Check if user is admin
+  if (validation.roleName !== "Admin") {
+    var errorResult = { status: "error", message: "Access denied: Admin role required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!code || !value || !description) {
+    var errorResult = { status: "error", message: "All fields are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var paramsSheet = ss.getSheetByName("SystemParameters");
+  var paramsData = paramsSheet.getDataRange().getValues();
+  
+  // Find and update parameter
+  var found = false;
+  for (var i = 1; i < paramsData.length; i++) {
+    if (paramsData[i][0] == code) {
+      paramsSheet.getRange(i + 1, 2).setValue(value);
+      paramsSheet.getRange(i + 1, 3).setValue(description);
+      found = true;
+      break;
+    }
+  }
+  
+  if (!found) {
+    var errorResult = { status: "error", message: "Parameter not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var result = { status: "success", message: "Parameter updated successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Delete system parameter
+function handleDeleteSystemParameterGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var code = e.parameter.code;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Check if user is admin
+  if (validation.roleName !== "Admin") {
+    var errorResult = { status: "error", message: "Access denied: Admin role required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var paramsSheet = ss.getSheetByName("SystemParameters");
+  var paramsData = paramsSheet.getDataRange().getValues();
+  
+  // Find and delete parameter
+  var found = false;
+  for (var i = 1; i < paramsData.length; i++) {
+    if (paramsData[i][0] == code) {
+      paramsSheet.deleteRow(i + 1);
+      found = true;
+      break;
+    }
+  }
+  
+  if (!found) {
+    var errorResult = { status: "error", message: "Parameter not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var result = { status: "success", message: "Parameter deleted successfully" };
   if (callback) {
     return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
       .setMimeType(ContentService.MimeType.JAVASCRIPT);

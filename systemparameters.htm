@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Menu Master - Menu Management</title>
+<title>System Parameters - Configuration Management</title>
 <link rel="stylesheet" href="menu.css">
 
 <style>
@@ -191,15 +191,13 @@ tbody tr:hover {
 
 .modal-content {
     background: white;
-    margin: 3% auto;
+    margin: 5% auto;
     padding: 30px;
     border-radius: 10px;
     width: 90%;
     max-width: 600px;
     box-shadow: 0 5px 15px rgba(0,0,0,0.3);
     animation: slideDown 0.3s;
-    max-height: 90vh;
-    overflow-y: auto;
 }
 
 @keyframes slideDown {
@@ -251,17 +249,23 @@ tbody tr:hover {
 }
 
 .form-group input,
-.form-group select {
+.form-group textarea {
     width: 100%;
     padding: 10px;
     border: 1px solid #ddd;
     border-radius: 5px;
     font-size: 14px;
     box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 80px;
 }
 
 .form-group input:focus,
-.form-group select:focus {
+.form-group textarea:focus {
     outline: none;
     border-color: #667eea;
 }
@@ -344,22 +348,8 @@ tbody tr:hover {
     border-radius: 12px;
     font-size: 12px;
     font-weight: bold;
-}
-
-.badge-group {
-    background: #667eea;
+    background: #3498db;
     color: white;
-}
-
-.badge-page {
-    background: #27ae60;
-    color: white;
-}
-
-.menu-hierarchy {
-    padding-left: 20px;
-    color: #666;
-    font-size: 13px;
 }
 
 .stats-card {
@@ -382,6 +372,17 @@ tbody tr:hover {
     margin: 5px 0 0 0;
     font-size: 14px;
     opacity: 0.9;
+}
+
+.param-code {
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    color: #667eea;
+}
+
+.param-value {
+    color: #27ae60;
+    font-weight: 500;
 }
 
 @media (max-width: 992px) {
@@ -414,7 +415,7 @@ tbody tr:hover {
 
 <div class="container">
     <div class="header">
-        <h1>📋 Menu Master - Menu Management</h1>
+        <h1>⚙️ System Parameters - Configuration Management</h1>
         <div>
             <button class="btn" onclick="window.location.href='home.html'">🏠 Home</button>
             <button class="btn btn-danger" onclick="logout()">Logout</button>
@@ -435,46 +436,35 @@ tbody tr:hover {
 
             <div class="stats-card" id="statsCard" style="display: none;">
                 <div class="stat-item">
-                    <h3 id="totalMenus">0</h3>
-                    <p>Total Menus</p>
-                </div>
-                <div class="stat-item">
-                    <h3 id="totalGroups">0</h3>
-                    <p>Groups</p>
-                </div>
-                <div class="stat-item">
-                    <h3 id="totalPages">0</h3>
-                    <p>Pages</p>
+                    <h3 id="totalParams">0</h3>
+                    <p>Total Parameters</p>
                 </div>
             </div>
 
             <div class="toolbar">
                 <div class="search-box">
-                    <input type="text" id="searchInput" placeholder="🔍 Search by Menu ID or Name..." onkeyup="filterMenus()">
+                    <input type="text" id="searchInput" placeholder="🔍 Search by Code or Description..." onkeyup="filterParameters()">
                 </div>
-                <button class="btn btn-success" onclick="openAddMenuModal()">➕ Add New Menu</button>
+                <button class="btn btn-success" onclick="openAddParameterModal()">➕ Add New Parameter</button>
             </div>
 
             <div class="table-container">
-                <div id="loadingIndicator" class="loading">Loading menus</div>
+                <div id="loadingIndicator" class="loading">Loading system parameters</div>
                 <div id="emptyState" class="empty-state" style="display: none;">
-                    <div class="empty-state-icon">📋</div>
-                    <h3>No Menus Found</h3>
-                    <p>Start by adding your first menu item.</p>
+                    <div class="empty-state-icon">⚙️</div>
+                    <h3>No Parameters Found</h3>
+                    <p>Start by adding your first system parameter.</p>
                 </div>
-                <table id="menusTable" style="display: none;">
+                <table id="parametersTable" style="display: none;">
                     <thead>
                         <tr>
-                            <th>Menu ID</th>
-                            <th>Menu Name</th>
-                            <th>Type</th>
-                            <th>Parent</th>
-                            <th>Page URL</th>
-                            <th>Sort Order</th>
+                            <th>Code</th>
+                            <th>Value</th>
+                            <th>Description</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
-                    <tbody id="menusTableBody">
+                    <tbody id="parametersTableBody">
                     </tbody>
                 </table>
             </div>
@@ -482,58 +472,35 @@ tbody tr:hover {
     </div>
 </div>
 
-<!-- Add/Edit Menu Modal -->
-<div id="menuModal" class="modal">
+<!-- Add/Edit Parameter Modal -->
+<div id="parameterModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h2 id="modalTitle">Add New Menu</h2>
-            <span class="close" onclick="closeMenuModal()">&times;</span>
+            <h2 id="modalTitle">Add New Parameter</h2>
+            <span class="close" onclick="closeParameterModal()">&times;</span>
         </div>
-        <form id="menuForm" onsubmit="saveMenu(event)">
-            <div class="form-group" id="menuIdGroup" style="display: none;">
-                <label for="menuId">Menu ID</label>
-                <input type="text" id="menuId" disabled>
-                <small>Auto-generated</small>
+        <form id="parameterForm" onsubmit="saveParameter(event)">
+            <div class="form-group">
+                <label for="paramCode">Code *</label>
+                <input type="text" id="paramCode" required maxlength="50" placeholder="e.g., Company Name, Currency">
+                <small>Unique identifier for the parameter</small>
             </div>
             
             <div class="form-group">
-                <label for="menuName">Menu Name *</label>
-                <input type="text" id="menuName" required maxlength="100" placeholder="e.g., Dashboard, Reports">
+                <label for="paramValue">Value *</label>
+                <input type="text" id="paramValue" required maxlength="200" placeholder="e.g., R-TechLab, AED">
+                <small>Current value of the parameter</small>
             </div>
             
             <div class="form-group">
-                <label for="menuType">Menu Type *</label>
-                <select id="menuType" required onchange="togglePageUrlField()">
-                    <option value="">-- Select Type --</option>
-                    <option value="G">Group (Container)</option>
-                    <option value="P">Page (Link)</option>
-                </select>
-                <small>Group = Container with children, Page = Actual link</small>
-            </div>
-            
-            <div class="form-group">
-                <label for="parentMenuId">Parent Menu</label>
-                <select id="parentMenuId">
-                    <option value="">-- Root Level (No Parent) --</option>
-                </select>
-                <small>Select a parent group to create hierarchy</small>
-            </div>
-            
-            <div class="form-group" id="pageUrlGroup">
-                <label for="pageUrl">Page URL</label>
-                <input type="text" id="pageUrl" maxlength="200" placeholder="e.g., dashboard.htm, reports.htm">
-                <small>Required for Page type, leave empty for Group type</small>
-            </div>
-            
-            <div class="form-group">
-                <label for="sortOrder">Sort Order *</label>
-                <input type="number" id="sortOrder" required min="1" value="1">
-                <small>Lower numbers appear first</small>
+                <label for="paramDescription">Description *</label>
+                <textarea id="paramDescription" required maxlength="500" placeholder="e.g., Company Name, Transaction Currency"></textarea>
+                <small>Brief description of the parameter's purpose</small>
             </div>
             
             <div class="form-actions">
-                <button type="button" class="btn" onclick="closeMenuModal()">Cancel</button>
-                <button type="submit" class="btn btn-success" id="saveButton">Save Menu</button>
+                <button type="button" class="btn" onclick="closeParameterModal()">Cancel</button>
+                <button type="submit" class="btn btn-success" id="saveButton">Save Parameter</button>
             </div>
         </form>
     </div>
@@ -545,11 +512,11 @@ tbody tr:hover {
 <script src="systemConfig.js"></script>
 <script>
 // Global variables
-let allMenus = [];
-let editingMenuId = null;
+let allParameters = [];
+let editingParamCode = null;
 
 // Initialize system config
-initSystemConfig('menumaster.htm', 'companyNameSidebar');
+initSystemConfig('systemparameters.htm', 'companyNameSidebar');
 
 // Protect this page with menu-based access control
 protectPageWithMenuAccess(function(isValid) {
@@ -567,26 +534,26 @@ protectPageWithMenuAccess(function(isValid) {
         renderBreadcrumb('breadcrumbContainer');
         
         // Load initial data
-        loadMenus();
+        loadParameters();
     }
 });
 
-// Load all menus
-function loadMenus() {
+// Load all parameters
+function loadParameters() {
     document.getElementById('loadingIndicator').style.display = 'block';
-    document.getElementById('menusTable').style.display = 'none';
+    document.getElementById('parametersTable').style.display = 'none';
     document.getElementById('emptyState').style.display = 'none';
     document.getElementById('statsCard').style.display = 'none';
     
-    apiGetAllMenus(function(response) {
+    apiGetSystemParameters(function(response) {
         document.getElementById('loadingIndicator').style.display = 'none';
         
         if (response.status === 'success') {
-            allMenus = response.menus;
-            displayMenus(allMenus);
+            allParameters = response.parameters;
+            displayParameters(allParameters);
             updateStats();
         } else {
-            showMessage('Error loading menus: ' + response.message, 'error');
+            showMessage('Error loading parameters: ' + response.message, 'error');
             document.getElementById('emptyState').style.display = 'block';
         }
     });
@@ -594,52 +561,35 @@ function loadMenus() {
 
 // Update statistics
 function updateStats() {
-    const totalMenus = allMenus.length;
-    const totalGroups = allMenus.filter(m => m.menuType === 'G').length;
-    const totalPages = allMenus.filter(m => m.menuType === 'P').length;
-    
-    document.getElementById('totalMenus').textContent = totalMenus;
-    document.getElementById('totalGroups').textContent = totalGroups;
-    document.getElementById('totalPages').textContent = totalPages;
+    document.getElementById('totalParams').textContent = allParameters.length;
     document.getElementById('statsCard').style.display = 'flex';
 }
 
-// Display menus in table
-function displayMenus(menus) {
-    const tbody = document.getElementById('menusTableBody');
+// Display parameters in table
+function displayParameters(parameters) {
+    const tbody = document.getElementById('parametersTableBody');
     tbody.innerHTML = '';
     
-    if (menus.length === 0) {
-        document.getElementById('menusTable').style.display = 'none';
+    if (parameters.length === 0) {
+        document.getElementById('parametersTable').style.display = 'none';
         document.getElementById('emptyState').style.display = 'block';
         return;
     }
     
-    document.getElementById('menusTable').style.display = 'table';
+    document.getElementById('parametersTable').style.display = 'table';
     document.getElementById('emptyState').style.display = 'none';
     
-    // Sort by sortOrder
-    const sortedMenus = [...menus].sort((a, b) => a.sortOrder - b.sortOrder);
-    
-    sortedMenus.forEach(menu => {
+    parameters.forEach(param => {
         const row = document.createElement('tr');
-        const typeBadge = menu.menuType === 'G' ? 'badge-group' : 'badge-page';
-        const typeText = menu.menuType === 'G' ? '📁 Group' : '📄 Page';
-        const parentMenu = allMenus.find(m => m.menuId == menu.parentMenuId);
-        const parentText = parentMenu ? parentMenu.menuName : '-';
-        const pageUrl = menu.pageUrl || '-';
         
         row.innerHTML = `
-            <td><strong>${escapeHtml(menu.menuId)}</strong></td>
-            <td>${escapeHtml(menu.menuName)}</td>
-            <td><span class="badge ${typeBadge}">${typeText}</span></td>
-            <td class="menu-hierarchy">${escapeHtml(parentText)}</td>
-            <td>${escapeHtml(pageUrl)}</td>
-            <td>${escapeHtml(menu.sortOrder)}</td>
+            <td><span class="param-code">${escapeHtml(param.code)}</span></td>
+            <td><span class="param-value">${escapeHtml(param.value)}</span></td>
+            <td>${escapeHtml(param.description)}</td>
             <td>
                 <div class="action-buttons">
-                    <button class="btn btn-warning btn-small" onclick="openEditMenuModal(${menu.menuId})">✏️ Edit</button>
-                    <button class="btn btn-danger btn-small" onclick="deleteMenu(${menu.menuId})">🗑️ Delete</button>
+                    <button class="btn btn-warning btn-small" onclick="openEditParameterModal('${escapeHtml(param.code)}')">✏️ Edit</button>
+                    <button class="btn btn-danger btn-small" onclick="deleteParameter('${escapeHtml(param.code)}')">🗑️ Delete</button>
                 </div>
             </td>
         `;
@@ -648,147 +598,98 @@ function displayMenus(menus) {
     });
 }
 
-// Filter menus based on search
-function filterMenus() {
+// Filter parameters based on search
+function filterParameters() {
     const searchTerm = document.getElementById('searchInput').value.toLowerCase();
     
-    const filtered = allMenus.filter(menu => {
-        return menu.menuId.toString().includes(searchTerm) ||
-               menu.menuName.toLowerCase().includes(searchTerm);
+    const filtered = allParameters.filter(param => {
+        return param.code.toLowerCase().includes(searchTerm) ||
+               param.description.toLowerCase().includes(searchTerm);
     });
     
-    displayMenus(filtered);
+    displayParameters(filtered);
 }
 
-// Toggle page URL field based on menu type
-function togglePageUrlField() {
-    const menuType = document.getElementById('menuType').value;
-    const pageUrlGroup = document.getElementById('pageUrlGroup');
-    const pageUrlInput = document.getElementById('pageUrl');
-    
-    if (menuType === 'G') {
-        pageUrlInput.value = '';
-        pageUrlInput.removeAttribute('required');
-    } else if (menuType === 'P') {
-        pageUrlInput.setAttribute('required', 'required');
-    }
+// Open add parameter modal
+function openAddParameterModal() {
+    editingParamCode = null;
+    document.getElementById('modalTitle').textContent = 'Add New Parameter';
+    document.getElementById('parameterForm').reset();
+    document.getElementById('paramCode').disabled = false;
+    document.getElementById('saveButton').textContent = 'Save Parameter';
+    document.getElementById('parameterModal').style.display = 'block';
 }
 
-// Populate parent menu dropdown
-function populateParentMenuDropdown(excludeMenuId = null) {
-    const parentSelect = document.getElementById('parentMenuId');
-    parentSelect.innerHTML = '<option value="">-- Root Level (No Parent) --</option>';
+// Open edit parameter modal
+function openEditParameterModal(code) {
+    const param = allParameters.find(p => p.code === code);
+    if (!param) return;
     
-    // Only show groups as parent options
-    const groups = allMenus.filter(m => m.menuType === 'G' && m.menuId != excludeMenuId);
-    
-    groups.forEach(group => {
-        const option = document.createElement('option');
-        option.value = group.menuId;
-        option.textContent = group.menuName;
-        parentSelect.appendChild(option);
-    });
+    editingParamCode = code;
+    document.getElementById('modalTitle').textContent = 'Edit Parameter';
+    document.getElementById('paramCode').value = param.code;
+    document.getElementById('paramCode').disabled = true;
+    document.getElementById('paramValue').value = param.value;
+    document.getElementById('paramDescription').value = param.description;
+    document.getElementById('saveButton').textContent = 'Update Parameter';
+    document.getElementById('parameterModal').style.display = 'block';
 }
 
-// Open add menu modal
-function openAddMenuModal() {
-    editingMenuId = null;
-    document.getElementById('modalTitle').textContent = 'Add New Menu';
-    document.getElementById('menuForm').reset();
-    document.getElementById('menuIdGroup').style.display = 'none';
-    document.getElementById('saveButton').textContent = 'Save Menu';
-    populateParentMenuDropdown();
-    togglePageUrlField();
-    document.getElementById('menuModal').style.display = 'block';
+// Close parameter modal
+function closeParameterModal() {
+    document.getElementById('parameterModal').style.display = 'none';
+    document.getElementById('parameterForm').reset();
+    document.getElementById('paramCode').disabled = false;
+    editingParamCode = null;
 }
 
-// Open edit menu modal
-function openEditMenuModal(menuId) {
-    const menu = allMenus.find(m => m.menuId == menuId);
-    if (!menu) return;
-    
-    editingMenuId = menuId;
-    document.getElementById('modalTitle').textContent = 'Edit Menu';
-    document.getElementById('menuId').value = menu.menuId;
-    document.getElementById('menuName').value = menu.menuName;
-    document.getElementById('menuType').value = menu.menuType;
-    document.getElementById('pageUrl').value = menu.pageUrl || '';
-    document.getElementById('sortOrder').value = menu.sortOrder;
-    
-    populateParentMenuDropdown(menuId);
-    document.getElementById('parentMenuId').value = menu.parentMenuId || '';
-    
-    document.getElementById('menuIdGroup').style.display = 'block';
-    document.getElementById('saveButton').textContent = 'Update Menu';
-    togglePageUrlField();
-    document.getElementById('menuModal').style.display = 'block';
-}
-
-// Close menu modal
-function closeMenuModal() {
-    document.getElementById('menuModal').style.display = 'none';
-    document.getElementById('menuForm').reset();
-    editingMenuId = null;
-}
-
-// Save menu (add or update)
-function saveMenu(event) {
+// Save parameter (add or update)
+function saveParameter(event) {
     event.preventDefault();
     
-    const menuName = document.getElementById('menuName').value.trim();
-    const menuType = document.getElementById('menuType').value;
-    const parentMenuId = document.getElementById('parentMenuId').value;
-    const pageUrl = document.getElementById('pageUrl').value.trim();
-    const sortOrder = document.getElementById('sortOrder').value;
+    const code = document.getElementById('paramCode').value.trim();
+    const value = document.getElementById('paramValue').value.trim();
+    const description = document.getElementById('paramDescription').value.trim();
     
-    if (!menuName || !menuType || !sortOrder) {
+    if (!code || !value || !description) {
         showMessage('Please fill in all required fields', 'error');
-        return;
-    }
-    
-    // Validate page URL for Page type
-    if (menuType === 'P' && !pageUrl) {
-        showMessage('Page URL is required for Page type menus', 'error');
         return;
     }
     
     const saveButton = document.getElementById('saveButton');
     saveButton.disabled = true;
-    saveButton.textContent = editingMenuId ? 'Updating...' : 'Saving...';
+    saveButton.textContent = editingParamCode ? 'Updating...' : 'Saving...';
     
-    const menuData = {
-        menuName: menuName,
-        menuType: menuType,
-        parentMenuId: parentMenuId || 'NULL',
-        pageUrl: pageUrl || 'NULL',
-        sortOrder: sortOrder
+    const paramData = {
+        code: code,
+        value: value,
+        description: description
     };
     
-    if (editingMenuId) {
-        // Update existing menu
-        menuData.menuId = editingMenuId;
-        apiUpdateMenu(menuData, function(response) {
+    if (editingParamCode) {
+        // Update existing parameter
+        apiUpdateSystemParameter(paramData, function(response) {
             saveButton.disabled = false;
-            saveButton.textContent = 'Update Menu';
+            saveButton.textContent = 'Update Parameter';
             
             if (response.status === 'success') {
-                showMessage('Menu updated successfully!', 'success');
-                closeMenuModal();
-                loadMenus();
+                showMessage('Parameter updated successfully!', 'success');
+                closeParameterModal();
+                loadParameters();
             } else {
                 showMessage('Error: ' + response.message, 'error');
             }
         });
     } else {
-        // Create new menu
-        apiCreateMenu(menuData, function(response) {
+        // Create new parameter
+        apiCreateSystemParameter(paramData, function(response) {
             saveButton.disabled = false;
-            saveButton.textContent = 'Save Menu';
+            saveButton.textContent = 'Save Parameter';
             
             if (response.status === 'success') {
-                showMessage('Menu created successfully!', 'success');
-                closeMenuModal();
-                loadMenus();
+                showMessage('Parameter created successfully!', 'success');
+                closeParameterModal();
+                loadParameters();
             } else {
                 showMessage('Error: ' + response.message, 'error');
             }
@@ -796,32 +697,22 @@ function saveMenu(event) {
     }
 }
 
-// Delete menu
-function deleteMenu(menuId) {
-    const menu = allMenus.find(m => m.menuId == menuId);
-    if (!menu) return;
+// Delete parameter
+function deleteParameter(code) {
+    const param = allParameters.find(p => p.code === code);
+    if (!param) return;
     
-    // Check if menu has children
-    const hasChildren = allMenus.some(m => m.parentMenuId == menuId);
-    
-    let confirmMsg = `Are you sure you want to delete menu "${menu.menuName}" (ID: ${menuId})?`;
-    
-    if (hasChildren) {
-        confirmMsg += `\n\n⚠️ WARNING: This menu has child items!`;
-        confirmMsg += '\nDeleting this menu will orphan its children.';
-        confirmMsg += '\nConsider reassigning children first.';
-    }
-    
+    let confirmMsg = `Are you sure you want to delete parameter "${code}"?`;
     confirmMsg += '\n\nThis action cannot be undone.';
     
     if (!confirm(confirmMsg)) {
         return;
     }
     
-    apiDeleteMenu(menuId, function(response) {
+    apiDeleteSystemParameter(code, function(response) {
         if (response.status === 'success') {
-            showMessage('Menu deleted successfully!', 'success');
-            loadMenus();
+            showMessage('Parameter deleted successfully!', 'success');
+            loadParameters();
         } else {
             showMessage('Error: ' + response.message, 'error');
         }
@@ -854,9 +745,9 @@ function logout() {
 
 // Close modal when clicking outside
 window.onclick = function(event) {
-    const modal = document.getElementById('menuModal');
+    const modal = document.getElementById('parameterModal');
     if (event.target === modal) {
-        closeMenuModal();
+        closeParameterModal();
     }
 }
 </script>

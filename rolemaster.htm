@@ -92,6 +92,17 @@ h1 {
     flex-shrink: 0;
 }
 
+.company-name-sidebar {
+    font-size: 16px;
+    font-weight: bold;
+    color: white;
+    padding: 12px;
+    margin-bottom: 15px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 8px;
+    text-align: center;
+}
+
 .main-content {
     flex: 1;
 }
@@ -420,6 +431,7 @@ tbody tr:hover {
 
     <div class="layout-with-sidebar">
         <div class="sidebar">
+            <div id="companyNameSidebar" class="company-name-sidebar"></div>
             <h3>Navigation Menu</h3>
             <div id="menuContainer"></div>
         </div>
@@ -497,11 +509,15 @@ tbody tr:hover {
 <script src="api.js"></script>
 <script src="session.js"></script>
 <script src="menu.js"></script>
+<script src="systemConfig.js"></script>
 <script>
 // Global variables
 let allRoles = [];
 let roleUsage = {};
 let editingRoleId = null;
+
+// Initialize system config
+initSystemConfig('rolemaster.htm', 'companyNameSidebar');
 
 // Protect this page with menu-based access control
 protectPageWithMenuAccess(function(isValid) {
