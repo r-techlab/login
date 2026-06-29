@@ -87,6 +87,22 @@ function doGet(e) {
     return handleUpdateSystemParameterGet(e);
   } else if (action === "deleteSystemParameter") {
     return handleDeleteSystemParameterGet(e);
+  } else if (action === "getUnits") {
+    return handleGetUnitsGet(e);
+  } else if (action === "createUnit") {
+    return handleCreateUnitGet(e);
+  } else if (action === "updateUnit") {
+    return handleUpdateUnitGet(e);
+  } else if (action === "deleteUnit") {
+    return handleDeleteUnitGet(e);
+  } else if (action === "getStocks") {
+    return handleGetStocksGet(e);
+  } else if (action === "createStock") {
+    return handleCreateStockGet(e);
+  } else if (action === "updateStock") {
+    return handleUpdateStockGet(e);
+  } else if (action === "deleteStock") {
+    return handleDeleteStockGet(e);
   } else {
     var errorResult = { status: "error", message: "Invalid action" };
     var callback = e.parameter.callback;
@@ -1870,6 +1886,481 @@ function handleDeleteSystemParameterGet(e) {
   }
   
   var result = { status: "success", message: "Parameter deleted successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// ============================================
+// UNIT MASTER MANAGEMENT HANDLERS
+// ============================================
+
+// Get all units
+function handleGetUnitsGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get all units from UnitMaster sheet
+  var unitSheet = ss.getSheetByName("UnitMaster");
+  var unitData = unitSheet.getDataRange().getValues();
+  var units = [];
+  
+  for (var i = 1; i < unitData.length; i++) {
+    units.push({
+      unitCode: unitData[i][0],
+      unitDescription: unitData[i][1]
+    });
+  }
+  
+  var result = { status: "success", units: units };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Create new unit
+function handleCreateUnitGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var unitCode = e.parameter.unitCode;
+  var unitDescription = e.parameter.unitDescription;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!unitCode || !unitDescription) {
+    var errorResult = { status: "error", message: "Unit code and description are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var unitSheet = ss.getSheetByName("UnitMaster");
+  var unitData = unitSheet.getDataRange().getValues();
+  
+  // Check if unit code already exists
+  for (var i = 1; i < unitData.length; i++) {
+    if (unitData[i][0] == unitCode) {
+      var errorResult = { status: "error", message: "Unit code already exists" };
+      if (callback) {
+        return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+          .setMimeType(ContentService.MimeType.JAVASCRIPT);
+      }
+      return createJsonResponse(errorResult);
+    }
+  }
+  
+  // Add new unit
+  unitSheet.appendRow([unitCode, unitDescription]);
+  
+  var result = { status: "success", message: "Unit created successfully", unitCode: unitCode };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Update existing unit
+function handleUpdateUnitGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var unitCode = e.parameter.unitCode;
+  var unitDescription = e.parameter.unitDescription;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!unitCode || !unitDescription) {
+    var errorResult = { status: "error", message: "Unit code and description are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var unitSheet = ss.getSheetByName("UnitMaster");
+  var unitData = unitSheet.getDataRange().getValues();
+  
+  // Find and update unit
+  var found = false;
+  for (var i = 1; i < unitData.length; i++) {
+    if (unitData[i][0] == unitCode) {
+      unitSheet.getRange(i + 1, 2).setValue(unitDescription);
+      found = true;
+      break;
+    }
+  }
+  
+  if (!found) {
+    var errorResult = { status: "error", message: "Unit not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var result = { status: "success", message: "Unit updated successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Delete unit
+function handleDeleteUnitGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var unitCode = e.parameter.unitCode;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var unitSheet = ss.getSheetByName("UnitMaster");
+  var unitData = unitSheet.getDataRange().getValues();
+  
+  // Find and delete unit
+  var found = false;
+  for (var i = 1; i < unitData.length; i++) {
+    if (unitData[i][0] == unitCode) {
+      unitSheet.deleteRow(i + 1);
+      found = true;
+      break;
+    }
+  }
+  
+  if (!found) {
+    var errorResult = { status: "error", message: "Unit not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var result = { status: "success", message: "Unit deleted successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// ============================================
+// STOCK MASTER MANAGEMENT HANDLERS
+// ============================================
+
+// Get all stocks
+function handleGetStocksGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get all stocks from StockMaster sheet
+  var stockSheet = ss.getSheetByName("StockMaster");
+  var stockData = stockSheet.getDataRange().getValues();
+  var stocks = [];
+  
+  for (var i = 1; i < stockData.length; i++) {
+    if (stockData[i][0]) { // Check if Code exists
+      stocks.push({
+        code: stockData[i][0],
+        description: stockData[i][1] || '',
+        unitCode: stockData[i][2] || ''
+      });
+    }
+  }
+  
+  var result = { status: "success", stocks: stocks };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Create new stock
+function handleCreateStockGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var code = e.parameter.code;
+  var description = e.parameter.description;
+  var unitCode = e.parameter.unitCode;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!code || !description || !unitCode) {
+    var errorResult = { status: "error", message: "Code, Description, and UnitCode are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var stockSheet = ss.getSheetByName("StockMaster");
+  var stockData = stockSheet.getDataRange().getValues();
+  
+  // Check if stock code already exists
+  for (var i = 1; i < stockData.length; i++) {
+    if (stockData[i][0] && stockData[i][0].toString().toUpperCase() == code.toString().toUpperCase()) {
+      var errorResult = { status: "error", message: "Stock code already exists" };
+      if (callback) {
+        return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+          .setMimeType(ContentService.MimeType.JAVASCRIPT);
+      }
+      return createJsonResponse(errorResult);
+    }
+  }
+  
+  // Validate UnitCode exists in UnitMaster
+  var unitSheet = ss.getSheetByName("UnitMaster");
+  var unitData = unitSheet.getDataRange().getValues();
+  var unitExists = false;
+  for (var i = 1; i < unitData.length; i++) {
+    if (unitData[i][0] && unitData[i][0].toString() == unitCode.toString()) {
+      unitExists = true;
+      break;
+    }
+  }
+  
+  if (!unitExists) {
+    var errorResult = { status: "error", message: "Invalid Unit Code. Unit does not exist in Unit Master." };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Add new stock
+  stockSheet.appendRow([code, description, unitCode]);
+  
+  var result = { status: "success", message: "Stock created successfully", code: code };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Update existing stock
+function handleUpdateStockGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var code = e.parameter.code;
+  var description = e.parameter.description;
+  var unitCode = e.parameter.unitCode;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!code || !description || !unitCode) {
+    var errorResult = { status: "error", message: "Code, Description, and UnitCode are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate UnitCode exists in UnitMaster
+  var unitSheet = ss.getSheetByName("UnitMaster");
+  var unitData = unitSheet.getDataRange().getValues();
+  var unitExists = false;
+  for (var i = 1; i < unitData.length; i++) {
+    if (unitData[i][0] && unitData[i][0].toString() == unitCode.toString()) {
+      unitExists = true;
+      break;
+    }
+  }
+  
+  if (!unitExists) {
+    var errorResult = { status: "error", message: "Invalid Unit Code. Unit does not exist in Unit Master." };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var stockSheet = ss.getSheetByName("StockMaster");
+  var stockData = stockSheet.getDataRange().getValues();
+  
+  // Find and update stock
+  var found = false;
+  for (var i = 1; i < stockData.length; i++) {
+    if (stockData[i][0] && stockData[i][0].toString() == code.toString()) {
+      stockSheet.getRange(i + 1, 1, 1, 3).setValues([[code, description, unitCode]]);
+      found = true;
+      break;
+    }
+  }
+  
+  if (!found) {
+    var errorResult = { status: "error", message: "Stock not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var result = { status: "success", message: "Stock updated successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Delete stock
+function handleDeleteStockGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var code = e.parameter.code;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var stockSheet = ss.getSheetByName("StockMaster");
+  var stockData = stockSheet.getDataRange().getValues();
+  
+  // Find and delete stock
+  var found = false;
+  for (var i = 1; i < stockData.length; i++) {
+    if (stockData[i][0] && stockData[i][0].toString() == code.toString()) {
+      stockSheet.deleteRow(i + 1);
+      found = true;
+      break;
+    }
+  }
+  
+  if (!found) {
+    var errorResult = { status: "error", message: "Stock not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var result = { status: "success", message: "Stock deleted successfully" };
   if (callback) {
     return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
       .setMimeType(ContentService.MimeType.JAVASCRIPT);

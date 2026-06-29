@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Stock Master - Stock Management</title>
+<link rel="stylesheet" href="menu.css">
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    margin: 0;
+    padding: 20px;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 20px;
+    margin-bottom: 30px;
+}
+
+h1 {
+    color: #333;
+    margin: 0;
+}
+
+.btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    margin-left: 10px;
+}
+
+.btn:hover {
+    background: #2980b9;
+}
+
+.btn-success {
+    background: #27ae60;
+}
+
+.btn-success:hover {
+    background: #229954;
+}
+
+.btn-danger {
+    background: #e74c3c;
+}
+
+.btn-danger:hover {
+    background: #c0392b;
+}
+
+.btn-warning {
+    background: #f39c12;
+}
+
+.btn-warning:hover {
+    background: #e67e22;
+}
+
+.btn:disabled {
+    background: #95a5a6;
+    cursor: not-allowed;
+}
+
+.layout-with-sidebar {
+    display: flex;
+    gap: 20px;
+}
+
+.sidebar {
+    width: 280px;
+    flex-shrink: 0;
+}
+
+.company-name-sidebar {
+    font-size: 16px;
+    font-weight: bold;
+    color: white;
+    padding: 12px;
+    margin-bottom: 15px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 8px;
+    text-align: center;
+}
+
+.main-content {
+    flex: 1;
+}
+
+.toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.search-box {
+    flex: 1;
+    max-width: 400px;
+}
+
+.search-box input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+.table-container {
+    overflow-x: auto;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+thead {
+    background: #667eea;
+    color: white;
+}
+
+th {
+    padding: 15px;
+    text-align: left;
+    font-weight: bold;
+}
+
+td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #eee;
+}
+
+tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 5px;
+}
+
+.btn-small {
+    padding: 5px 10px;
+    font-size: 12px;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-content {
+    background: white;
+    margin: 5% auto;
+    padding: 30px;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    animation: slideDown 0.3s;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #667eea;
+}
+
+.modal-header h2 {
+    margin: 0;
+    color: #333;
+}
+
+.close {
+    font-size: 28px;
+    font-weight: bold;
+    color: #999;
+    cursor: pointer;
+    line-height: 20px;
+}
+
+.close:hover {
+    color: #333;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #555;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.form-group input:disabled,
+.form-group select:disabled {
+    background: #f5f5f5;
+    cursor: not-allowed;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 25px;
+}
+
+.message {
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    font-weight: bold;
+}
+
+.message.success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.message.error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.message.warning {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+}
+
+.loading::after {
+    content: '...';
+    animation: dots 1.5s steps(4, end) infinite;
+}
+
+@keyframes dots {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    60%, 100% { content: '...'; }
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #999;
+}
+
+.empty-state-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+}
+
+.stats-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-around;
+    text-align: center;
+}
+
+.stat-item h3 {
+    margin: 0;
+    font-size: 32px;
+}
+
+.stat-item p {
+    margin: 5px 0 0 0;
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+@media (max-width: 992px) {
+    .layout-with-sidebar {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+    }
+    
+    .toolbar {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .search-box {
+        max-width: 100%;
+    }
+    
+    .stats-card {
+        flex-direction: column;
+        gap: 15px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>📦 Stock Master - Stock Management</h1>
+        <div>
+            <button class="btn" onclick="window.location.href='home.html'">🏠 Home</button>
+            <button class="btn btn-danger" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div id="breadcrumbContainer" class="breadcrumb-container"></div>
+
+    <div class="layout-with-sidebar">
+        <div class="sidebar">
+            <div id="companyNameSidebar" class="company-name-sidebar"></div>
+            <h3>Navigation Menu</h3>
+            <div id="menuContainer"></div>
+        </div>
+
+        <div class="main-content">
+            <div id="messageContainer"></div>
+
+            <div class="stats-card" id="statsCard" style="display: none;">
+                <div class="stat-item">
+                    <h3 id="totalStocks">0</h3>
+                    <p>Total Stock Items</p>
+                </div>
+            </div>
+
+            <div class="toolbar">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="🔍 Search by Code or Description..." onkeyup="filterStocks()">
+                </div>
+                <button class="btn btn-success" onclick="openAddStockModal()">➕ Add New Stock</button>
+            </div>
+
+            <div class="table-container">
+                <div id="loadingIndicator" class="loading">Loading stocks</div>
+                <div id="emptyState" class="empty-state" style="display: none;">
+                    <div class="empty-state-icon">📦</div>
+                    <h3>No Stock Items Found</h3>
+                    <p>Start by adding your first stock item.</p>
+                </div>
+                <table id="stocksTable" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Description</th>
+                            <th>Unit Code</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stocksTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Stock Modal -->
+<div id="stockModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Add New Stock</h2>
+            <span class="close" onclick="closeStockModal()">&times;</span>
+        </div>
+        <form id="stockForm" onsubmit="saveStock(event)">
+            <div class="form-group">
+                <label for="stockCode">Code *</label>
+                <input type="text" id="stockCode" required maxlength="50" placeholder="e.g., ITEM001" style="text-transform: uppercase;">
+                <small style="color: #666;">Enter a unique stock code</small>
+            </div>
+            <div class="form-group">
+                <label for="stockDescription">Description *</label>
+                <input type="text" id="stockDescription" required maxlength="200" placeholder="e.g., Product Name">
+            </div>
+            <div class="form-group">
+                <label for="stockUnitCode">Unit Code *</label>
+                <select id="stockUnitCode" required>
+                    <option value="">-- Select Unit --</option>
+                </select>
+                <small style="color: #666;">Select the unit of measurement</small>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn" onclick="closeStockModal()">Cancel</button>
+                <button type="submit" class="btn btn-success" id="saveButton">Save Stock</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="api.js"></script>
+<script src="session.js"></script>
+<script src="menu.js"></script>
+<script src="systemConfig.js"></script>
+<script>
+// Global variables
+let allStocks = [];
+let allUnits = [];
+let editingStockCode = null;
+
+// Initialize system config
+initSystemConfig('stockmaster.htm', 'companyNameSidebar');
+
+// Protect this page with menu-based access control
+protectPageWithMenuAccess(function(isValid) {
+    if (isValid) {
+        // User has permission via RoleMenuAccess
+        // Render menu and breadcrumb
+        renderMenu('menuContainer');
+        renderBreadcrumb('breadcrumbContainer');
+        
+        // Load initial data
+        loadUnits();
+        loadStocks();
+    }
+});
+
+// Load all units for dropdown
+function loadUnits() {
+    apiGetUnits(function(response) {
+        if (response.status === 'success') {
+            allUnits = response.units;
+            populateUnitDropdown();
+        } else {
+            showMessage('Error loading units: ' + response.message, 'error');
+        }
+    });
+}
+
+// Populate unit dropdown
+function populateUnitDropdown() {
+    const select = document.getElementById('stockUnitCode');
+    
+    // Clear existing options except the first one
+    select.innerHTML = '<option value="">-- Select Unit --</option>';
+    
+    // Add unit options
+    allUnits.forEach(unit => {
+        const option = document.createElement('option');
+        option.value = unit.unitCode;
+        option.textContent = `${unit.unitCode} - ${unit.unitDescription}`;
+        select.appendChild(option);
+    });
+}
+
+// Load all stocks
+function loadStocks() {
+    document.getElementById('loadingIndicator').style.display = 'block';
+    document.getElementById('stocksTable').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('statsCard').style.display = 'none';
+    
+    apiGetStocks(function(response) {
+        document.getElementById('loadingIndicator').style.display = 'none';
+        
+        if (response.status === 'success') {
+            allStocks = response.stocks;
+            displayStocks(allStocks);
+            updateStats();
+        } else {
+            showMessage('Error loading stocks: ' + response.message, 'error');
+            document.getElementById('emptyState').style.display = 'block';
+        }
+    });
+}
+
+// Update statistics
+function updateStats() {
+    document.getElementById('totalStocks').textContent = allStocks.length;
+    document.getElementById('statsCard').style.display = 'flex';
+}
+
+// Display stocks in table
+function displayStocks(stocks) {
+    const tbody = document.getElementById('stocksTableBody');
+    tbody.innerHTML = '';
+    
+    if (stocks.length === 0) {
+        document.getElementById('stocksTable').style.display = 'none';
+        document.getElementById('emptyState').style.display = 'block';
+        return;
+    }
+    
+    document.getElementById('stocksTable').style.display = 'table';
+    document.getElementById('emptyState').style.display = 'none';
+    
+    stocks.forEach(stock => {
+        const row = document.createElement('tr');
+        
+        row.innerHTML = `
+            <td><strong>${escapeHtml(stock.code)}</strong></td>
+            <td>${escapeHtml(stock.description)}</td>
+            <td>${escapeHtml(stock.unitCode)}</td>
+            <td>
+                <div class="action-buttons">
+                    <button class="btn btn-warning btn-small" onclick="openEditStockModal('${escapeHtml(stock.code)}')">✏️ Edit</button>
+                    <button class="btn btn-danger btn-small" onclick="deleteStock('${escapeHtml(stock.code)}')">🗑️ Delete</button>
+                </div>
+            </td>
+        `;
+        
+        tbody.appendChild(row);
+    });
+}
+
+// Filter stocks based on search
+function filterStocks() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    
+    const filtered = allStocks.filter(stock => {
+        return stock.code.toLowerCase().includes(searchTerm) ||
+               stock.description.toLowerCase().includes(searchTerm) ||
+               stock.unitCode.toLowerCase().includes(searchTerm);
+    });
+    
+    displayStocks(filtered);
+}
+
+// Open add stock modal
+function openAddStockModal() {
+    editingStockCode = null;
+    document.getElementById('modalTitle').textContent = 'Add New Stock';
+    document.getElementById('stockForm').reset();
+    document.getElementById('stockCode').disabled = false;
+    document.getElementById('saveButton').textContent = 'Save Stock';
+    document.getElementById('stockModal').style.display = 'block';
+}
+
+// Open edit stock modal
+function openEditStockModal(stockCode) {
+    const stock = allStocks.find(s => s.code.toString() == stockCode.toString());
+    if (!stock) return;
+    
+    editingStockCode = stockCode;
+    document.getElementById('modalTitle').textContent = 'Edit Stock';
+    document.getElementById('stockCode').value = stock.code;
+    document.getElementById('stockCode').disabled = true;
+    document.getElementById('stockDescription').value = stock.description;
+    document.getElementById('stockUnitCode').value = stock.unitCode;
+    document.getElementById('saveButton').textContent = 'Update Stock';
+    document.getElementById('stockModal').style.display = 'block';
+}
+
+// Close stock modal
+function closeStockModal() {
+    document.getElementById('stockModal').style.display = 'none';
+    document.getElementById('stockForm').reset();
+    editingStockCode = null;
+}
+
+// Save stock (add or update)
+function saveStock(event) {
+    event.preventDefault();
+    
+    const stockCode = document.getElementById('stockCode').value.trim().toUpperCase();
+    const stockDescription = document.getElementById('stockDescription').value.trim();
+    const stockUnitCode = document.getElementById('stockUnitCode').value;
+    
+    if (!stockCode || !stockDescription || !stockUnitCode) {
+        showMessage('Please fill in all required fields', 'error');
+        return;
+    }
+    
+    // Check for duplicate stock code when adding
+    if (!editingStockCode) {
+        const duplicate = allStocks.find(s => s.code == stockCode);
+        if (duplicate) {
+            showMessage('Stock Code already exists. Please use a different code.', 'error');
+            return;
+        }
+    }
+    
+    const saveButton = document.getElementById('saveButton');
+    saveButton.disabled = true;
+    saveButton.textContent = editingStockCode ? 'Updating...' : 'Saving...';
+    
+    const stockData = {
+        code: stockCode,
+        description: stockDescription,
+        unitCode: stockUnitCode
+    };
+    
+    if (editingStockCode) {
+        // Update existing stock
+        apiUpdateStock(stockData, function(response) {
+            saveButton.disabled = false;
+            saveButton.textContent = 'Update Stock';
+            
+            if (response.status === 'success') {
+                showMessage('Stock updated successfully!', 'success');
+                closeStockModal();
+                loadStocks();
+            } else {
+                showMessage('Error: ' + response.message, 'error');
+            }
+        });
+    } else {
+        // Create new stock
+        apiCreateStock(stockData, function(response) {
+            saveButton.disabled = false;
+            saveButton.textContent = 'Save Stock';
+            
+            if (response.status === 'success') {
+                showMessage('Stock created successfully!', 'success');
+                closeStockModal();
+                loadStocks();
+            } else {
+                showMessage('Error: ' + response.message, 'error');
+            }
+        });
+    }
+}
+
+// Delete stock
+function deleteStock(stockCode) {
+    const stock = allStocks.find(s => s.code == stockCode);
+    if (!stock) return;
+    
+    let confirmMsg = `Are you sure you want to delete stock "${stock.description}" (Code: ${stockCode})?`;
+    confirmMsg += '\n\nThis action cannot be undone.';
+    
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+    
+    apiDeleteStock(stockCode, function(response) {
+        if (response.status === 'success') {
+            showMessage('Stock deleted successfully!', 'success');
+            loadStocks();
+        } else {
+            showMessage('Error: ' + response.message, 'error');
+        }
+    });
+}
+
+// Show message
+function showMessage(message, type) {
+    const container = document.getElementById('messageContainer');
+    container.innerHTML = `<div class="message ${type}">${escapeHtml(message)}</div>`;
+    
+    setTimeout(() => {
+        container.innerHTML = '';
+    }, 5000);
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Logout function
+function logout() {
+    if (confirm('Are you sure you want to logout?')) {
+        performLogout();
+    }
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('stockModal');
+    if (event.target === modal) {
+        closeStockModal();
+    }
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Unit Master - Unit Management</title>
+<link rel="stylesheet" href="menu.css">
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    margin: 0;
+    padding: 20px;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 20px;
+    margin-bottom: 30px;
+}
+
+h1 {
+    color: #333;
+    margin: 0;
+}
+
+.btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    margin-left: 10px;
+}
+
+.btn:hover {
+    background: #2980b9;
+}
+
+.btn-success {
+    background: #27ae60;
+}
+
+.btn-success:hover {
+    background: #229954;
+}
+
+.btn-danger {
+    background: #e74c3c;
+}
+
+.btn-danger:hover {
+    background: #c0392b;
+}
+
+.btn-warning {
+    background: #f39c12;
+}
+
+.btn-warning:hover {
+    background: #e67e22;
+}
+
+.btn:disabled {
+    background: #95a5a6;
+    cursor: not-allowed;
+}
+
+.layout-with-sidebar {
+    display: flex;
+    gap: 20px;
+}
+
+.sidebar {
+    width: 280px;
+    flex-shrink: 0;
+}
+
+.company-name-sidebar {
+    font-size: 16px;
+    font-weight: bold;
+    color: white;
+    padding: 12px;
+    margin-bottom: 15px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 8px;
+    text-align: center;
+}
+
+.main-content {
+    flex: 1;
+}
+
+.toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.search-box {
+    flex: 1;
+    max-width: 400px;
+}
+
+.search-box input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+.table-container {
+    overflow-x: auto;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+thead {
+    background: #667eea;
+    color: white;
+}
+
+th {
+    padding: 15px;
+    text-align: left;
+    font-weight: bold;
+}
+
+td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #eee;
+}
+
+tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 5px;
+}
+
+.btn-small {
+    padding: 5px 10px;
+    font-size: 12px;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-content {
+    background: white;
+    margin: 5% auto;
+    padding: 30px;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    animation: slideDown 0.3s;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #667eea;
+}
+
+.modal-header h2 {
+    margin: 0;
+    color: #333;
+}
+
+.close {
+    font-size: 28px;
+    font-weight: bold;
+    color: #999;
+    cursor: pointer;
+    line-height: 20px;
+}
+
+.close:hover {
+    color: #333;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #555;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.form-group input:disabled {
+    background: #f5f5f5;
+    cursor: not-allowed;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 25px;
+}
+
+.message {
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    font-weight: bold;
+}
+
+.message.success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.message.error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.message.warning {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+}
+
+.loading::after {
+    content: '...';
+    animation: dots 1.5s steps(4, end) infinite;
+}
+
+@keyframes dots {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    60%, 100% { content: '...'; }
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #999;
+}
+
+.empty-state-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+}
+
+.stats-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-around;
+    text-align: center;
+}
+
+.stat-item h3 {
+    margin: 0;
+    font-size: 32px;
+}
+
+.stat-item p {
+    margin: 5px 0 0 0;
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+@media (max-width: 992px) {
+    .layout-with-sidebar {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+    }
+    
+    .toolbar {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .search-box {
+        max-width: 100%;
+    }
+    
+    .stats-card {
+        flex-direction: column;
+        gap: 15px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>📦 Unit Master - Unit Management</h1>
+        <div>
+            <button class="btn" onclick="window.location.href='home.html'">🏠 Home</button>
+            <button class="btn btn-danger" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div id="breadcrumbContainer" class="breadcrumb-container"></div>
+
+    <div class="layout-with-sidebar">
+        <div class="sidebar">
+            <div id="companyNameSidebar" class="company-name-sidebar"></div>
+            <h3>Navigation Menu</h3>
+            <div id="menuContainer"></div>
+        </div>
+
+        <div class="main-content">
+            <div id="messageContainer"></div>
+
+            <div class="stats-card" id="statsCard" style="display: none;">
+                <div class="stat-item">
+                    <h3 id="totalUnits">0</h3>
+                    <p>Total Units</p>
+                </div>
+            </div>
+
+            <div class="toolbar">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="🔍 Search by Unit Code or Description..." onkeyup="filterUnits()">
+                </div>
+                <button class="btn btn-success" onclick="openAddUnitModal()">➕ Add New Unit</button>
+            </div>
+
+            <div class="table-container">
+                <div id="loadingIndicator" class="loading">Loading units</div>
+                <div id="emptyState" class="empty-state" style="display: none;">
+                    <div class="empty-state-icon">📦</div>
+                    <h3>No Units Found</h3>
+                    <p>Start by adding your first unit.</p>
+                </div>
+                <table id="unitsTable" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th>Unit Code</th>
+                            <th>Unit Description</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="unitsTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Unit Modal -->
+<div id="unitModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Add New Unit</h2>
+            <span class="close" onclick="closeUnitModal()">&times;</span>
+        </div>
+        <form id="unitForm" onsubmit="saveUnit(event)">
+            <div class="form-group">
+                <label for="unitCode">Unit Code *</label>
+                <input type="text" id="unitCode" required maxlength="20" placeholder="e.g., MTR, KG, PCS" style="text-transform: uppercase;">
+                <small style="color: #666;">Enter a unique alphanumeric code</small>
+            </div>
+            <div class="form-group">
+                <label for="unitDescription">Unit Description *</label>
+                <input type="text" id="unitDescription" required maxlength="100" placeholder="e.g., Kilogram, Meter, Piece">
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn" onclick="closeUnitModal()">Cancel</button>
+                <button type="submit" class="btn btn-success" id="saveButton">Save Unit</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="api.js"></script>
+<script src="session.js"></script>
+<script src="menu.js"></script>
+<script src="systemConfig.js"></script>
+<script>
+// Global variables
+let allUnits = [];
+let editingUnitCode = null;
+
+// Initialize system config
+initSystemConfig('unitmaster.htm', 'companyNameSidebar');
+
+// Protect this page with menu-based access control
+protectPageWithMenuAccess(function(isValid) {
+    if (isValid) {
+        // User has permission via RoleMenuAccess
+        // Render menu and breadcrumb
+        renderMenu('menuContainer');
+        renderBreadcrumb('breadcrumbContainer');
+        
+        // Load initial data
+        loadUnits();
+    }
+});
+
+// Load all units
+function loadUnits() {
+    document.getElementById('loadingIndicator').style.display = 'block';
+    document.getElementById('unitsTable').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('statsCard').style.display = 'none';
+    
+    apiGetUnits(function(response) {
+        document.getElementById('loadingIndicator').style.display = 'none';
+        
+        if (response.status === 'success') {
+            allUnits = response.units;
+            displayUnits(allUnits);
+            updateStats();
+        } else {
+            showMessage('Error loading units: ' + response.message, 'error');
+            document.getElementById('emptyState').style.display = 'block';
+        }
+    });
+}
+
+// Update statistics
+function updateStats() {
+    document.getElementById('totalUnits').textContent = allUnits.length;
+    document.getElementById('statsCard').style.display = 'flex';
+}
+
+// Display units in table
+function displayUnits(units) {
+    const tbody = document.getElementById('unitsTableBody');
+    tbody.innerHTML = '';
+    
+    if (units.length === 0) {
+        document.getElementById('unitsTable').style.display = 'none';
+        document.getElementById('emptyState').style.display = 'block';
+        return;
+    }
+    
+    document.getElementById('unitsTable').style.display = 'table';
+    document.getElementById('emptyState').style.display = 'none';
+    
+    units.forEach(unit => {
+        const row = document.createElement('tr');
+        
+        row.innerHTML = `
+            <td><strong>${escapeHtml(unit.unitCode)}</strong></td>
+            <td>${escapeHtml(unit.unitDescription)}</td>
+            <td>
+                <div class="action-buttons">
+                    <button class="btn btn-warning btn-small" onclick="openEditUnitModal('${escapeHtml(unit.unitCode)}')">✏️ Edit</button>
+                    <button class="btn btn-danger btn-small" onclick="deleteUnit('${escapeHtml(unit.unitCode)}')">🗑️ Delete</button>
+                </div>
+            </td>
+        `;
+        
+        tbody.appendChild(row);
+    });
+}
+
+// Filter units based on search
+function filterUnits() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    
+    const filtered = allUnits.filter(unit => {
+        return unit.unitCode.toString().includes(searchTerm) ||
+               unit.unitDescription.toLowerCase().includes(searchTerm);
+    });
+    
+    displayUnits(filtered);
+}
+
+// Open add unit modal
+function openAddUnitModal() {
+    editingUnitCode = null;
+    document.getElementById('modalTitle').textContent = 'Add New Unit';
+    document.getElementById('unitForm').reset();
+    document.getElementById('unitCode').disabled = false;
+    document.getElementById('saveButton').textContent = 'Save Unit';
+    document.getElementById('unitModal').style.display = 'block';
+}
+
+// Open edit unit modal
+function openEditUnitModal(unitCode) {
+    const unit = allUnits.find(u => u.unitCode.toString() == unitCode.toString());
+    if (!unit) return;
+    
+    editingUnitCode = unitCode;
+    document.getElementById('modalTitle').textContent = 'Edit Unit';
+    document.getElementById('unitCode').value = unit.unitCode;
+    document.getElementById('unitCode').disabled = true;
+    document.getElementById('unitDescription').value = unit.unitDescription;
+    document.getElementById('saveButton').textContent = 'Update Unit';
+    document.getElementById('unitModal').style.display = 'block';
+}
+
+// Close unit modal
+function closeUnitModal() {
+    document.getElementById('unitModal').style.display = 'none';
+    document.getElementById('unitForm').reset();
+    editingUnitCode = null;
+}
+
+// Save unit (add or update)
+function saveUnit(event) {
+    event.preventDefault();
+    
+    const unitCode = document.getElementById('unitCode').value.trim();
+    const unitDescription = document.getElementById('unitDescription').value.trim();
+    
+    if (!unitCode || !unitDescription) {
+        showMessage('Please enter both unit code and description', 'error');
+        return;
+    }
+    
+    // Check for duplicate unit code when adding
+    if (!editingUnitCode) {
+        const duplicate = allUnits.find(u => u.unitCode == unitCode);
+        if (duplicate) {
+            showMessage('Unit Code already exists. Please use a different code.', 'error');
+            return;
+        }
+    }
+    
+    const saveButton = document.getElementById('saveButton');
+    saveButton.disabled = true;
+    saveButton.textContent = editingUnitCode ? 'Updating...' : 'Saving...';
+    
+    const unitData = {
+        unitCode: unitCode,
+        unitDescription: unitDescription
+    };
+    
+    if (editingUnitCode) {
+        // Update existing unit
+        apiUpdateUnit(unitData, function(response) {
+            saveButton.disabled = false;
+            saveButton.textContent = 'Update Unit';
+            
+            if (response.status === 'success') {
+                showMessage('Unit updated successfully!', 'success');
+                closeUnitModal();
+                loadUnits();
+            } else {
+                showMessage('Error: ' + response.message, 'error');
+            }
+        });
+    } else {
+        // Create new unit
+        apiCreateUnit(unitData, function(response) {
+            saveButton.disabled = false;
+            saveButton.textContent = 'Save Unit';
+            
+            if (response.status === 'success') {
+                showMessage('Unit created successfully!', 'success');
+                closeUnitModal();
+                loadUnits();
+            } else {
+                showMessage('Error: ' + response.message, 'error');
+            }
+        });
+    }
+}
+
+// Delete unit
+function deleteUnit(unitCode) {
+    const unit = allUnits.find(u => u.unitCode == unitCode);
+    if (!unit) return;
+    
+    let confirmMsg = `Are you sure you want to delete unit "${unit.unitDescription}" (Code: ${unitCode})?`;
+    confirmMsg += '\n\nThis action cannot be undone.';
+    
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+    
+    apiDeleteUnit(unitCode, function(response) {
+        if (response.status === 'success') {
+            showMessage('Unit deleted successfully!', 'success');
+            loadUnits();
+        } else {
+            showMessage('Error: ' + response.message, 'error');
+        }
+    });
+}
+
+// Show message
+function showMessage(message, type) {
+    const container = document.getElementById('messageContainer');
+    container.innerHTML = `<div class="message ${type}">${escapeHtml(message)}</div>`;
+    
+    setTimeout(() => {
+        container.innerHTML = '';
+    }, 5000);
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Logout function
+function logout() {
+    if (confirm('Are you sure you want to logout?')) {
+        performLogout();
+    }
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('unitModal');
+    if (event.target === modal) {
+        closeUnitModal();
+    }
+}
+</script>
+
+</body>
+</html>

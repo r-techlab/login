@@ -3,20 +3,26 @@
 
 
 
-	1 . Pages to be checked against Role permission	-	Done
-	2 . When loading menu is filling delay. So need to set the master page accordingly. - Done
-	3 . Menu access master side menu is not available - 
-	4 . If multiple google login then it will not work
-	5 . System parameter - 
-		Company Name,
-		Colour Code
-	6 . Stock Master, Unit Master, Assign Unit To Stock
-	7 . Customer Master
-	8 . Supplier Master
-	9 . Opening Stock
-	10. Purchase
-	11. Sales
-	12. Reports
+	1 . Pages to be checked against Role permission						-	Done
+	2 . When loading menu is filling delay. So need to set the master page accordingly. 	-	Done
+	3 . Menu access master side menu is not available 					-	Not Done 
+	4 . If multiple google login then it will not work					-	Not Done 
+	5 . System parameter 									- 	Done
+		Company Name	-	Done,
+		Colour Code	-	Not Done,
+		Title		-	Done
+	6 . 	Stock Master	-	Not Done,
+			Validate in transaction - Not Done
+			StockCode manual/auto according to system parameter - Not Done
+		Unit Master	- 	Done
+			Validate connection to Stock master 	- Not Done, 
+			Assign Unit To Stock			- Not Done
+	7 . Customer Master	- Not Done
+	8 . Supplier Master	- Not Done
+	9 . Opening Stock	- Not Done
+	10. Purchase		- Not Done
+	11. Sales		- Not Done
+	12. Reports		- Not Done
 	13.
 	14. 
 
