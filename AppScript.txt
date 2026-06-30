@@ -103,6 +103,14 @@ function doGet(e) {
     return handleUpdateStockGet(e);
   } else if (action === "deleteStock") {
     return handleDeleteStockGet(e);
+  } else if (action === "getCustomers") {
+    return handleGetCustomersGet(e);
+  } else if (action === "createCustomer") {
+    return handleCreateCustomerGet(e);
+  } else if (action === "updateCustomer") {
+    return handleUpdateCustomerGet(e);
+  } else if (action === "deleteCustomer") {
+    return handleDeleteCustomerGet(e);
   } else {
     var errorResult = { status: "error", message: "Invalid action" };
     var callback = e.parameter.callback;
@@ -2361,6 +2369,300 @@ function handleDeleteStockGet(e) {
   }
   
   var result = { status: "success", message: "Stock deleted successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// ============================================
+// CUSTOMER MASTER MANAGEMENT HANDLERS
+// ============================================
+
+// Get all customers
+function handleGetCustomersGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get all customers from CustomerMaster sheet
+  var customerSheet = ss.getSheetByName("CustomerMaster");
+  var customerData = customerSheet.getDataRange().getValues();
+  var customers = [];
+  
+  for (var i = 1; i < customerData.length; i++) {
+    if (customerData[i][0]) { // Check if Code exists
+      customers.push({
+        code: customerData[i][0],
+        description: customerData[i][1] || '',
+        trn: customerData[i][2] || '',
+        tel1: customerData[i][3] || '',
+        tel2: customerData[i][4] || '',
+        mobile: customerData[i][5] || '',
+        email1: customerData[i][6] || '',
+        email2: customerData[i][7] || '',
+        homePage: customerData[i][8] || '',
+        addressStreet: customerData[i][9] || '',
+        addressCity: customerData[i][10] || '',
+        addressEmirate: customerData[i][11] || '',
+        addressPO: customerData[i][12] || '',
+        addressCountry: customerData[i][13] || ''
+      });
+    }
+  }
+  
+  var result = { status: "success", customers: customers };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Create new customer
+function handleCreateCustomerGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var code = e.parameter.code;
+  var description = e.parameter.description;
+  var trn = e.parameter.trn || '';
+  var tel1 = e.parameter.tel1 || '';
+  var tel2 = e.parameter.tel2 || '';
+  var mobile = e.parameter.mobile || '';
+  var email1 = e.parameter.email1 || '';
+  var email2 = e.parameter.email2 || '';
+  var homePage = e.parameter.homePage || '';
+  var addressStreet = e.parameter.addressStreet || '';
+  var addressCity = e.parameter.addressCity || '';
+  var addressEmirate = e.parameter.addressEmirate || '';
+  var addressPO = e.parameter.addressPO || '';
+  var addressCountry = e.parameter.addressCountry || '';
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!code || !description) {
+    var errorResult = { status: "error", message: "Code and Description are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate code format (CUST + numbers)
+  var codePattern = /^CUST\d+$/i;
+  if (!codePattern.test(code)) {
+    var errorResult = { status: "error", message: "Customer code must follow format: CUST + numbers (e.g., CUST001)" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var customerSheet = ss.getSheetByName("CustomerMaster");
+  var customerData = customerSheet.getDataRange().getValues();
+  
+  // Check if customer code already exists
+  for (var i = 1; i < customerData.length; i++) {
+    if (customerData[i][0] && customerData[i][0].toString().toUpperCase() == code.toString().toUpperCase()) {
+      var errorResult = { status: "error", message: "Customer code already exists" };
+      if (callback) {
+        return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+          .setMimeType(ContentService.MimeType.JAVASCRIPT);
+      }
+      return createJsonResponse(errorResult);
+    }
+  }
+  
+  // Add new customer
+  customerSheet.appendRow([
+    code.toUpperCase(),
+    description,
+    trn,
+    tel1,
+    tel2,
+    mobile,
+    email1,
+    email2,
+    homePage,
+    addressStreet,
+    addressCity,
+    addressEmirate,
+    addressPO,
+    addressCountry
+  ]);
+  
+  var result = { status: "success", message: "Customer created successfully", code: code.toUpperCase() };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Update existing customer
+function handleUpdateCustomerGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var code = e.parameter.code;
+  var description = e.parameter.description;
+  var trn = e.parameter.trn || '';
+  var tel1 = e.parameter.tel1 || '';
+  var tel2 = e.parameter.tel2 || '';
+  var mobile = e.parameter.mobile || '';
+  var email1 = e.parameter.email1 || '';
+  var email2 = e.parameter.email2 || '';
+  var homePage = e.parameter.homePage || '';
+  var addressStreet = e.parameter.addressStreet || '';
+  var addressCity = e.parameter.addressCity || '';
+  var addressEmirate = e.parameter.addressEmirate || '';
+  var addressPO = e.parameter.addressPO || '';
+  var addressCountry = e.parameter.addressCountry || '';
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!code || !description) {
+    var errorResult = { status: "error", message: "Code and Description are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var customerSheet = ss.getSheetByName("CustomerMaster");
+  var customerData = customerSheet.getDataRange().getValues();
+  
+  // Find and update customer
+  var found = false;
+  for (var i = 1; i < customerData.length; i++) {
+    if (customerData[i][0] && customerData[i][0].toString().toUpperCase() == code.toString().toUpperCase()) {
+      customerSheet.getRange(i + 1, 1, 1, 14).setValues([[
+        code.toUpperCase(),
+        description,
+        trn,
+        tel1,
+        tel2,
+        mobile,
+        email1,
+        email2,
+        homePage,
+        addressStreet,
+        addressCity,
+        addressEmirate,
+        addressPO,
+        addressCountry
+      ]]);
+      found = true;
+      break;
+    }
+  }
+  
+  if (!found) {
+    var errorResult = { status: "error", message: "Customer not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var result = { status: "success", message: "Customer updated successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Delete customer
+function handleDeleteCustomerGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var code = e.parameter.code;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var customerSheet = ss.getSheetByName("CustomerMaster");
+  var customerData = customerSheet.getDataRange().getValues();
+  
+  // Find and delete customer
+  var found = false;
+  for (var i = 1; i < customerData.length; i++) {
+    if (customerData[i][0] && customerData[i][0].toString().toUpperCase() == code.toString().toUpperCase()) {
+      customerSheet.deleteRow(i + 1);
+      found = true;
+      break;
+    }
+  }
+  
+  if (!found) {
+    var errorResult = { status: "error", message: "Customer not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var result = { status: "success", message: "Customer deleted successfully" };
   if (callback) {
     return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
       .setMimeType(ContentService.MimeType.JAVASCRIPT);

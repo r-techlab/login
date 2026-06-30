@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Customer Master - Customer Management</title>
+<link rel="stylesheet" href="menu.css">
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    margin: 0;
+    padding: 20px;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 20px;
+    margin-bottom: 30px;
+}
+
+h1 {
+    color: #333;
+    margin: 0;
+}
+
+.btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    margin-left: 10px;
+}
+
+.btn:hover {
+    background: #2980b9;
+}
+
+.btn-success {
+    background: #27ae60;
+}
+
+.btn-success:hover {
+    background: #229954;
+}
+
+.btn-danger {
+    background: #e74c3c;
+}
+
+.btn-danger:hover {
+    background: #c0392b;
+}
+
+.btn-warning {
+    background: #f39c12;
+}
+
+.btn-warning:hover {
+    background: #e67e22;
+}
+
+.btn:disabled {
+    background: #95a5a6;
+    cursor: not-allowed;
+}
+
+.layout-with-sidebar {
+    display: flex;
+    gap: 20px;
+}
+
+.sidebar {
+    width: 280px;
+    flex-shrink: 0;
+}
+
+.company-name-sidebar {
+    font-size: 16px;
+    font-weight: bold;
+    color: white;
+    padding: 12px;
+    margin-bottom: 15px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 8px;
+    text-align: center;
+}
+
+.main-content {
+    flex: 1;
+}
+
+.toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.search-box {
+    flex: 1;
+    max-width: 400px;
+}
+
+.search-box input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+.table-container {
+    overflow-x: auto;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+thead {
+    background: #667eea;
+    color: white;
+}
+
+th {
+    padding: 15px;
+    text-align: left;
+    font-weight: bold;
+}
+
+td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #eee;
+}
+
+tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 5px;
+}
+
+.btn-small {
+    padding: 5px 10px;
+    font-size: 12px;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    animation: fadeIn 0.3s;
+    overflow-y: auto;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-content {
+    background: white;
+    margin: 3% auto;
+    padding: 30px;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 700px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    animation: slideDown 0.3s;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #667eea;
+}
+
+.modal-header h2 {
+    margin: 0;
+    color: #333;
+}
+
+.close {
+    font-size: 28px;
+    font-weight: bold;
+    color: #999;
+    cursor: pointer;
+    line-height: 20px;
+}
+
+.close:hover {
+    color: #333;
+}
+
+.form-section {
+    margin-bottom: 25px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.form-section h3 {
+    margin: 0 0 15px 0;
+    color: #667eea;
+    font-size: 16px;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 8px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.form-row.single {
+    grid-template-columns: 1fr;
+}
+
+.form-group {
+    margin-bottom: 0;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #555;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.form-group input:disabled {
+    background: #f5f5f5;
+    cursor: not-allowed;
+}
+
+.form-group small {
+    display: block;
+    margin-top: 3px;
+    color: #666;
+    font-size: 12px;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 25px;
+}
+
+.message {
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    font-weight: bold;
+}
+
+.message.success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.message.error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.message.warning {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+}
+
+.loading::after {
+    content: '...';
+    animation: dots 1.5s steps(4, end) infinite;
+}
+
+@keyframes dots {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    60%, 100% { content: '...'; }
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #999;
+}
+
+.empty-state-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+}
+
+.stats-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-around;
+    text-align: center;
+}
+
+.stat-item h3 {
+    margin: 0;
+    font-size: 32px;
+}
+
+.stat-item p {
+    margin: 5px 0 0 0;
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+@media (max-width: 992px) {
+    .layout-with-sidebar {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+    }
+    
+    .toolbar {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .search-box {
+        max-width: 100%;
+    }
+    
+    .stats-card {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>👥 Customer Master - Customer Management</h1>
+        <div>
+            <button class="btn" onclick="window.location.href='home.html'">🏠 Home</button>
+            <button class="btn btn-danger" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div id="breadcrumbContainer" class="breadcrumb-container"></div>
+
+    <div class="layout-with-sidebar">
+        <div class="sidebar">
+            <div id="companyNameSidebar" class="company-name-sidebar"></div>
+            <h3>Navigation Menu</h3>
+            <div id="menuContainer"></div>
+        </div>
+
+        <div class="main-content">
+            <div id="messageContainer"></div>
+
+            <div class="stats-card" id="statsCard" style="display: none;">
+                <div class="stat-item">
+                    <h3 id="totalCustomers">0</h3>
+                    <p>Total Customers</p>
+                </div>
+            </div>
+
+            <div class="toolbar">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="🔍 Search by Code, Description, TRN, or Contact..." onkeyup="filterCustomers()">
+                </div>
+                <button class="btn btn-success" onclick="openAddCustomerModal()">➕ Add New Customer</button>
+            </div>
+
+            <div class="table-container">
+                <div id="loadingIndicator" class="loading">Loading customers</div>
+                <div id="emptyState" class="empty-state" style="display: none;">
+                    <div class="empty-state-icon">👥</div>
+                    <h3>No Customers Found</h3>
+                    <p>Start by adding your first customer.</p>
+                </div>
+                <table id="customersTable" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Description</th>
+                            <th>TRN</th>
+                            <th>Tel1</th>
+                            <th>Mobile</th>
+                            <th>Email1</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="customersTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Customer Modal -->
+<div id="customerModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Add New Customer</h2>
+            <span class="close" onclick="closeCustomerModal()">&times;</span>
+        </div>
+        <form id="customerForm" onsubmit="saveCustomer(event)">
+            <!-- Basic Information Section -->
+            <div class="form-section">
+                <h3>📋 Basic Information</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="customerCode">Code *</label>
+                        <input type="text" id="customerCode" required maxlength="50" placeholder="e.g., CUST001" style="text-transform: uppercase;">
+                        <small>Format: CUST + numbers (e.g., CUST001)</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="customerDescription">Description *</label>
+                        <input type="text" id="customerDescription" required maxlength="200" placeholder="Customer Name">
+                    </div>
+                </div>
+                <div class="form-row single">
+                    <div class="form-group">
+                        <label for="customerTRN">TRN (Tax Registration Number)</label>
+                        <input type="text" id="customerTRN" maxlength="50" placeholder="Tax Registration Number">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contact Information Section -->
+            <div class="form-section">
+                <h3>📞 Contact Information</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="customerTel1">Telephone 1</label>
+                        <input type="tel" id="customerTel1" maxlength="20" placeholder="Primary Phone">
+                    </div>
+                    <div class="form-group">
+                        <label for="customerTel2">Telephone 2</label>
+                        <input type="tel" id="customerTel2" maxlength="20" placeholder="Secondary Phone">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="customerMobile">Mobile</label>
+                        <input type="tel" id="customerMobile" maxlength="20" placeholder="Mobile Number">
+                    </div>
+                    <div class="form-group">
+                        <label for="customerEmail1">Email 1</label>
+                        <input type="email" id="customerEmail1" maxlength="100" placeholder="primary@email.com">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="customerEmail2">Email 2</label>
+                        <input type="email" id="customerEmail2" maxlength="100" placeholder="secondary@email.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="customerHomePage">Website</label>
+                        <input type="url" id="customerHomePage" maxlength="200" placeholder="https://www.example.com">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Address Information Section -->
+            <div class="form-section">
+                <h3>📍 Address Information</h3>
+                <div class="form-row single">
+                    <div class="form-group">
+                        <label for="customerAddressStreet">Street Address</label>
+                        <input type="text" id="customerAddressStreet" maxlength="200" placeholder="Street Address">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="customerAddressCity">City</label>
+                        <input type="text" id="customerAddressCity" maxlength="100" placeholder="City">
+                    </div>
+                    <div class="form-group">
+                        <label for="customerAddressEmirate">Emirate</label>
+                        <select id="customerAddressEmirate">
+                            <option value="">-- Select Emirate --</option>
+                            <option value="Abu Dhabi">Abu Dhabi</option>
+                            <option value="Dubai">Dubai</option>
+                            <option value="Sharjah">Sharjah</option>
+                            <option value="Ajman">Ajman</option>
+                            <option value="Umm Al Quwain">Umm Al Quwain</option>
+                            <option value="Ras Al Khaimah">Ras Al Khaimah</option>
+                            <option value="Fujairah">Fujairah</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="customerAddressPO">PO Box</label>
+                        <input type="text" id="customerAddressPO" maxlength="20" placeholder="PO Box">
+                    </div>
+                    <div class="form-group">
+                        <label for="customerAddressCountry">Country</label>
+                        <input type="text" id="customerAddressCountry" maxlength="100" placeholder="Country">
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn" onclick="closeCustomerModal()">Cancel</button>
+                <button type="submit" class="btn btn-success" id="saveButton">Save Customer</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="api.js"></script>
+<script src="session.js"></script>
+<script src="menu.js"></script>
+<script src="systemConfig.js"></script>
+<script>
+// Global variables
+let allCustomers = [];
+let editingCustomerCode = null;
+
+// Initialize system config
+initSystemConfig('customermaster.htm', 'companyNameSidebar');
+
+// Protect this page with menu-based access control
+protectPageWithMenuAccess(function(isValid) {
+    if (isValid) {
+        // User has permission via RoleMenuAccess
+        // Render menu and breadcrumb
+        renderMenu('menuContainer');
+        renderBreadcrumb('breadcrumbContainer');
+        
+        // Load initial data
+        loadCustomers();
+    }
+});
+
+// Load all customers
+function loadCustomers() {
+    document.getElementById('loadingIndicator').style.display = 'block';
+    document.getElementById('customersTable').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('statsCard').style.display = 'none';
+    
+    apiGetCustomers(function(response) {
+        document.getElementById('loadingIndicator').style.display = 'none';
+        
+        if (response.status === 'success') {
+            allCustomers = response.customers;
+            displayCustomers(allCustomers);
+            updateStats();
+        } else {
+            showMessage('Error loading customers: ' + response.message, 'error');
+            document.getElementById('emptyState').style.display = 'block';
+        }
+    });
+}
+
+// Update statistics
+function updateStats() {
+    document.getElementById('totalCustomers').textContent = allCustomers.length;
+    document.getElementById('statsCard').style.display = 'flex';
+}
+
+// Display customers in table
+function displayCustomers(customers) {
+    const tbody = document.getElementById('customersTableBody');
+    tbody.innerHTML = '';
+    
+    if (customers.length === 0) {
+        document.getElementById('customersTable').style.display = 'none';
+        document.getElementById('emptyState').style.display = 'block';
+        return;
+    }
+    
+    document.getElementById('customersTable').style.display = 'table';
+    document.getElementById('emptyState').style.display = 'none';
+    
+    customers.forEach(customer => {
+        const row = document.createElement('tr');
+        
+        row.innerHTML = `
+            <td><strong>${escapeHtml(customer.code)}</strong></td>
+            <td>${escapeHtml(customer.description)}</td>
+            <td>${escapeHtml(customer.trn || '-')}</td>
+            <td>${escapeHtml(customer.tel1 || '-')}</td>
+            <td>${escapeHtml(customer.mobile || '-')}</td>
+            <td>${escapeHtml(customer.email1 || '-')}</td>
+            <td>
+                <div class="action-buttons">
+                    <button class="btn btn-warning btn-small" onclick="openEditCustomerModal('${escapeHtml(customer.code)}')">✏️ Edit</button>
+                    <button class="btn btn-danger btn-small" onclick="deleteCustomer('${escapeHtml(customer.code)}')">🗑️ Delete</button>
+                </div>
+            </td>
+        `;
+        
+        tbody.appendChild(row);
+    });
+}
+
+// Filter customers based on search
+function filterCustomers() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    
+    const filtered = allCustomers.filter(customer => {
+        return customer.code.toLowerCase().includes(searchTerm) ||
+               customer.description.toLowerCase().includes(searchTerm) ||
+               (customer.trn && customer.trn.toLowerCase().includes(searchTerm)) ||
+               (customer.tel1 && customer.tel1.toLowerCase().includes(searchTerm)) ||
+               (customer.mobile && customer.mobile.toLowerCase().includes(searchTerm)) ||
+               (customer.email1 && customer.email1.toLowerCase().includes(searchTerm));
+    });
+    
+    displayCustomers(filtered);
+}
+
+// Open add customer modal
+function openAddCustomerModal() {
+    editingCustomerCode = null;
+    document.getElementById('modalTitle').textContent = 'Add New Customer';
+    document.getElementById('customerForm').reset();
+    document.getElementById('customerCode').disabled = false;
+    document.getElementById('saveButton').textContent = 'Save Customer';
+    document.getElementById('customerModal').style.display = 'block';
+}
+
+// Open edit customer modal
+function openEditCustomerModal(customerCode) {
+    const customer = allCustomers.find(c => c.code.toString() == customerCode.toString());
+    if (!customer) return;
+    
+    editingCustomerCode = customerCode;
+    document.getElementById('modalTitle').textContent = 'Edit Customer';
+    document.getElementById('customerCode').value = customer.code;
+    document.getElementById('customerCode').disabled = true;
+    document.getElementById('customerDescription').value = customer.description;
+    document.getElementById('customerTRN').value = customer.trn || '';
+    document.getElementById('customerTel1').value = customer.tel1 || '';
+    document.getElementById('customerTel2').value = customer.tel2 || '';
+    document.getElementById('customerMobile').value = customer.mobile || '';
+    document.getElementById('customerEmail1').value = customer.email1 || '';
+    document.getElementById('customerEmail2').value = customer.email2 || '';
+    document.getElementById('customerHomePage').value = customer.homePage || '';
+    document.getElementById('customerAddressStreet').value = customer.addressStreet || '';
+    document.getElementById('customerAddressCity').value = customer.addressCity || '';
+    document.getElementById('customerAddressEmirate').value = customer.addressEmirate || '';
+    document.getElementById('customerAddressPO').value = customer.addressPO || '';
+    document.getElementById('customerAddressCountry').value = customer.addressCountry || '';
+    document.getElementById('saveButton').textContent = 'Update Customer';
+    document.getElementById('customerModal').style.display = 'block';
+}
+
+// Close customer modal
+function closeCustomerModal() {
+    document.getElementById('customerModal').style.display = 'none';
+    document.getElementById('customerForm').reset();
+    editingCustomerCode = null;
+}
+
+// Validate customer code format
+function validateCustomerCode(code) {
+    const pattern = /^CUST\d+$/i;
+    return pattern.test(code);
+}
+
+// Validate email format
+function validateEmail(email) {
+    if (!email) return true; // Optional field
+    const pattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return pattern.test(email);
+}
+
+// Validate URL format
+function validateURL(url) {
+    if (!url) return true; // Optional field
+    try {
+        new URL(url);
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
+// Save customer (add or update)
+function saveCustomer(event) {
+    event.preventDefault();
+    
+    const customerCode = document.getElementById('customerCode').value.trim().toUpperCase();
+    const customerDescription = document.getElementById('customerDescription').value.trim();
+    const customerTRN = document.getElementById('customerTRN').value.trim();
+    const customerTel1 = document.getElementById('customerTel1').value.trim();
+    const customerTel2 = document.getElementById('customerTel2').value.trim();
+    const customerMobile = document.getElementById('customerMobile').value.trim();
+    const customerEmail1 = document.getElementById('customerEmail1').value.trim();
+    const customerEmail2 = document.getElementById('customerEmail2').value.trim();
+    const customerHomePage = document.getElementById('customerHomePage').value.trim();
+    const customerAddressStreet = document.getElementById('customerAddressStreet').value.trim();
+    const customerAddressCity = document.getElementById('customerAddressCity').value.trim();
+    const customerAddressEmirate = document.getElementById('customerAddressEmirate').value;
+    const customerAddressPO = document.getElementById('customerAddressPO').value.trim();
+    const customerAddressCountry = document.getElementById('customerAddressCountry').value.trim();
+    
+    // Validation
+    if (!customerCode || !customerDescription) {
+        showMessage('Please fill in all required fields (Code and Description)', 'error');
+        return;
+    }
+    
+    if (!validateCustomerCode(customerCode)) {
+        showMessage('Customer Code must follow the format: CUST + numbers (e.g., CUST001)', 'error');
+        return;
+    }
+    
+    if (!validateEmail(customerEmail1)) {
+        showMessage('Please enter a valid Email 1 address', 'error');
+        return;
+    }
+    
+    if (!validateEmail(customerEmail2)) {
+        showMessage('Please enter a valid Email 2 address', 'error');
+        return;
+    }
+    
+    if (!validateURL(customerHomePage)) {
+        showMessage('Please enter a valid Website URL (e.g., https://www.example.com)', 'error');
+        return;
+    }
+    
+    // Check for duplicate customer code when adding
+    if (!editingCustomerCode) {
+        const duplicate = allCustomers.find(c => c.code == customerCode);
+        if (duplicate) {
+            showMessage('Customer Code already exists. Please use a different code.', 'error');
+            return;
+        }
+    }
+    
+    const saveButton = document.getElementById('saveButton');
+    saveButton.disabled = true;
+    saveButton.textContent = editingCustomerCode ? 'Updating...' : 'Saving...';
+    
+    const customerData = {
+        code: customerCode,
+        description: customerDescription,
+        trn: customerTRN,
+        tel1: customerTel1,
+        tel2: customerTel2,
+        mobile: customerMobile,
+        email1: customerEmail1,
+        email2: customerEmail2,
+        homePage: customerHomePage,
+        addressStreet: customerAddressStreet,
+        addressCity: customerAddressCity,
+        addressEmirate: customerAddressEmirate,
+        addressPO: customerAddressPO,
+        addressCountry: customerAddressCountry
+    };
+    
+    if (editingCustomerCode) {
+        // Update existing customer
+        apiUpdateCustomer(customerData, function(response) {
+            saveButton.disabled = false;
+            saveButton.textContent = 'Update Customer';
+            
+            if (response.status === 'success') {
+                showMessage('Customer updated successfully!', 'success');
+                closeCustomerModal();
+                loadCustomers();
+            } else {
+                showMessage('Error: ' + response.message, 'error');
+            }
+        });
+    } else {
+        // Create new customer
+        apiCreateCustomer(customerData, function(response) {
+            saveButton.disabled = false;
+            saveButton.textContent = 'Save Customer';
+            
+            if (response.status === 'success') {
+                showMessage('Customer created successfully!', 'success');
+                closeCustomerModal();
+                loadCustomers();
+            } else {
+                showMessage('Error: ' + response.message, 'error');
+            }
+        });
+    }
+}
+
+// Delete customer
+function deleteCustomer(customerCode) {
+    const customer = allCustomers.find(c => c.code == customerCode);
+    if (!customer) return;
+    
+    let confirmMsg = `Are you sure you want to delete customer "${customer.description}" (Code: ${customerCode})?`;
+    confirmMsg += '\n\nThis action cannot be undone.';
+    
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+    
+    apiDeleteCustomer(customerCode, function(response) {
+        if (response.status === 'success') {
+            showMessage('Customer deleted successfully!', 'success');
+            loadCustomers();
+        } else {
+            showMessage('Error: ' + response.message, 'error');
+        }
+    });
+}
+
+// Show message
+function showMessage(message, type) {
+    const container = document.getElementById('messageContainer');
+    container.innerHTML = `<div class="message ${type}">${escapeHtml(message)}</div>`;
+    
+    setTimeout(() => {
+        container.innerHTML = '';
+    }, 5000);
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Logout function
+function logout() {
+    if (confirm('Are you sure you want to logout?')) {
+        performLogout();
+    }
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('customerModal');
+    if (event.target === modal) {
+        closeCustomerModal();
+    }
+}
+</script>
+
+</body>
+</html>

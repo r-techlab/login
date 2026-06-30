@@ -3,7 +3,7 @@
 // Centralized API calls with session validation
 // ============================================
 
-const API_URL = "https://script.google.com/macros/s/AKfycby4V218hpXPWDEgQaB_I-Rk0YHkSrMz7YCVxLVmHjbCn7jSKLEzJ-LzrCTLJND0Lv8/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbzcgR1b79Etl4JX1YbIajQs2wQzflJACdt3caX7KaamweE9Gl4fbxDPCJijXzmsAIw/exec";
 const API_TIMEOUT = 15000; // 15 seconds
 
 // ============================================
@@ -45,6 +45,182 @@ function apiLogin(loginid, password, callback) {
         callback({
             status: "error",
             message: "Connection error. Check your internet or Apps Script deployment."
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// ============================================
+// CUSTOMER MASTER MANAGEMENT API
+// ============================================
+
+// Get all customers
+function apiGetCustomers(callback) {
+    const callbackName = 'apiGetCustomersCallback_' + Date.now();
+    const session = getSession();
+    
+    const timeoutId = setTimeout(function() {
+        if (window[callbackName]) {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+                document.body.removeChild(script);
+            }
+            callback({
+                status: "error",
+                message: "Request timeout"
+            });
+        }
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=getCustomers&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// Create new customer
+function apiCreateCustomer(customerData, callback) {
+    const callbackName = 'apiCreateCustomerCallback_' + Date.now();
+    const session = getSession();
+    
+    const timeoutId = setTimeout(function() {
+        if (window[callbackName]) {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+                document.body.removeChild(script);
+            }
+            callback({
+                status: "error",
+                message: "Request timeout"
+            });
+        }
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=createCustomer&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&code=${encodeURIComponent(customerData.code)}&description=${encodeURIComponent(customerData.description)}&trn=${encodeURIComponent(customerData.trn || '')}&tel1=${encodeURIComponent(customerData.tel1 || '')}&tel2=${encodeURIComponent(customerData.tel2 || '')}&mobile=${encodeURIComponent(customerData.mobile || '')}&email1=${encodeURIComponent(customerData.email1 || '')}&email2=${encodeURIComponent(customerData.email2 || '')}&homePage=${encodeURIComponent(customerData.homePage || '')}&addressStreet=${encodeURIComponent(customerData.addressStreet || '')}&addressCity=${encodeURIComponent(customerData.addressCity || '')}&addressEmirate=${encodeURIComponent(customerData.addressEmirate || '')}&addressPO=${encodeURIComponent(customerData.addressPO || '')}&addressCountry=${encodeURIComponent(customerData.addressCountry || '')}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// Update existing customer
+function apiUpdateCustomer(customerData, callback) {
+    const callbackName = 'apiUpdateCustomerCallback_' + Date.now();
+    const session = getSession();
+    
+    const timeoutId = setTimeout(function() {
+        if (window[callbackName]) {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+                document.body.removeChild(script);
+            }
+            callback({
+                status: "error",
+                message: "Request timeout"
+            });
+        }
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=updateCustomer&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&code=${encodeURIComponent(customerData.code)}&description=${encodeURIComponent(customerData.description)}&trn=${encodeURIComponent(customerData.trn || '')}&tel1=${encodeURIComponent(customerData.tel1 || '')}&tel2=${encodeURIComponent(customerData.tel2 || '')}&mobile=${encodeURIComponent(customerData.mobile || '')}&email1=${encodeURIComponent(customerData.email1 || '')}&email2=${encodeURIComponent(customerData.email2 || '')}&homePage=${encodeURIComponent(customerData.homePage || '')}&addressStreet=${encodeURIComponent(customerData.addressStreet || '')}&addressCity=${encodeURIComponent(customerData.addressCity || '')}&addressEmirate=${encodeURIComponent(customerData.addressEmirate || '')}&addressPO=${encodeURIComponent(customerData.addressPO || '')}&addressCountry=${encodeURIComponent(customerData.addressCountry || '')}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// Delete customer
+function apiDeleteCustomer(code, callback) {
+    const callbackName = 'apiDeleteCustomerCallback_' + Date.now();
+    const session = getSession();
+    
+    const timeoutId = setTimeout(function() {
+        if (window[callbackName]) {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+                document.body.removeChild(script);
+            }
+            callback({
+                status: "error",
+                message: "Request timeout"
+            });
+        }
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=deleteCustomer&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&code=${encodeURIComponent(code)}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
         });
     };
     document.body.appendChild(script);
