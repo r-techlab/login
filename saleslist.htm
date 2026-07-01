@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Sales Management - Sales List</title>
+<link rel="stylesheet" href="menu.css">
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    margin: 0;
+    padding: 20px;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 20px;
+    margin-bottom: 30px;
+}
+
+h1 {
+    color: #333;
+    margin: 0;
+}
+
+.btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    margin-left: 10px;
+}
+
+.btn:hover {
+    background: #2980b9;
+}
+
+.btn-success {
+    background: #27ae60;
+}
+
+.btn-success:hover {
+    background: #229954;
+}
+
+.btn-danger {
+    background: #e74c3c;
+}
+
+.btn-danger:hover {
+    background: #c0392b;
+}
+
+.btn-warning {
+    background: #f39c12;
+}
+
+.btn-warning:hover {
+    background: #e67e22;
+}
+
+.btn:disabled {
+    background: #95a5a6;
+    cursor: not-allowed;
+}
+
+.layout-with-sidebar {
+    display: flex;
+    gap: 20px;
+}
+
+.sidebar {
+    width: 280px;
+    flex-shrink: 0;
+}
+
+.company-name-sidebar {
+    font-size: 16px;
+    font-weight: bold;
+    color: white;
+    padding: 12px;
+    margin-bottom: 15px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 8px;
+    text-align: center;
+}
+
+.main-content {
+    flex: 1;
+}
+
+.toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.search-box {
+    flex: 1;
+    max-width: 400px;
+}
+
+.search-box input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+.table-container {
+    overflow-x: auto;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+thead {
+    background: #667eea;
+    color: white;
+}
+
+th {
+    padding: 15px;
+    text-align: left;
+    font-weight: bold;
+}
+
+td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #eee;
+}
+
+tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 5px;
+}
+
+.btn-small {
+    padding: 5px 10px;
+    font-size: 12px;
+}
+
+.message {
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    font-weight: bold;
+}
+
+.message.success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.message.error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.message.warning {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+}
+
+.loading::after {
+    content: '...';
+    animation: dots 1.5s steps(4, end) infinite;
+}
+
+@keyframes dots {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    60%, 100% { content: '...'; }
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #999;
+}
+
+.empty-state-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+}
+
+.stats-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-around;
+    text-align: center;
+}
+
+.stat-item h3 {
+    margin: 0;
+    font-size: 32px;
+}
+
+.stat-item p {
+    margin: 5px 0 0 0;
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+.amount {
+    text-align: right;
+    font-weight: bold;
+}
+
+@media (max-width: 992px) {
+    .layout-with-sidebar {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+    }
+    
+    .toolbar {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .search-box {
+        max-width: 100%;
+    }
+    
+    .stats-card {
+        flex-direction: column;
+        gap: 15px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>🧾 Sales Management - Sales List</h1>
+        <div>
+            <button class="btn" onclick="window.location.href='home.html'">🏠 Home</button>
+            <button class="btn btn-danger" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div id="breadcrumbContainer" class="breadcrumb-container"></div>
+
+    <div class="layout-with-sidebar">
+        <div class="sidebar">
+            <div id="companyNameSidebar" class="company-name-sidebar"></div>
+            <h3>Navigation Menu</h3>
+            <div id="menuContainer"></div>
+        </div>
+
+        <div class="main-content">
+            <div id="messageContainer"></div>
+
+            <div class="stats-card" id="statsCard" style="display: none;">
+                <div class="stat-item">
+                    <h3 id="totalSales">0</h3>
+                    <p>Total Sales</p>
+                </div>
+            </div>
+
+            <div class="toolbar">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="🔍 Search by DocNo, Customer, or Date..." onkeyup="filterSales()">
+                </div>
+                <button class="btn btn-success" onclick="createNewSale()">➕ Add New Sale</button>
+            </div>
+
+            <div class="table-container">
+                <div id="loadingIndicator" class="loading">Loading sales</div>
+                <div id="emptyState" class="empty-state" style="display: none;">
+                    <div class="empty-state-icon">🧾</div>
+                    <h3>No Sales Found</h3>
+                    <p>Start by creating your first sale.</p>
+                </div>
+                <table id="salesTable" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th>Doc No</th>
+                            <th>Date</th>
+                            <th>Customer</th>
+                            <th>Narration</th>
+                            <th class="amount">Gross Amount</th>
+                            <th class="amount">Net Amount</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="salesTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="api.js"></script>
+<script src="session.js"></script>
+<script src="menu.js"></script>
+<script src="systemConfig.js"></script>
+<script>
+// Global variables
+let allSales = [];
+
+// Initialize system config
+initSystemConfig('saleslist.htm', 'companyNameSidebar');
+
+// Protect this page with menu-based access control
+protectPageWithMenuAccess(function(isValid) {
+    if (isValid) {
+        // User has permission via RoleMenuAccess
+        // Render menu and breadcrumb
+        renderMenu('menuContainer');
+        renderBreadcrumb('breadcrumbContainer');
+        
+        // Load initial data
+        loadSales();
+    }
+});
+
+// Load all sales
+function loadSales() {
+    document.getElementById('loadingIndicator').style.display = 'block';
+    document.getElementById('salesTable').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('statsCard').style.display = 'none';
+    
+    apiGetSales(function(response) {
+        document.getElementById('loadingIndicator').style.display = 'none';
+        
+        if (response.status === 'success') {
+            allSales = response.sales || [];
+            displaySales(allSales);
+            updateStats();
+        } else {
+            showMessage('Error loading sales: ' + response.message, 'error');
+            document.getElementById('emptyState').style.display = 'block';
+        }
+    });
+}
+
+// Update statistics
+function updateStats() {
+    document.getElementById('totalSales').textContent = allSales.length;
+    document.getElementById('statsCard').style.display = 'flex';
+}
+
+// Display sales in table
+function displaySales(sales) {
+    const tbody = document.getElementById('salesTableBody');
+    tbody.innerHTML = '';
+    
+    if (sales.length === 0) {
+        document.getElementById('salesTable').style.display = 'none';
+        document.getElementById('emptyState').style.display = 'block';
+        return;
+    }
+    
+    document.getElementById('salesTable').style.display = 'table';
+    document.getElementById('emptyState').style.display = 'none';
+    
+    sales.forEach(sale => {
+        const row = document.createElement('tr');
+        
+        row.innerHTML = `
+            <td><strong>${escapeHtml(sale.docNo)}</strong></td>
+            <td>${formatDate(sale.date)}</td>
+            <td>${escapeHtml(sale.customer || '-')}</td>
+            <td>${escapeHtml(sale.narration || '-')}</td>
+            <td class="amount">${formatAmount(sale.grossAmount)}</td>
+            <td class="amount">${formatAmount(sale.net)}</td>
+            <td>
+                <div class="action-buttons">
+                    <button class="btn btn-warning btn-small" onclick="editSale('${escapeHtml(sale.docNo)}')">✏️ Edit</button>
+                    <button class="btn btn-danger btn-small" onclick="deleteSale('${escapeHtml(sale.docNo)}')">🗑️ Delete</button>
+                </div>
+            </td>
+        `;
+        
+        tbody.appendChild(row);
+    });
+}
+
+// Filter sales based on search
+function filterSales() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    
+    const filtered = allSales.filter(sale => {
+        return sale.docNo.toLowerCase().includes(searchTerm) ||
+               (sale.customer && sale.customer.toLowerCase().includes(searchTerm)) ||
+               (sale.narration && sale.narration.toLowerCase().includes(searchTerm)) ||
+               (sale.date && sale.date.toLowerCase().includes(searchTerm));
+    });
+    
+    displaySales(filtered);
+}
+
+// Create new sale
+function createNewSale() {
+    window.location.href = 'salesform.htm';
+}
+
+// Edit sale
+function editSale(docNo) {
+    window.location.href = 'salesform.htm?docno=' + encodeURIComponent(docNo);
+}
+
+// Delete sale
+function deleteSale(docNo) {
+    const sale = allSales.find(s => s.docNo == docNo);
+    if (!sale) return;
+    
+    let confirmMsg = `Are you sure you want to delete sale "${docNo}"?`;
+    confirmMsg += '\n\nThis action cannot be undone.';
+    
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+    
+    apiDeleteSale(docNo, function(response) {
+        if (response.status === 'success') {
+            showMessage('Sale deleted successfully!', 'success');
+            loadSales();
+        } else {
+            showMessage('Error: ' + response.message, 'error');
+        }
+    });
+}
+
+// Format date for display
+function formatDate(dateStr) {
+    if (!dateStr) return '-';
+    try {
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('en-GB');
+    } catch (e) {
+        return dateStr;
+    }
+}
+
+// Format amount for display
+function formatAmount(amount) {
+    if (amount === null || amount === undefined) return '0.00';
+    return parseFloat(amount).toFixed(2);
+}
+
+// Show message
+function showMessage(message, type) {
+    const container = document.getElementById('messageContainer');
+    container.innerHTML = `<div class="message ${type}">${escapeHtml(message)}</div>`;
+    
+    setTimeout(() => {
+        container.innerHTML = '';
+    }, 5000);
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Logout function
+function logout() {
+    if (confirm('Are you sure you want to logout?')) {
+        performLogout();
+    }
+}
+</script>
+
+</body>
+</html>

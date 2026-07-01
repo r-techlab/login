@@ -111,6 +111,16 @@ function doGet(e) {
     return handleUpdateCustomerGet(e);
   } else if (action === "deleteCustomer") {
     return handleDeleteCustomerGet(e);
+  } else if (action === "getSales") {
+    return handleGetSalesGet(e);
+  } else if (action === "getSaleByDocNo") {
+    return handleGetSaleByDocNoGet(e);
+  } else if (action === "createSale") {
+    return handleCreateSaleGet(e);
+  } else if (action === "updateSale") {
+    return handleUpdateSaleGet(e);
+  } else if (action === "deleteSale") {
+    return handleDeleteSaleGet(e);
   } else {
     var errorResult = { status: "error", message: "Invalid action" };
     var callback = e.parameter.callback;
@@ -2663,6 +2673,468 @@ function handleDeleteCustomerGet(e) {
   }
   
   var result = { status: "success", message: "Customer deleted successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// ============================================
+// SALES MANAGEMENT HANDLERS
+// ============================================
+
+// Get all sales
+function handleGetSalesGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get all sales from SalesHeader sheet
+  var salesHeaderSheet = ss.getSheetByName("SalesHeader");
+  var salesHeaderData = salesHeaderSheet.getDataRange().getValues();
+  var sales = [];
+  
+  for (var i = 1; i < salesHeaderData.length; i++) {
+    if (salesHeaderData[i][1]) { // Check if DocNo exists
+      sales.push({
+        docType: salesHeaderData[i][0] || '',
+        docNo: salesHeaderData[i][1],
+        date: salesHeaderData[i][2] ? Utilities.formatDate(new Date(salesHeaderData[i][2]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
+        customer: salesHeaderData[i][3] || '',
+        narration: salesHeaderData[i][4] || '',
+        grossAmount: salesHeaderData[i][5] || 0,
+        discountPercentage: salesHeaderData[i][6] || 0,
+        discountAmount: salesHeaderData[i][7] || 0,
+        vat: salesHeaderData[i][8] || 0,
+        net: salesHeaderData[i][9] || 0,
+        createdBy: salesHeaderData[i][10] || '',
+        createdTime: salesHeaderData[i][11] || '',
+        address: salesHeaderData[i][12] || '',
+        trn: salesHeaderData[i][13] || '',
+        vatTreatment: salesHeaderData[i][14] || '',
+        rateType: salesHeaderData[i][15] || ''
+      });
+    }
+  }
+  
+  var result = { status: "success", sales: sales };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Get single sale by DocNo
+function handleGetSaleByDocNoGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var docNo = e.parameter.docNo;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get sale header
+  var salesHeaderSheet = ss.getSheetByName("SalesHeader");
+  var salesHeaderData = salesHeaderSheet.getDataRange().getValues();
+  var header = null;
+  
+  for (var i = 1; i < salesHeaderData.length; i++) {
+    if (salesHeaderData[i][1] == docNo) {
+      header = {
+        docType: salesHeaderData[i][0] || '',
+        docNo: salesHeaderData[i][1],
+        date: salesHeaderData[i][2] ? Utilities.formatDate(new Date(salesHeaderData[i][2]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
+        customer: salesHeaderData[i][3] || '',
+        narration: salesHeaderData[i][4] || '',
+        grossAmount: salesHeaderData[i][5] || 0,
+        discountPercentage: salesHeaderData[i][6] || 0,
+        discountAmount: salesHeaderData[i][7] || 0,
+        vat: salesHeaderData[i][8] || 0,
+        net: salesHeaderData[i][9] || 0,
+        createdBy: salesHeaderData[i][10] || '',
+        createdTime: salesHeaderData[i][11] || '',
+        address: salesHeaderData[i][12] || '',
+        trn: salesHeaderData[i][13] || '',
+        vatTreatment: salesHeaderData[i][14] || '',
+        rateType: salesHeaderData[i][15] || ''
+      };
+      break;
+    }
+  }
+  
+  if (!header) {
+    var errorResult = { status: "error", message: "Sale not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get sale details
+  var salesDetailsSheet = ss.getSheetByName("SalesDetails");
+  var salesDetailsData = salesDetailsSheet.getDataRange().getValues();
+  var details = [];
+  
+  for (var i = 1; i < salesDetailsData.length; i++) {
+    if (salesDetailsData[i][1] == docNo) {
+      details.push({
+        docType: salesDetailsData[i][0] || '',
+        docNo: salesDetailsData[i][1],
+        docSrNo: salesDetailsData[i][2] || 0,
+        stockCode: salesDetailsData[i][3] || '',
+        stockDescription: salesDetailsData[i][4] || '',
+        qty: salesDetailsData[i][5] || 0,
+        unit: salesDetailsData[i][6] || '',
+        rate: salesDetailsData[i][7] || 0,
+        grossAmount: salesDetailsData[i][8] || 0,
+        discountAmount: salesDetailsData[i][9] || 0,
+        discountPercentage: salesDetailsData[i][10] || 0,
+        vatAmount: salesDetailsData[i][11] || 0,
+        vatPercentage: salesDetailsData[i][12] || 0,
+        netAmount: salesDetailsData[i][13] || 0,
+        vatTreatment: salesDetailsData[i][14] || '',
+        rateType: salesDetailsData[i][15] || ''
+      });
+    }
+  }
+  
+  var result = { status: "success", sale: { header: header, details: details } };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Create new sale
+function handleCreateSaleGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var saleDataJson = e.parameter.saleData;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Parse sale data
+  var saleData;
+  try {
+    saleData = JSON.parse(saleDataJson);
+  } catch (error) {
+    var errorResult = { status: "error", message: "Invalid sale data format" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!saleData.header || !saleData.details || saleData.details.length === 0) {
+    var errorResult = { status: "error", message: "Header and at least one detail line are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Generate DocNo
+  var salesHeaderSheet = ss.getSheetByName("SalesHeader");
+  var salesHeaderData = salesHeaderSheet.getDataRange().getValues();
+  var maxNum = 10000; // Starting number
+  
+  for (var i = 1; i < salesHeaderData.length; i++) {
+    if (salesHeaderData[i][1]) {
+      var docNo = salesHeaderData[i][1].toString();
+      if (docNo.startsWith('SI')) {
+        var num = parseInt(docNo.substring(2));
+        if (num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+  }
+  
+  var newDocNo = 'SI' + (maxNum + 1);
+  
+  // Add header
+  var header = saleData.header;
+  var now = new Date();
+  var createdTime = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+  
+  salesHeaderSheet.appendRow([
+    'SI', // DocType
+    newDocNo,
+    header.date,
+    header.customer,
+    header.narration || '',
+    header.grossAmount || 0,
+    header.discountPercentage || 0,
+    header.discountAmount || 0,
+    header.vat || 0,
+    header.net || 0,
+    validation.userName, // CreatedBy
+    createdTime,
+    header.address || '',
+    header.trn || '',
+    header.vatTreatment || '',
+    header.rateType || ''
+  ]);
+  
+  // Add details
+  var salesDetailsSheet = ss.getSheetByName("SalesDetails");
+  for (var i = 0; i < saleData.details.length; i++) {
+    var detail = saleData.details[i];
+    salesDetailsSheet.appendRow([
+      'SI', // DocType
+      newDocNo,
+      detail.docSrNo || (i + 1),
+      detail.stockCode,
+      detail.stockDescription || '',
+      detail.qty || 0,
+      detail.unit || '',
+      detail.rate || 0,
+      detail.grossAmount || 0,
+      detail.discountAmount || 0,
+      detail.discountPercentage || 0,
+      detail.vatAmount || 0,
+      detail.vatPercentage || 0,
+      detail.netAmount || 0,
+      detail.vatTreatment || '',
+      detail.rateType || ''
+    ]);
+  }
+  
+  var result = { status: "success", message: "Sale created successfully", docNo: newDocNo };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Update existing sale
+function handleUpdateSaleGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var saleDataJson = e.parameter.saleData;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Parse sale data
+  var saleData;
+  try {
+    saleData = JSON.parse(saleDataJson);
+  } catch (error) {
+    var errorResult = { status: "error", message: "Invalid sale data format" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!saleData.header || !saleData.header.docNo || !saleData.details || saleData.details.length === 0) {
+    var errorResult = { status: "error", message: "Header with DocNo and at least one detail line are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var docNo = saleData.header.docNo;
+  
+  // Update header
+  var salesHeaderSheet = ss.getSheetByName("SalesHeader");
+  var salesHeaderData = salesHeaderSheet.getDataRange().getValues();
+  var headerFound = false;
+  
+  for (var i = 1; i < salesHeaderData.length; i++) {
+    if (salesHeaderData[i][1] == docNo) {
+      var header = saleData.header;
+      salesHeaderSheet.getRange(i + 1, 1, 1, 16).setValues([[
+        'SI', // DocType
+        docNo,
+        header.date,
+        header.customer,
+        header.narration || '',
+        header.grossAmount || 0,
+        header.discountPercentage || 0,
+        header.discountAmount || 0,
+        header.vat || 0,
+        header.net || 0,
+        salesHeaderData[i][10], // Keep original CreatedBy
+        salesHeaderData[i][11], // Keep original CreatedTime
+        header.address || '',
+        header.trn || '',
+        header.vatTreatment || '',
+        header.rateType || ''
+      ]]);
+      headerFound = true;
+      break;
+    }
+  }
+  
+  if (!headerFound) {
+    var errorResult = { status: "error", message: "Sale not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Delete existing details
+  var salesDetailsSheet = ss.getSheetByName("SalesDetails");
+  var salesDetailsData = salesDetailsSheet.getDataRange().getValues();
+  
+  for (var i = salesDetailsData.length - 1; i >= 1; i--) {
+    if (salesDetailsData[i][1] == docNo) {
+      salesDetailsSheet.deleteRow(i + 1);
+    }
+  }
+  
+  // Add new details
+  for (var i = 0; i < saleData.details.length; i++) {
+    var detail = saleData.details[i];
+    salesDetailsSheet.appendRow([
+      'SI', // DocType
+      docNo,
+      detail.docSrNo || (i + 1),
+      detail.stockCode,
+      detail.stockDescription || '',
+      detail.qty || 0,
+      detail.unit || '',
+      detail.rate || 0,
+      detail.grossAmount || 0,
+      detail.discountAmount || 0,
+      detail.discountPercentage || 0,
+      detail.vatAmount || 0,
+      detail.vatPercentage || 0,
+      detail.netAmount || 0,
+      detail.vatTreatment || '',
+      detail.rateType || ''
+    ]);
+  }
+  
+  var result = { status: "success", message: "Sale updated successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Delete sale
+function handleDeleteSaleGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var docNo = e.parameter.docNo;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Delete header
+  var salesHeaderSheet = ss.getSheetByName("SalesHeader");
+  var salesHeaderData = salesHeaderSheet.getDataRange().getValues();
+  var headerFound = false;
+  
+  for (var i = 1; i < salesHeaderData.length; i++) {
+    if (salesHeaderData[i][1] == docNo) {
+      salesHeaderSheet.deleteRow(i + 1);
+      headerFound = true;
+      break;
+    }
+  }
+  
+  if (!headerFound) {
+    var errorResult = { status: "error", message: "Sale not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Delete details
+  var salesDetailsSheet = ss.getSheetByName("SalesDetails");
+  var salesDetailsData = salesDetailsSheet.getDataRange().getValues();
+  
+  for (var i = salesDetailsData.length - 1; i >= 1; i--) {
+    if (salesDetailsData[i][1] == docNo) {
+      salesDetailsSheet.deleteRow(i + 1);
+    }
+  }
+  
+  var result = { status: "success", message: "Sale deleted successfully" };
   if (callback) {
     return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
       .setMimeType(ContentService.MimeType.JAVASCRIPT);

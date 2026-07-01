@@ -3,7 +3,7 @@
 // Centralized API calls with session validation
 // ============================================
 
-const API_URL = "https://script.google.com/macros/s/AKfycbzcgR1b79Etl4JX1YbIajQs2wQzflJACdt3caX7KaamweE9Gl4fbxDPCJijXzmsAIw/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxxsJs6LRJypBLv6yUCiRkF5vNtzr_gB4AboYJehQ3DkK2ftHiKIGApzS63vkbYkqo/exec";
 const API_TIMEOUT = 15000; // 15 seconds
 
 // ============================================
@@ -45,6 +45,225 @@ function apiLogin(loginid, password, callback) {
         callback({
             status: "error",
             message: "Connection error. Check your internet or Apps Script deployment."
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// ============================================
+// SALES MANAGEMENT API
+// ============================================
+
+// Get all sales
+function apiGetSales(callback) {
+    const callbackName = 'apiGetSalesCallback_' + Date.now();
+    const session = getSession();
+    
+    const timeoutId = setTimeout(function() {
+        if (window[callbackName]) {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+                document.body.removeChild(script);
+            }
+            callback({
+                status: "error",
+                message: "Request timeout"
+            });
+        }
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=getSales&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// Get single sale by DocNo
+function apiGetSaleByDocNo(docNo, callback) {
+    const callbackName = 'apiGetSaleByDocNoCallback_' + Date.now();
+    const session = getSession();
+    
+    const timeoutId = setTimeout(function() {
+        if (window[callbackName]) {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+                document.body.removeChild(script);
+            }
+            callback({
+                status: "error",
+                message: "Request timeout"
+            });
+        }
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=getSaleByDocNo&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&docNo=${encodeURIComponent(docNo)}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// Create new sale
+function apiCreateSale(saleData, callback) {
+    const callbackName = 'apiCreateSaleCallback_' + Date.now();
+    const session = getSession();
+    
+    const timeoutId = setTimeout(function() {
+        if (window[callbackName]) {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+                document.body.removeChild(script);
+            }
+            callback({
+                status: "error",
+                message: "Request timeout"
+            });
+        }
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=createSale&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&saleData=${encodeURIComponent(JSON.stringify(saleData))}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// Update existing sale
+function apiUpdateSale(saleData, callback) {
+    const callbackName = 'apiUpdateSaleCallback_' + Date.now();
+    const session = getSession();
+    
+    const timeoutId = setTimeout(function() {
+        if (window[callbackName]) {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+                document.body.removeChild(script);
+            }
+            callback({
+                status: "error",
+                message: "Request timeout"
+            });
+        }
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=updateSale&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&saleData=${encodeURIComponent(JSON.stringify(saleData))}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// Delete sale
+function apiDeleteSale(docNo, callback) {
+    const callbackName = 'apiDeleteSaleCallback_' + Date.now();
+    const session = getSession();
+    
+    const timeoutId = setTimeout(function() {
+        if (window[callbackName]) {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+                document.body.removeChild(script);
+            }
+            callback({
+                status: "error",
+                message: "Request timeout"
+            });
+        }
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=deleteSale&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&docNo=${encodeURIComponent(docNo)}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
         });
     };
     document.body.appendChild(script);

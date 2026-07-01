@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Sales Management - Sales Form</title>
+<link rel="stylesheet" href="menu.css">
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    margin: 0;
+    padding: 20px;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 1600px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 20px;
+    margin-bottom: 30px;
+}
+
+h1 {
+    color: #333;
+    margin: 0;
+}
+
+h2 {
+    color: #667eea;
+    margin: 0 0 15px 0;
+    font-size: 18px;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 8px;
+}
+
+.btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    margin-left: 10px;
+}
+
+.btn:hover {
+    background: #2980b9;
+}
+
+.btn-success {
+    background: #27ae60;
+}
+
+.btn-success:hover {
+    background: #229954;
+}
+
+.btn-danger {
+    background: #e74c3c;
+}
+
+.btn-danger:hover {
+    background: #c0392b;
+}
+
+.btn-secondary {
+    background: #95a5a6;
+}
+
+.btn-secondary:hover {
+    background: #7f8c8d;
+}
+
+.btn:disabled {
+    background: #95a5a6;
+    cursor: not-allowed;
+}
+
+.form-card {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.form-group {
+    margin-bottom: 0;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #555;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.form-group input:disabled,
+.form-group select:disabled {
+    background: #e9ecef;
+    cursor: not-allowed;
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 60px;
+}
+
+.searchable-select {
+    position: relative;
+}
+
+.searchable-select input {
+    width: 100%;
+}
+
+.searchable-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: 200px;
+    overflow-y: auto;
+    background: white;
+    border: 1px solid #ddd;
+    border-top: none;
+    border-radius: 0 0 5px 5px;
+    z-index: 1000;
+    display: none;
+}
+
+.searchable-dropdown.active {
+    display: block;
+}
+
+.dropdown-item {
+    padding: 10px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+}
+
+.dropdown-item:hover {
+    background: #f8f9fa;
+}
+
+.dropdown-item:last-child {
+    border-bottom: none;
+}
+
+.details-table-container {
+    overflow-x: auto;
+    margin-top: 15px;
+}
+
+.details-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+}
+
+.details-table thead {
+    background: #667eea;
+    color: white;
+}
+
+.details-table th,
+.details-table td {
+    padding: 10px;
+    text-align: left;
+    border: 1px solid #ddd;
+}
+
+.details-table th {
+    font-weight: bold;
+    font-size: 13px;
+}
+
+.details-table td input,
+.details-table td select {
+    width: 100%;
+    padding: 6px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    font-size: 13px;
+    box-sizing: border-box;
+}
+
+.details-table td input:focus,
+.details-table td select:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.details-table td input:disabled {
+    background: #f8f9fa;
+}
+
+.details-table .amount-cell {
+    text-align: right;
+}
+
+.btn-icon {
+    padding: 6px 10px;
+    font-size: 12px;
+}
+
+.summary-section {
+    background: #e8f4f8;
+    padding: 20px;
+    border-radius: 8px;
+    margin-top: 20px;
+}
+
+.summary-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 10px;
+    font-size: 16px;
+}
+
+.summary-label {
+    font-weight: bold;
+    margin-right: 20px;
+    min-width: 150px;
+    text-align: right;
+}
+
+.summary-value {
+    min-width: 120px;
+    text-align: right;
+    font-weight: bold;
+}
+
+.summary-row.total {
+    font-size: 18px;
+    color: #667eea;
+    border-top: 2px solid #667eea;
+    padding-top: 10px;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 25px;
+}
+
+.message {
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    font-weight: bold;
+}
+
+.message.success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.message.error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+}
+
+.loading::after {
+    content: '...';
+    animation: dots 1.5s steps(4, end) infinite;
+}
+
+@keyframes dots {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    60%, 100% { content: '...'; }
+}
+
+@media (max-width: 992px) {
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .details-table-container {
+        font-size: 12px;
+    }
+    
+    .summary-row {
+        font-size: 14px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1 id="pageTitle">🧾 Sales Management - New Sale</h1>
+        <div>
+            <button class="btn" onclick="window.location.href='saleslist.htm'">📋 Back to List</button>
+            <button class="btn btn-danger" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div id="messageContainer"></div>
+    <div id="loadingIndicator" class="loading" style="display: none;">Loading sale data</div>
+
+    <form id="salesForm" onsubmit="saveSale(event)" style="display: none;">
+        <!-- Header Section -->
+        <div class="form-card">
+            <h2>📋 Sales Header</h2>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="docNo">Doc No</label>
+                    <input type="text" id="docNo" disabled placeholder="Auto-generated">
+                </div>
+                <div class="form-group">
+                    <label for="date">Date *</label>
+                    <input type="date" id="date" required>
+                </div>
+                <div class="form-group">
+                    <label for="customer">Customer *</label>
+                    <div class="searchable-select">
+                        <input type="text" id="customerSearch" placeholder="Search customer..." autocomplete="off" required>
+                        <input type="hidden" id="customer">
+                        <div id="customerDropdown" class="searchable-dropdown"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="address">Address</label>
+                    <input type="text" id="address" disabled>
+                </div>
+                <div class="form-group">
+                    <label for="trn">TRN</label>
+                    <input type="text" id="trn" disabled>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="vatTreatment">VAT Treatment *</label>
+                    <select id="vatTreatment" required onchange="recalculateAll()">
+                        <option value="">-- Select --</option>
+                        <option value="SR">Standard Rated (SR)</option>
+                        <option value="NA">Not Applicable (NA)</option>
+                        <option value="Zero">Zero Rated</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="rateType">Rate Type *</label>
+                    <select id="rateType" required onchange="recalculateAll()">
+                        <option value="">-- Select --</option>
+                        <option value="Exclude">Exclude VAT</option>
+                        <option value="Include">Include VAT</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="narration">Narration</label>
+                    <textarea id="narration" placeholder="Enter narration..."></textarea>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="createdBy">Created By</label>
+                    <input type="text" id="createdBy" disabled>
+                </div>
+                <div class="form-group">
+                    <label for="createdTime">Created Time</label>
+                    <input type="text" id="createdTime" disabled>
+                </div>
+            </div>
+        </div>
+
+        <!-- Details Section -->
+        <div class="form-card">
+            <h2>📦 Sales Details</h2>
+            
+            <button type="button" class="btn btn-success" onclick="addDetailLine()">➕ Add Line Item</button>
+            
+            <div class="details-table-container">
+                <table class="details-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;">Sr</th>
+                            <th style="width: 150px;">Stock Code *</th>
+                            <th style="width: 200px;">Description</th>
+                            <th style="width: 80px;">Qty *</th>
+                            <th style="width: 80px;">Unit</th>
+                            <th style="width: 100px;">Rate *</th>
+                            <th style="width: 100px;">Gross</th>
+                            <th style="width: 80px;">Disc %</th>
+                            <th style="width: 100px;">Disc Amt</th>
+                            <th style="width: 120px;">VAT Treatment</th>
+                            <th style="width: 80px;">VAT %</th>
+                            <th style="width: 100px;">VAT Amt</th>
+                            <th style="width: 100px;">Net Amt</th>
+                            <th style="width: 60px;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="detailsTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Summary Section -->
+        <div class="summary-section">
+            <div class="summary-row">
+                <span class="summary-label">Total Gross Amount:</span>
+                <span class="summary-value" id="summaryGross">0.00</span>
+            </div>
+            <div class="summary-row">
+                <span class="summary-label">Total Discount:</span>
+                <span class="summary-value" id="summaryDiscount">0.00</span>
+            </div>
+            <div class="summary-row">
+                <span class="summary-label">Total VAT:</span>
+                <span class="summary-value" id="summaryVAT">0.00</span>
+            </div>
+            <div class="summary-row total">
+                <span class="summary-label">Net Amount:</span>
+                <span class="summary-value" id="summaryNet">0.00</span>
+            </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="cancelForm()">Cancel</button>
+            <button type="submit" class="btn btn-success" id="saveButton">💾 Save Sale</button>
+        </div>
+    </form>
+</div>
+
+<script src="api.js"></script>
+<script src="session.js"></script>
+<script src="menu.js"></script>
+<script src="systemConfig.js"></script>
+<script>
+// Global variables
+let editMode = false;
+let editDocNo = null;
+let allCustomers = [];
+let allStocks = [];
+let vatPercentage = 5; // Default, will be loaded from system parameters
+let detailLineCounter = 0;
+
+// Initialize system config
+initSystemConfig('salesform.htm', null);
+
+// Protect this page with menu-based access control
+protectPageWithMenuAccess(function(isValid) {
+    if (isValid) {
+        // Load initial data
+        loadInitialData();
+    }
+});
+
+// Load initial data
+function loadInitialData() {
+    const session = getSession();
+    document.getElementById('createdBy').value = session.userName || session.userId;
+    
+    // Set today's date
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('date').value = today;
+    
+    // Check if editing
+    const urlParams = new URLSearchParams(window.location.search);
+    editDocNo = urlParams.get('docno');
+    
+    if (editDocNo) {
+        editMode = true;
+        document.getElementById('pageTitle').textContent = '🧾 Sales Management - Edit Sale';
+        document.getElementById('saveButton').textContent = '💾 Update Sale';
+    }
+    
+    // Load customers, stocks, and system parameters
+    loadCustomers();
+    loadStocks();
+    loadSystemParameters();
+}
+
+// Load customers
+function loadCustomers() {
+    apiGetCustomers(function(response) {
+        if (response.status === 'success') {
+            allCustomers = response.customers || [];
+            setupCustomerSearch();
+            
+            // If editing, load sale data after customers are loaded
+            if (editMode && allStocks.length > 0) {
+                loadSaleData();
+            }
+        } else {
+            showMessage('Error loading customers: ' + response.message, 'error');
+        }
+    });
+}
+
+// Load stocks
+function loadStocks() {
+    apiGetStocks(function(response) {
+        if (response.status === 'success') {
+            allStocks = response.stocks || [];
+            
+            // If editing, load sale data after stocks are loaded
+            if (editMode && allCustomers.length > 0) {
+                loadSaleData();
+            } else if (!editMode) {
+                // Show form for new sale
+                document.getElementById('salesForm').style.display = 'block';
+            }
+        } else {
+            showMessage('Error loading stocks: ' + response.message, 'error');
+        }
+    });
+}
+
+// Load system parameters
+function loadSystemParameters() {
+    apiGetSystemParameters(function(response) {
+        if (response.status === 'success') {
+            const params = response.parameters || [];
+            const vatParam = params.find(p => p.code === 'VATPercentage');
+            if (vatParam) {
+                vatPercentage = parseFloat(vatParam.value) || 5;
+            }
+        }
+    });
+}
+
+// Load sale data for editing
+function loadSaleData() {
+    if (!editDocNo || allCustomers.length === 0 || allStocks.length === 0) return;
+    
+    document.getElementById('loadingIndicator').style.display = 'block';
+    
+    apiGetSaleByDocNo(editDocNo, function(response) {
+        document.getElementById('loadingIndicator').style.display = 'none';
+        
+        if (response.status === 'success') {
+            const sale = response.sale;
+            
+            // Populate header
+            document.getElementById('docNo').value = sale.header.docNo;
+            document.getElementById('date').value = sale.header.date;
+            document.getElementById('customer').value = sale.header.customer;
+            document.getElementById('customerSearch').value = sale.header.customer;
+            document.getElementById('address').value = sale.header.address || '';
+            document.getElementById('trn').value = sale.header.trn || '';
+            document.getElementById('vatTreatment').value = sale.header.vatTreatment || '';
+            document.getElementById('rateType').value = sale.header.rateType || '';
+            document.getElementById('narration').value = sale.header.narration || '';
+            document.getElementById('createdBy').value = sale.header.createdBy || '';
+            document.getElementById('createdTime').value = sale.header.createdTime || '';
+            
+            // Populate details
+            if (sale.details && sale.details.length > 0) {
+                sale.details.forEach(detail => {
+                    addDetailLine(detail);
+                });
+            }
+            
+            document.getElementById('salesForm').style.display = 'block';
+        } else {
+            showMessage('Error loading sale: ' + response.message, 'error');
+            setTimeout(() => {
+                window.location.href = 'saleslist.htm';
+            }, 2000);
+        }
+    });
+}
+
+// Setup customer searchable dropdown
+function setupCustomerSearch() {
+    const searchInput = document.getElementById('customerSearch');
+    const dropdown = document.getElementById('customerDropdown');
+    
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        
+        if (searchTerm.length < 1) {
+            dropdown.classList.remove('active');
+            return;
+        }
+        
+        const filtered = allCustomers.filter(c => 
+            c.code.toLowerCase().includes(searchTerm) ||
+            c.description.toLowerCase().includes(searchTerm)
+        );
+        
+        if (filtered.length > 0) {
+            dropdown.innerHTML = filtered.map(c => 
+                `<div class="dropdown-item" onclick="selectCustomer('${c.code}', '${escapeHtml(c.description)}', '${escapeHtml(c.addressStreet || '')}', '${escapeHtml(c.trn || '')}')">
+                    <strong>${c.code}</strong> - ${c.description}
+                </div>`
+            ).join('');
+            dropdown.classList.add('active');
+        } else {
+            dropdown.innerHTML = '<div class="dropdown-item">No customers found</div>';
+            dropdown.classList.add('active');
+        }
+    });
+    
+    searchInput.addEventListener('blur', function() {
+        setTimeout(() => dropdown.classList.remove('active'), 200);
+    });
+}
+
+// Select customer
+function selectCustomer(code, description, address, trn) {
+    document.getElementById('customer').value = code;
+    document.getElementById('customerSearch').value = `${code} - ${description}`;
+    document.getElementById('address').value = address;
+    document.getElementById('trn').value = trn;
+    document.getElementById('customerDropdown').classList.remove('active');
+}
+
+// Add detail line
+function addDetailLine(data = null) {
+    detailLineCounter++;
+    const tbody = document.getElementById('detailsTableBody');
+    const row = tbody.insertRow();
+    row.id = `detailRow${detailLineCounter}`;
+    
+    const srNo = tbody.rows.length;
+    
+    row.innerHTML = `
+        <td>${srNo}</td>
+        <td>
+            <input type="text" class="stock-search" data-row="${detailLineCounter}" 
+                   placeholder="Search..." value="${data ? data.stockCode : ''}" required>
+            <input type="hidden" class="stock-code" value="${data ? data.stockCode : ''}">
+        </td>
+        <td><input type="text" class="stock-desc" disabled value="${data ? data.stockDescription : ''}"></td>
+        <td><input type="number" class="qty" step="0.01" min="0" value="${data ? data.qty : ''}" 
+                   onchange="calculateLine(${detailLineCounter})" required></td>
+        <td><input type="text" class="unit" disabled value="${data ? data.unit : ''}"></td>
+        <td><input type="number" class="rate" step="0.01" min="0" value="${data ? data.rate : ''}" 
+                   onchange="calculateLine(${detailLineCounter})" required></td>
+        <td class="amount-cell"><input type="number" class="gross" step="0.01" disabled value="${data ? data.grossAmount : '0.00'}"></td>
+        <td><input type="number" class="disc-pct" step="0.01" min="0" max="100" value="${data ? data.discountPercentage : '0'}" 
+                   onchange="calculateLine(${detailLineCounter})"></td>
+        <td class="amount-cell"><input type="number" class="disc-amt" step="0.01" min="0" value="${data ? data.discountAmount : '0.00'}" 
+                   onchange="calculateLineFromDiscAmt(${detailLineCounter})"></td>
+        <td>
+            <select class="vat-treatment" onchange="calculateLine(${detailLineCounter})">
+                <option value="SR" ${data && data.vatTreatment === 'SR' ? 'selected' : ''}>SR</option>
+                <option value="NA" ${data && data.vatTreatment === 'NA' ? 'selected' : ''}>NA</option>
+                <option value="Zero" ${data && data.vatTreatment === 'Zero' ? 'selected' : ''}>Zero</option>
+            </select>
+        </td>
+        <td><input type="number" class="vat-pct" step="0.01" disabled value="${vatPercentage}"></td>
+        <td class="amount-cell"><input type="number" class="vat-amt" step="0.01" disabled value="${data ? data.vatAmount : '0.00'}"></td>
+        <td class="amount-cell"><input type="number" class="net-amt" step="0.01" disabled value="${data ? data.netAmount : '0.00'}"></td>
+        <td><button type="button" class="btn btn-danger btn-icon" onclick="removeDetailLine(${detailLineCounter})">🗑️</button></td>
+    `;
+    
+    // Setup stock search for this row
+    setupStockSearch(detailLineCounter);
+    
+    if (data) {
+        calculateLine(detailLineCounter);
+    }
+}
+
+// Setup stock searchable input
+function setupStockSearch(rowId) {
+    const row = document.getElementById(`detailRow${rowId}`);
+    const searchInput = row.querySelector('.stock-search');
+    
+    let dropdown = null;
+    
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        
+        // Remove existing dropdown
+        if (dropdown) {
+            dropdown.remove();
+            dropdown = null;
+        }
+        
+        if (searchTerm.length < 1) return;
+        
+        const filtered = allStocks.filter(s => 
+            s.code.toLowerCase().includes(searchTerm) ||
+            s.description.toLowerCase().includes(searchTerm)
+        );
+        
+        if (filtered.length > 0) {
+            dropdown = document.createElement('div');
+            dropdown.className = 'searchable-dropdown active';
+            dropdown.style.position = 'absolute';
+            dropdown.style.zIndex = '1001';
+            
+            dropdown.innerHTML = filtered.map(s => 
+                `<div class="dropdown-item" onclick="selectStock(${rowId}, '${s.code}', '${escapeHtml(s.description)}', '${s.unitCode}')">
+                    <strong>${s.code}</strong> - ${s.description}
+                </div>`
+            ).join('');
+            
+            searchInput.parentElement.appendChild(dropdown);
+        }
+    });
+    
+    searchInput.addEventListener('blur', function() {
+        setTimeout(() => {
+            if (dropdown) {
+                dropdown.remove();
+                dropdown = null;
+            }
+        }, 200);
+    });
+}
+
+// Select stock
+function selectStock(rowId, code, description, unit) {
+    const row = document.getElementById(`detailRow${rowId}`);
+    row.querySelector('.stock-code').value = code;
+    row.querySelector('.stock-search').value = code;
+    row.querySelector('.stock-desc').value = description;
+    row.querySelector('.unit').value = unit;
+    
+    // Set default VAT treatment from header
+    const headerVatTreatment = document.getElementById('vatTreatment').value;
+    if (headerVatTreatment) {
+        row.querySelector('.vat-treatment').value = headerVatTreatment;
+    }
+    
+    calculateLine(rowId);
+}
+
+// Remove detail line
+function removeDetailLine(rowId) {
+    const row = document.getElementById(`detailRow${rowId}`);
+    if (row) {
+        row.remove();
+        renumberRows();
+        recalculateSummary();
+    }
+}
+
+// Renumber rows
+function renumberRows() {
+    const tbody = document.getElementById('detailsTableBody');
+    Array.from(tbody.rows).forEach((row, index) => {
+        row.cells[0].textContent = index + 1;
+    });
+}
+
+// Calculate line amounts
+function calculateLine(rowId) {
+    const row = document.getElementById(`detailRow${rowId}`);
+    if (!row) return;
+    
+    const qty = parseFloat(row.querySelector('.qty').value) || 0;
+    const rate = parseFloat(row.querySelector('.rate').value) || 0;
+    const discPct = parseFloat(row.querySelector('.disc-pct').value) || 0;
+    const vatTreatment = row.querySelector('.vat-treatment').value;
+    const rateType = document.getElementById('rateType').value;
+    
+    // Calculate gross
+    let gross = qty * rate;
+    
+    // Calculate discount
+    let discAmt = gross * (discPct / 100);
+    
+    // Calculate taxable amount
+    let taxable = gross - discAmt;
+    
+    // Calculate VAT
+    let vatAmt = 0;
+    if (vatTreatment === 'SR') {
+        if (rateType === 'Include') {
+            // VAT is included in the rate
+            taxable = taxable / (1 + vatPercentage / 100);
+            vatAmt = (gross - discAmt) - taxable;
+        } else {
+            // VAT is excluded
+            vatAmt = taxable * (vatPercentage / 100);
+        }
+    }
+    
+    // Calculate net
+    let netAmt = taxable + vatAmt;
+    
+    // Update fields
+    row.querySelector('.gross').value = gross.toFixed(2);
+    row.querySelector('.disc-amt').value = discAmt.toFixed(2);
+    row.querySelector('.vat-amt').value = vatAmt.toFixed(2);
+    row.querySelector('.net-amt').value = netAmt.toFixed(2);
+    
+    recalculateSummary();
+}
+
+// Calculate line from discount amount
+function calculateLineFromDiscAmt(rowId) {
+    const row = document.getElementById(`detailRow${rowId}`);
+    if (!row) return;
+    
+    const gross = parseFloat(row.querySelector('.gross').value) || 0;
+    const discAmt = parseFloat(row.querySelector('.disc-amt').value) || 0;
+    
+    // Calculate discount percentage
+    const discPct = gross > 0 ? (discAmt / gross) * 100 : 0;
+    row.querySelector('.disc-pct').value = discPct.toFixed(2);
+    
+    calculateLine(rowId);
+}
+
+// Recalculate all lines
+function recalculateAll() {
+    const tbody = document.getElementById('detailsTableBody');
+    Array.from(tbody.rows).forEach(row => {
+        const rowId = row.id.replace('detailRow', '');
+        calculateLine(parseInt(rowId));
+    });
+}
+
+// Recalculate summary
+function recalculateSummary() {
+    const tbody = document.getElementById('detailsTableBody');
+    let totalGross = 0;
+    let totalDiscount = 0;
+    let totalVAT = 0;
+    let totalNet = 0;
+    
+    Array.from(tbody.rows).forEach(row => {
+        totalGross += parseFloat(row.querySelector('.gross').value) || 0;
+        totalDiscount += parseFloat(row.querySelector('.disc-amt').value) || 0;
+        totalVAT += parseFloat(row.querySelector('.vat-amt').value) || 0;
+        totalNet += parseFloat(row.querySelector('.net-amt').value) || 0;
+    });
+    
+    document.getElementById('summaryGross').textContent = totalGross.toFixed(2);
+    document.getElementById('summaryDiscount').textContent = totalDiscount.toFixed(2);
+    document.getElementById('summaryVAT').textContent = totalVAT.toFixed(2);
+    document.getElementById('summaryNet').textContent = totalNet.toFixed(2);
+}
+
+// Save sale
+function saveSale(event) {
+    event.preventDefault();
+    
+    // Validate
+    const customer = document.getElementById('customer').value;
+    const date = document.getElementById('date').value;
+    const vatTreatment = document.getElementById('vatTreatment').value;
+    const rateType = document.getElementById('rateType').value;
+    
+    if (!customer || !date || !vatTreatment || !rateType) {
+        showMessage('Please fill in all required header fields', 'error');
+        return;
+    }
+    
+    // Get details
+    const tbody = document.getElementById('detailsTableBody');
+    if (tbody.rows.length === 0) {
+        showMessage('Please add at least one detail line', 'error');
+        return;
+    }
+    
+    const details = [];
+    let valid = true;
+    
+    Array.from(tbody.rows).forEach((row, index) => {
+        const stockCode = row.querySelector('.stock-code').value;
+        const qty = parseFloat(row.querySelector('.qty').value) || 0;
+        const rate = parseFloat(row.querySelector('.rate').value) || 0;
+        
+        if (!stockCode || qty <= 0 || rate < 0) {
+            valid = false;
+            return;
+        }
+        
+        details.push({
+            docSrNo: index + 1,
+            stockCode: stockCode,
+            stockDescription: row.querySelector('.stock-desc').value,
+            qty: qty,
+            unit: row.querySelector('.unit').value,
+            rate: rate,
+            grossAmount: parseFloat(row.querySelector('.gross').value) || 0,
+            discountPercentage: parseFloat(row.querySelector('.disc-pct').value) || 0,
+            discountAmount: parseFloat(row.querySelector('.disc-amt').value) || 0,
+            vatTreatment: row.querySelector('.vat-treatment').value,
+            vatPercentage: parseFloat(row.querySelector('.vat-pct').value) || 0,
+            vatAmount: parseFloat(row.querySelector('.vat-amt').value) || 0,
+            netAmount: parseFloat(row.querySelector('.net-amt').value) || 0,
+            rateType: rateType
+        });
+    });
+    
+    if (!valid) {
+        showMessage('Please fill in all required detail fields correctly', 'error');
+        return;
+    }
+    
+    // Prepare sale data
+    const saleData = {
+        header: {
+            docType: 'SI',
+            docNo: editMode ? document.getElementById('docNo').value : null,
+            date: date,
+            customer: customer,
+            narration: document.getElementById('narration').value,
+            grossAmount: parseFloat(document.getElementById('summaryGross').textContent),
+            discountPercentage: 0, // Not used at header level
+            discountAmount: parseFloat(document.getElementById('summaryDiscount').textContent),
+            vat: parseFloat(document.getElementById('summaryVAT').textContent),
+            net: parseFloat(document.getElementById('summaryNet').textContent),
+            address: document.getElementById('address').value,
+            trn: document.getElementById('trn').value,
+            vatTreatment: vatTreatment,
+            rateType: rateType
+        },
+        details: details
+    };
+    
+    // Disable save button
+    const saveButton = document.getElementById('saveButton');
+    saveButton.disabled = true;
+    saveButton.textContent = editMode ? 'Updating...' : 'Saving...';
+    
+    // Call API
+    const apiCall = editMode ? apiUpdateSale : apiCreateSale;
+    
+    apiCall(saleData, function(response) {
+        saveButton.disabled = false;
+        saveButton.textContent = editMode ? '💾 Update Sale' : '💾 Save Sale';
+        
+        if (response.status === 'success') {
+            showMessage(editMode ? 'Sale updated successfully!' : 'Sale created successfully!', 'success');
+            setTimeout(() => {
+                window.location.href = 'saleslist.htm';
+            }, 1500);
+        } else {
+            showMessage('Error: ' + response.message, 'error');
+        }
+    });
+}
+
+// Cancel form
+function cancelForm() {
+    if (confirm('Are you sure you want to cancel? Any unsaved changes will be lost.')) {
+        window.location.href = 'saleslist.htm';
+    }
+}
+
+// Show message
+function showMessage(message, type) {
+    const container = document.getElementById('messageContainer');
+    container.innerHTML = `<div class="message ${type}">${escapeHtml(message)}</div>`;
+    
+    setTimeout(() => {
+        container.innerHTML = '';
+    }, 5000);
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Logout function
+function logout() {
+    if (confirm('Are you sure you want to logout?')) {
+        performLogout();
+    }
+}
+</script>
+
+</body>
+</html>
