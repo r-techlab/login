@@ -732,8 +732,8 @@ function setupStockSearch(rowId) {
         if (searchTerm.length < 1) return;
         
         const filtered = allStocks.filter(s => 
-            s.code.toLowerCase().includes(searchTerm) ||
-            s.description.toLowerCase().includes(searchTerm)
+            String(s.code).toLowerCase().includes(searchTerm) ||
+            String(s.description).toLowerCase().includes(searchTerm)
         );
         
         if (filtered.length > 0) {
