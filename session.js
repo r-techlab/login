@@ -24,6 +24,20 @@ function createSession(userData) {
         expiryTime: userData.expiryTime || (now + SESSION_DURATION)
     };
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    
+    // Save menu access to IndexedDB for fast page loads
+    if (session.userId && session.menuAccess) {
+        saveMenuAccessToDB(session.userId, session.menuAccess);
+    }
+    
+    // Also fetch and cache system parameters after login
+    // This ensures CompanyName etc. are available in IndexedDB for all pages
+    if (typeof loadSystemParameters === 'function') {
+        loadSystemParameters(function(params) {
+            // Params are now cached in memory and IndexedDB
+        });
+    }
+    
     return session;
 }
 
@@ -111,6 +125,17 @@ function updateSession(serverData) {
 
 // Clear session (logout)
 function clearSession() {
+    // Clear IndexedDB menu access data first
+    const session = getSession();
+    if (session && session.userId) {
+        clearMenuAccessFromDB(session.userId);
+    }
+    // Clear system parameters from IndexedDB
+    clearSystemParamsFromDB();
+    // Clear in-memory system params cache
+    if (typeof clearSystemParametersCache === 'function') {
+        clearSystemParametersCache();
+    }
     localStorage.removeItem(SESSION_KEY);
 }
 
@@ -137,6 +162,8 @@ function protectPage(callback) {
 }
 
 // Protect page with menu-based access control
+// Uses IndexedDB for fast local access - no server call needed
+// Menu access refreshes only on next login
 function protectPageWithMenuAccess(callback) {
     // First check if local session exists
     if (!hasLocalSession()) {
@@ -144,24 +171,29 @@ function protectPageWithMenuAccess(callback) {
         return false;
     }
     
-    // Then validate with server
-    validateSessionWithServer(function(result) {
-        if (!result.valid) {
-            alert(result.message || 'Session expired. Please login again.');
-            window.location.href = 'index.html';
-            if (callback) callback(false);
-            return;
+    const session = getSession();
+    if (!session) {
+        window.location.href = 'index.html';
+        if (callback) callback(false);
+        return false;
+    }
+    
+    const currentPage = window.location.pathname.split('/').pop();
+    
+    // Try to get menu access from IndexedDB first (fastest)
+    getMenuAccessFromDB(session.userId, function(menuAccessFromDB) {
+        let menuAccess;
+        
+        if (menuAccessFromDB && menuAccessFromDB.length > 0) {
+            // Use IndexedDB data (fast - no server call)
+            menuAccess = menuAccessFromDB;
+        } else {
+            // Fallback to localStorage session data
+            menuAccess = session.menuAccess || [];
         }
         
-        // Session is valid, now check menu access
-        const currentPage = window.location.pathname.split('/').pop();
-        
-        // Get user's menu access
-        const menuAccess = getUserMenuAccess();
-        
         // Check if user has access to this page
-        const hasAccess = menuAccess.some(menu => {
-            // Match by pageUrl
+        const hasAccess = menuAccess.some(function(menu) {
             return menu.pageUrl && menu.pageUrl.toLowerCase() === currentPage.toLowerCase();
         });
         
@@ -172,11 +204,11 @@ function protectPageWithMenuAccess(callback) {
             return;
         }
         
-        // User has access
+        // User has access - proceed immediately (no server round-trip)
         if (callback) callback(true);
     });
     
-    return true; // Temporary return while validation is in progress
+    return true;
 }
 
 // ============================================

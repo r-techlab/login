@@ -9,11 +9,11 @@ let systemParametersLoading = false;
 let systemParametersCallbacks = [];
 
 /**
- * Load system parameters from API
+ * Load system parameters from API (with IndexedDB caching)
  * @param {Function} callback - Callback function(parameters)
  */
 function loadSystemParameters(callback) {
-    // If already cached, return immediately
+    // If already cached in memory, return immediately
     if (systemParametersCache) {
         callback(systemParametersCache);
         return;
@@ -30,34 +30,48 @@ function loadSystemParameters(callback) {
     // Start loading
     systemParametersLoading = true;
     
-    // Check if user is logged in (not needed for login page)
+    // Check if user is logged in
     const session = getSession ? getSession() : null;
     
     if (!session) {
         // For login page, try to fetch without session (public parameters)
-        // This allows CompanyName and Title to show on login page
         fetchParametersPublic();
         return;
     }
     
-    // Fetch from API
-    apiGetSystemParameters(function(response) {
-        systemParametersLoading = false;
-        
-        if (response.status === 'success' && response.parameters) {
-            // Convert array to object for easy lookup
-            systemParametersCache = {};
-            response.parameters.forEach(param => {
-                systemParametersCache[param.code] = param.value;
-            });
-        } else {
-            // Empty cache on error
-            systemParametersCache = {};
+    // Try IndexedDB first (fast - no server call)
+    getSystemParamsFromDB(function(paramsFromDB) {
+        if (paramsFromDB && Object.keys(paramsFromDB).length > 0) {
+            // Use cached data from IndexedDB
+            systemParametersCache = paramsFromDB;
+            systemParametersLoading = false;
+            systemParametersCallbacks.forEach(cb => cb(systemParametersCache));
+            systemParametersCallbacks = [];
+            return;
         }
         
-        // Call all waiting callbacks
-        systemParametersCallbacks.forEach(cb => cb(systemParametersCache));
-        systemParametersCallbacks = [];
+        // Not in IndexedDB, fetch from API
+        apiGetSystemParameters(function(response) {
+            systemParametersLoading = false;
+            
+            if (response.status === 'success' && response.parameters) {
+                // Convert array to object for easy lookup
+                systemParametersCache = {};
+                response.parameters.forEach(param => {
+                    systemParametersCache[param.code] = param.value;
+                });
+                
+                // Save to IndexedDB for future fast access
+                saveSystemParamsToDB(systemParametersCache);
+            } else {
+                // Empty cache on error
+                systemParametersCache = {};
+            }
+            
+            // Call all waiting callbacks
+            systemParametersCallbacks.forEach(cb => cb(systemParametersCache));
+            systemParametersCallbacks = [];
+        });
     });
 }
 

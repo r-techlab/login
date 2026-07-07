@@ -263,6 +263,7 @@ h1 {
 </div>
 
 <script src="api.js"></script>
+<script src="indexedDB.js"></script>
 <script src="session.js"></script>
 <script src="menu.js"></script>
 <script src="systemConfig.js"></script>
@@ -273,8 +274,8 @@ showMenuSkeleton('menuContainer');
 // Initialize system config
 initSystemConfig('home.html', 'companyNameSidebar');
 
-// Protect this page - validate session with server
-protectPage(function(isValid) {
+// Protect this page using IndexedDB (fast - no server call)
+protectPageWithMenuAccess(function(isValid) {
     if (isValid) {
         // Load and display session information
         const session = getSession();

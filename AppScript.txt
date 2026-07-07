@@ -1676,15 +1676,9 @@ function handleGetSystemParametersGet(e) {
     return createJsonResponse(errorResult);
   }
   
-  // Check if user is admin
-  if (validation.roleName !== "Admin") {
-    var errorResult = { status: "error", message: "Access denied: Admin role required" };
-    if (callback) {
-      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
-        .setMimeType(ContentService.MimeType.JAVASCRIPT);
-    }
-    return createJsonResponse(errorResult);
-  }
+  // All authenticated users can read system parameters (no admin check needed)
+  // This allows CompanyName to be displayed for all users
+  // Write operations (create/update/delete) still require Admin role
   
   // Get all parameters from SystemParameters sheet
   var paramsSheet = ss.getSheetByName("SystemParameters");
