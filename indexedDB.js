@@ -5,9 +5,12 @@
 // ============================================
 
 const DB_NAME = 'AppCache';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const STORE_NAME = 'menuAccess';
 const STORE_NAME_PARAMS = 'systemParams';
+const STORE_NAME_CUSTOMERS = 'customers';
+const STORE_NAME_STOCKS = 'stocks';
+const STORE_NAME_UNITS = 'units';
 
 // Initialize IndexedDB database
 function initIndexedDB(callback) {
@@ -31,6 +34,24 @@ function initIndexedDB(callback) {
         if (!db.objectStoreNames.contains(STORE_NAME_PARAMS)) {
             db.createObjectStore(STORE_NAME_PARAMS, { keyPath: 'id' });
         }
+        
+        // Create object store for customers if it doesn't exist
+        if (!db.objectStoreNames.contains(STORE_NAME_CUSTOMERS)) {
+            const store = db.createObjectStore(STORE_NAME_CUSTOMERS, { keyPath: 'code' });
+            store.createIndex('code', 'code', { unique: true });
+        }
+        
+        // Create object store for stocks if it doesn't exist
+        if (!db.objectStoreNames.contains(STORE_NAME_STOCKS)) {
+            const store = db.createObjectStore(STORE_NAME_STOCKS, { keyPath: 'code' });
+            store.createIndex('code', 'code', { unique: true });
+        }
+        
+        // Create object store for units if it doesn't exist
+        if (!db.objectStoreNames.contains(STORE_NAME_UNITS)) {
+            const store = db.createObjectStore(STORE_NAME_UNITS, { keyPath: 'unitCode' });
+            store.createIndex('unitCode', 'unitCode', { unique: true });
+        }
     };
     
     request.onsuccess = function(event) {
@@ -38,6 +59,10 @@ function initIndexedDB(callback) {
         if (callback) callback(db);
     };
 }
+
+// ============================================
+// MENU ACCESS CACHING
+// ============================================
 
 // Save menu access data for a user
 function saveMenuAccessToDB(userId, menuAccess) {
@@ -264,5 +289,366 @@ function clearSystemParamsFromDB() {
             console.error('Error in clearSystemParamsFromDB:', error);
             db.close();
         }
+    });
+}
+
+// ============================================
+// CUSTOMERS CACHING
+// ============================================
+
+// Save customers to IndexedDB
+function saveCustomersToDB(customers) {
+    if (!customers || customers.length === 0) return;
+    
+    initIndexedDB(function(db) {
+        if (!db) return;
+        
+        try {
+            const transaction = db.transaction([STORE_NAME_CUSTOMERS], 'readwrite');
+            const store = transaction.objectStore(STORE_NAME_CUSTOMERS);
+            
+            // Clear existing data first
+            store.clear();
+            
+            // Add each customer
+            customers.forEach(function(customer) {
+                store.put(customer);
+            });
+            
+            transaction.oncomplete = function() {
+                db.close();
+            };
+            
+            transaction.onerror = function(event) {
+                console.error('Error saving customers to IndexedDB:', event.target.error);
+                db.close();
+            };
+        } catch (error) {
+            console.error('Error in saveCustomersToDB:', error);
+            db.close();
+        }
+    });
+}
+
+// Get all customers from IndexedDB
+function getCustomersFromDB(callback) {
+    initIndexedDB(function(db) {
+        if (!db) {
+            if (callback) callback(null);
+            return;
+        }
+        
+        try {
+            const transaction = db.transaction([STORE_NAME_CUSTOMERS], 'readonly');
+            const store = transaction.objectStore(STORE_NAME_CUSTOMERS);
+            const request = store.getAll();
+            
+            request.onsuccess = function(event) {
+                const result = event.target.result;
+                db.close();
+                
+                if (result && result.length > 0) {
+                    if (callback) callback(result);
+                } else {
+                    if (callback) callback(null);
+                }
+            };
+            
+            request.onerror = function(event) {
+                console.error('Error reading customers from IndexedDB:', event.target.error);
+                db.close();
+                if (callback) callback(null);
+            };
+        } catch (error) {
+            console.error('Error in getCustomersFromDB:', error);
+            db.close();
+            if (callback) callback(null);
+        }
+    });
+}
+
+// Clear customers from IndexedDB
+function clearCustomersFromDB() {
+    initIndexedDB(function(db) {
+        if (!db) return;
+        
+        try {
+            const transaction = db.transaction([STORE_NAME_CUSTOMERS], 'readwrite');
+            const store = transaction.objectStore(STORE_NAME_CUSTOMERS);
+            store.clear();
+            
+            transaction.oncomplete = function() {
+                db.close();
+            };
+            
+            transaction.onerror = function(event) {
+                console.error('Error clearing customers from IndexedDB:', event.target.error);
+                db.close();
+            };
+        } catch (error) {
+            console.error('Error in clearCustomersFromDB:', error);
+            db.close();
+        }
+    });
+}
+
+// ============================================
+// STOCKS CACHING
+// ============================================
+
+// Save stocks to IndexedDB
+function saveStocksToDB(stocks) {
+    if (!stocks || stocks.length === 0) return;
+    
+    initIndexedDB(function(db) {
+        if (!db) return;
+        
+        try {
+            const transaction = db.transaction([STORE_NAME_STOCKS], 'readwrite');
+            const store = transaction.objectStore(STORE_NAME_STOCKS);
+            
+            // Clear existing data first
+            store.clear();
+            
+            // Add each stock
+            stocks.forEach(function(stock) {
+                store.put(stock);
+            });
+            
+            transaction.oncomplete = function() {
+                db.close();
+            };
+            
+            transaction.onerror = function(event) {
+                console.error('Error saving stocks to IndexedDB:', event.target.error);
+                db.close();
+            };
+        } catch (error) {
+            console.error('Error in saveStocksToDB:', error);
+            db.close();
+        }
+    });
+}
+
+// Get all stocks from IndexedDB
+function getStocksFromDB(callback) {
+    initIndexedDB(function(db) {
+        if (!db) {
+            if (callback) callback(null);
+            return;
+        }
+        
+        try {
+            const transaction = db.transaction([STORE_NAME_STOCKS], 'readonly');
+            const store = transaction.objectStore(STORE_NAME_STOCKS);
+            const request = store.getAll();
+            
+            request.onsuccess = function(event) {
+                const result = event.target.result;
+                db.close();
+                
+                if (result && result.length > 0) {
+                    if (callback) callback(result);
+                } else {
+                    if (callback) callback(null);
+                }
+            };
+            
+            request.onerror = function(event) {
+                console.error('Error reading stocks from IndexedDB:', event.target.error);
+                db.close();
+                if (callback) callback(null);
+            };
+        } catch (error) {
+            console.error('Error in getStocksFromDB:', error);
+            db.close();
+            if (callback) callback(null);
+        }
+    });
+}
+
+// Clear stocks from IndexedDB
+function clearStocksFromDB() {
+    initIndexedDB(function(db) {
+        if (!db) return;
+        
+        try {
+            const transaction = db.transaction([STORE_NAME_STOCKS], 'readwrite');
+            const store = transaction.objectStore(STORE_NAME_STOCKS);
+            store.clear();
+            
+            transaction.oncomplete = function() {
+                db.close();
+            };
+            
+            transaction.onerror = function(event) {
+                console.error('Error clearing stocks from IndexedDB:', event.target.error);
+                db.close();
+            };
+        } catch (error) {
+            console.error('Error in clearStocksFromDB:', error);
+            db.close();
+        }
+    });
+}
+
+// ============================================
+// UNITS CACHING
+// ============================================
+
+// Save units to IndexedDB
+function saveUnitsToDB(units) {
+    if (!units || units.length === 0) return;
+    
+    initIndexedDB(function(db) {
+        if (!db) return;
+        
+        try {
+            const transaction = db.transaction([STORE_NAME_UNITS], 'readwrite');
+            const store = transaction.objectStore(STORE_NAME_UNITS);
+            
+            // Clear existing data first
+            store.clear();
+            
+            // Add each unit
+            units.forEach(function(unit) {
+                store.put(unit);
+            });
+            
+            transaction.oncomplete = function() {
+                db.close();
+            };
+            
+            transaction.onerror = function(event) {
+                console.error('Error saving units to IndexedDB:', event.target.error);
+                db.close();
+            };
+        } catch (error) {
+            console.error('Error in saveUnitsToDB:', error);
+            db.close();
+        }
+    });
+}
+
+// Get all units from IndexedDB
+function getUnitsFromDB(callback) {
+    initIndexedDB(function(db) {
+        if (!db) {
+            if (callback) callback(null);
+            return;
+        }
+        
+        try {
+            const transaction = db.transaction([STORE_NAME_UNITS], 'readonly');
+            const store = transaction.objectStore(STORE_NAME_UNITS);
+            const request = store.getAll();
+            
+            request.onsuccess = function(event) {
+                const result = event.target.result;
+                db.close();
+                
+                if (result && result.length > 0) {
+                    if (callback) callback(result);
+                } else {
+                    if (callback) callback(null);
+                }
+            };
+            
+            request.onerror = function(event) {
+                console.error('Error reading units from IndexedDB:', event.target.error);
+                db.close();
+                if (callback) callback(null);
+            };
+        } catch (error) {
+            console.error('Error in getUnitsFromDB:', error);
+            db.close();
+            if (callback) callback(null);
+        }
+    });
+}
+
+// Clear units from IndexedDB
+function clearUnitsFromDB() {
+    initIndexedDB(function(db) {
+        if (!db) return;
+        
+        try {
+            const transaction = db.transaction([STORE_NAME_UNITS], 'readwrite');
+            const store = transaction.objectStore(STORE_NAME_UNITS);
+            store.clear();
+            
+            transaction.oncomplete = function() {
+                db.close();
+            };
+            
+            transaction.onerror = function(event) {
+                console.error('Error clearing units from IndexedDB:', event.target.error);
+                db.close();
+            };
+        } catch (error) {
+            console.error('Error in clearUnitsFromDB:', error);
+            db.close();
+        }
+    });
+}
+
+// ============================================
+// MASTER DATA REFRESH
+// Clears all cached master data and re-fetches from server
+// ============================================
+
+function refreshMasterDataFromServer(callback) {
+    const session = getSession();
+    if (!session) {
+        if (callback) callback({ status: 'error', message: 'No session' });
+        return;
+    }
+    
+    // Clear all cached master data
+    clearCustomersFromDB();
+    clearStocksFromDB();
+    clearUnitsFromDB();
+    
+    let completed = 0;
+    let total = 3;
+    let hasError = false;
+    
+    function checkComplete() {
+        completed++;
+        if (completed >= total) {
+            if (callback) {
+                callback({ status: hasError ? 'error' : 'success', message: hasError ? 'Some data failed to refresh' : 'All master data refreshed successfully' });
+            }
+        }
+    }
+    
+    // Re-fetch customers
+    apiGetCustomers(function(response) {
+        if (response.status === 'success' && response.customers) {
+            saveCustomersToDB(response.customers);
+        } else {
+            hasError = true;
+        }
+        checkComplete();
+    });
+    
+    // Re-fetch stocks
+    apiGetStocks(function(response) {
+        if (response.status === 'success' && response.stocks) {
+            saveStocksToDB(response.stocks);
+        } else {
+            hasError = true;
+        }
+        checkComplete();
+    });
+    
+    // Re-fetch units
+    apiGetUnits(function(response) {
+        if (response.status === 'success' && response.units) {
+            saveUnitsToDB(response.units);
+        } else {
+            hasError = true;
+        }
+        checkComplete();
     });
 }

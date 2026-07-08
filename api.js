@@ -3,7 +3,7 @@
 // Centralized API calls with session validation
 // ============================================
 
-const API_URL = "https://script.google.com/macros/s/AKfycbxNoVvEcfCa1vf3-BZVn27h2oeWBr0b2Un5g6Zcp9x3R9XnYzbBkiSYGpo26ihVCfc/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxSGq5Ikq5_aIluwZ1ljyC-XbTd5tsVKnz8vGstfF5vpIEfh8hVYbqZKXTeuq4uzWk/exec";
 const API_TIMEOUT = 15000; // 15 seconds
 
 // ============================================
@@ -54,8 +54,19 @@ function apiLogin(loginid, password, callback) {
 // SALES MANAGEMENT API
 // ============================================
 
-// Get all sales
-function apiGetSales(callback) {
+// Get all sales (with server-side pagination)
+function apiGetSales(page, pageSize, search, callback) {
+    // Handle optional parameters - if search is omitted, shift arguments
+    if (typeof search === 'function') {
+        callback = search;
+        search = '';
+    }
+    if (typeof pageSize === 'function') {
+        callback = pageSize;
+        pageSize = 10;
+        page = 1;
+    }
+    
     const callbackName = 'apiGetSalesCallback_' + Date.now();
     const session = getSession();
     
@@ -82,7 +93,7 @@ function apiGetSales(callback) {
     };
     
     const script = document.createElement('script');
-    script.src = `${API_URL}?action=getSales&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&callback=${callbackName}`;
+    script.src = `${API_URL}?action=getSales&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&page=${page}&pageSize=${pageSize}&search=${encodeURIComponent(search)}&callback=${callbackName}`;
     script.onerror = function() {
         clearTimeout(timeoutId);
         delete window[callbackName];

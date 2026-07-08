@@ -2698,19 +2698,39 @@ function handleGetSalesGet(e) {
     return createJsonResponse(errorResult);
   }
   
+  // Read pagination and search parameters
+  var page = parseInt(e.parameter.page) || 1;
+  var pageSize = parseInt(e.parameter.pageSize) || 10;
+  var search = (e.parameter.search || '').toLowerCase();
+  
   // Get all sales from SalesHeader sheet
   var salesHeaderSheet = ss.getSheetByName("SalesHeader");
   var salesHeaderData = salesHeaderSheet.getDataRange().getValues();
-  var sales = [];
+  var allSales = [];
   
   for (var i = 1; i < salesHeaderData.length; i++) {
     if (salesHeaderData[i][1]) { // Check if DocNo exists
-      sales.push({
+      var docNo = salesHeaderData[i][1].toString();
+      var customer = salesHeaderData[i][3] || '';
+      var narration = salesHeaderData[i][4] || '';
+      var date = salesHeaderData[i][2] ? Utilities.formatDate(new Date(salesHeaderData[i][2]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '';
+      
+      // Apply search filter if search term is provided
+      if (search) {
+        if (docNo.toLowerCase().indexOf(search) === -1 &&
+            customer.toLowerCase().indexOf(search) === -1 &&
+            narration.toLowerCase().indexOf(search) === -1 &&
+            date.toLowerCase().indexOf(search) === -1) {
+          continue; // Skip this record if no match
+        }
+      }
+      
+      allSales.push({
         docType: salesHeaderData[i][0] || '',
-        docNo: salesHeaderData[i][1],
-        date: salesHeaderData[i][2] ? Utilities.formatDate(new Date(salesHeaderData[i][2]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
-        customer: salesHeaderData[i][3] || '',
-        narration: salesHeaderData[i][4] || '',
+        docNo: docNo,
+        date: date,
+        customer: customer,
+        narration: narration,
         grossAmount: salesHeaderData[i][5] || 0,
         discountPercentage: salesHeaderData[i][6] || 0,
         discountAmount: salesHeaderData[i][7] || 0,
@@ -2726,7 +2746,27 @@ function handleGetSalesGet(e) {
     }
   }
   
-  var result = { status: "success", sales: sales };
+  // Sort descending by DocNo (most recent/last document first)
+  allSales.sort(function(a, b) {
+    return b.docNo.localeCompare(a.docNo);
+  });
+  
+  var totalRecords = allSales.length;
+  var totalPages = Math.ceil(totalRecords / pageSize);
+  
+  // Get only the records for the requested page
+  var startIndex = (page - 1) * pageSize;
+  var endIndex = Math.min(startIndex + pageSize, totalRecords);
+  var sales = allSales.slice(startIndex, endIndex);
+  
+  var result = { 
+    status: "success", 
+    sales: sales, 
+    totalRecords: totalRecords,
+    totalPages: totalPages,
+    currentPage: page,
+    pageSize: pageSize
+  };
   if (callback) {
     return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
       .setMimeType(ContentService.MimeType.JAVASCRIPT);

@@ -77,6 +77,14 @@ h2 {
     background: #c0392b;
 }
 
+.btn-warning {
+    background: #f39c12;
+}
+
+.btn-warning:hover {
+    background: #e67e22;
+}
+
 .btn-secondary {
     background: #95a5a6;
 }
@@ -342,6 +350,9 @@ h2 {
         <h1 id="pageTitle">🧾 Sales Management - New Sale</h1>
         <div>
             <button class="btn" onclick="window.location.href='saleslist.htm'">📋 Back to List</button>
+            <button class="btn btn-secondary" id="refreshBtn" onclick="refreshMasterData()">🔄 Refresh Data</button>
+            <button class="btn btn-warning" id="viewEditBtn" style="display: none;" onclick="editFromView()">✏️ Edit</button>
+            <button class="btn btn-danger" id="viewDeleteBtn" style="display: none;" onclick="deleteFromView()">🗑️ Delete</button>
             <button class="btn btn-danger" onclick="logout()">Logout</button>
         </div>
     </div>
@@ -489,6 +500,8 @@ h2 {
 // Global variables
 let editMode = false;
 let editDocNo = null;
+let viewMode = false;
+let viewDocNo = null;
 let allCustomers = [];
 let allStocks = [];
 let vatPercentage = 5; // Default, will be loaded from system parameters
@@ -514,11 +527,21 @@ function loadInitialData() {
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('date').value = today;
     
-    // Check if editing
+    // Check URL parameters
     const urlParams = new URLSearchParams(window.location.search);
     editDocNo = urlParams.get('docno');
+    viewDocNo = urlParams.get('view');
     
-    if (editDocNo) {
+    if (viewDocNo) {
+        // View mode
+        viewMode = true;
+        document.getElementById('pageTitle').textContent = '🧾 Sales Management - View Sale';
+        document.getElementById('saveButton').style.display = 'none';
+        document.querySelector('.form-actions .btn-secondary').textContent = '🔙 Back to List';
+        // Show Edit and Delete buttons for view mode
+        document.getElementById('viewEditBtn').style.display = 'inline-block';
+        document.getElementById('viewDeleteBtn').style.display = 'inline-block';
+    } else if (editDocNo) {
         editMode = true;
         document.getElementById('pageTitle').textContent = '🧾 Sales Management - Edit Sale';
         document.getElementById('saveButton').textContent = '💾 Update Sale';
@@ -530,44 +553,81 @@ function loadInitialData() {
     loadSystemParameters();
 }
 
-// Load customers
+// Load customers - try IndexedDB first, then API
 function loadCustomers() {
-    apiGetCustomers(function(response) {
-        if (response.status === 'success') {
-            allCustomers = response.customers || [];
+    // Try to load from IndexedDB first
+    getCustomersFromDB(function(cachedCustomers) {
+        if (cachedCustomers && cachedCustomers.length > 0) {
+            // Use cached data immediately
+            allCustomers = cachedCustomers;
             setupCustomerSearch();
-            
-            // If editing, load sale data after customers are loaded
-            if (editMode && allStocks.length > 0) {
-                loadSaleData();
-            }
+            checkDataLoaded();
         } else {
-            showMessage('Error loading customers: ' + response.message, 'error');
+            // No cache, fetch from API
+            apiGetCustomers(function(response) {
+                if (response.status === 'success') {
+                    allCustomers = response.customers || [];
+                    // Save to IndexedDB for future use
+                    saveCustomersToDB(allCustomers);
+                    setupCustomerSearch();
+                    checkDataLoaded();
+                } else {
+                    showMessage('Error loading customers: ' + response.message, 'error');
+                    checkDataLoaded();
+                }
+            });
         }
     });
 }
 
-// Load stocks
+// Load stocks - try IndexedDB first, then API
 function loadStocks() {
-    apiGetStocks(function(response) {
-        if (response.status === 'success') {
-            allStocks = response.stocks || [];
-            
-            // If editing, load sale data after stocks are loaded
-            if (editMode && allCustomers.length > 0) {
-                loadSaleData();
-            } else if (!editMode) {
-                // Show form for new sale
-                document.getElementById('salesForm').style.display = 'block';
-            }
+    // Try to load from IndexedDB first
+    getStocksFromDB(function(cachedStocks) {
+        if (cachedStocks && cachedStocks.length > 0) {
+            // Use cached data immediately
+            allStocks = cachedStocks;
+            checkDataLoaded();
         } else {
-            showMessage('Error loading stocks: ' + response.message, 'error');
+            // No cache, fetch from API
+            apiGetStocks(function(response) {
+                if (response.status === 'success') {
+                    allStocks = response.stocks || [];
+                    // Save to IndexedDB for future use
+                    saveStocksToDB(allStocks);
+                    checkDataLoaded();
+                } else {
+                    showMessage('Error loading stocks: ' + response.message, 'error');
+                    checkDataLoaded();
+                }
+            });
         }
     });
+}
+
+// Check if both customers and stocks are loaded, then proceed
+function checkDataLoaded() {
+    if ((editMode || viewMode) && allCustomers.length > 0 && allStocks.length > 0) {
+        loadSaleData();
+    } else if (!editMode && !viewMode && allCustomers.length > 0 && allStocks.length > 0) {
+        // Show form for new sale
+        document.getElementById('salesForm').style.display = 'block';
+    }
 }
 
 // Load system parameters
 function loadSystemParameters() {
+    // Try IndexedDB first
+    getSystemParamsFromDB(function(cachedParams) {
+        if (cachedParams) {
+            const vatParam = cachedParams.find ? cachedParams.find(p => p.code === 'VATPercentage') : null;
+            if (vatParam) {
+                vatPercentage = parseFloat(vatParam.value) || 5;
+            }
+        }
+    });
+    
+    // Also fetch from API to ensure latest values
     apiGetSystemParameters(function(response) {
         if (response.status === 'success') {
             const params = response.parameters || [];
@@ -575,17 +635,51 @@ function loadSystemParameters() {
             if (vatParam) {
                 vatPercentage = parseFloat(vatParam.value) || 5;
             }
+            // Save to IndexedDB
+            saveSystemParamsToDB(params);
         }
     });
 }
 
-// Load sale data for editing
+// Refresh master data from server
+function refreshMasterData() {
+    const refreshBtn = document.getElementById('refreshBtn');
+    refreshBtn.disabled = true;
+    refreshBtn.textContent = '⏳ Refreshing...';
+    
+    refreshMasterDataFromServer(function(result) {
+        // Reload data from IndexedDB (now freshly populated)
+        allCustomers = [];
+        allStocks = [];
+        
+        getCustomersFromDB(function(customers) {
+            allCustomers = customers || [];
+            setupCustomerSearch();
+            
+            getStocksFromDB(function(stocks) {
+                allStocks = stocks || [];
+                
+                refreshBtn.disabled = false;
+                refreshBtn.textContent = '🔄 Refresh Data';
+                
+                if (result.status === 'success') {
+                    showMessage('Master data refreshed successfully from server!', 'success');
+                } else {
+                    showMessage('Some data may not have refreshed. Check your connection.', 'error');
+                }
+            });
+        });
+    });
+}
+
+// Load sale data for editing or viewing
 function loadSaleData() {
-    if (!editDocNo || allCustomers.length === 0 || allStocks.length === 0) return;
+    const docNo = viewMode ? viewDocNo : editDocNo;
+    if (!docNo || allCustomers.length === 0 || allStocks.length === 0) return;
     
     document.getElementById('loadingIndicator').style.display = 'block';
     
-    apiGetSaleByDocNo(editDocNo, function(response) {
+    apiGetSaleByDocNo(docNo, function(response) {
         document.getElementById('loadingIndicator').style.display = 'none';
         
         if (response.status === 'success') {
@@ -612,12 +706,53 @@ function loadSaleData() {
             }
             
             document.getElementById('salesForm').style.display = 'block';
+            
+            // If view mode, disable all editable fields
+            if (viewMode) {
+                disableFormForView();
+            }
         } else {
             showMessage('Error loading sale: ' + response.message, 'error');
             setTimeout(() => {
                 window.location.href = 'saleslist.htm';
             }, 2000);
         }
+    });
+}
+
+// Disable all form fields for view mode
+function disableFormForView() {
+    // Disable header fields
+    document.getElementById('date').disabled = true;
+    document.getElementById('customerSearch').disabled = true;
+    document.getElementById('vatTreatment').disabled = true;
+    document.getElementById('rateType').disabled = true;
+    document.getElementById('narration').disabled = true;
+    
+    // Hide the "Add Line Item" button
+    const addBtn = document.querySelector('.form-card:nth-child(2) .btn-success');
+    if (addBtn) addBtn.style.display = 'none';
+    
+    // Disable all detail row inputs and hide action buttons
+    const tbody = document.getElementById('detailsTableBody');
+    Array.from(tbody.rows).forEach(row => {
+        const qtyInput = row.querySelector('.qty');
+        const rateInput = row.querySelector('.rate');
+        const discPctInput = row.querySelector('.disc-pct');
+        const discAmtInput = row.querySelector('.disc-amt');
+        const vatTreatmentSelect = row.querySelector('.vat-treatment');
+        const deleteBtn = row.querySelector('.btn-icon');
+        
+        if (qtyInput) qtyInput.disabled = true;
+        if (rateInput) rateInput.disabled = true;
+        if (discPctInput) discPctInput.disabled = true;
+        if (discAmtInput) discAmtInput.disabled = true;
+        if (vatTreatmentSelect) vatTreatmentSelect.disabled = true;
+        if (deleteBtn) deleteBtn.style.display = 'none';
+        
+        // Disable stock search
+        const stockSearch = row.querySelector('.stock-search');
+        if (stockSearch) stockSearch.disabled = true;
     });
 }
 
@@ -981,8 +1116,14 @@ function saveSale(event) {
         
         if (response.status === 'success') {
             showMessage(editMode ? 'Sale updated successfully!' : 'Sale created successfully!', 'success');
+            // Get the saved docNo from response
+            const savedDocNo = response.docNo || (editMode ? editDocNo : null);
             setTimeout(() => {
-                window.location.href = 'saleslist.htm';
+                if (savedDocNo) {
+                    window.location.href = 'salesform.htm?view=' + encodeURIComponent(savedDocNo);
+                } else {
+                    window.location.href = 'saleslist.htm';
+                }
             }, 1500);
         } else {
             showMessage('Error: ' + response.message, 'error');
@@ -992,6 +1133,10 @@ function saveSale(event) {
 
 // Cancel form
 function cancelForm() {
+    if (viewMode) {
+        window.location.href = 'saleslist.htm';
+        return;
+    }
     if (confirm('Are you sure you want to cancel? Any unsaved changes will be lost.')) {
         window.location.href = 'saleslist.htm';
     }
@@ -1013,6 +1158,43 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// Edit from view mode - navigate to edit mode
+function editFromView() {
+    if (viewDocNo) {
+        window.location.href = 'salesform.htm?docno=' + encodeURIComponent(viewDocNo);
+    }
+}
+
+// Delete from view mode
+function deleteFromView() {
+    if (!viewDocNo) return;
+    
+    const confirmMsg = `Are you sure you want to delete sale "${viewDocNo}"?`;
+    
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+    
+    // Disable delete button to prevent double click
+    const deleteBtn = document.getElementById('viewDeleteBtn');
+    deleteBtn.disabled = true;
+    deleteBtn.textContent = 'Deleting...';
+    
+    apiDeleteSale(viewDocNo, function(response) {
+        deleteBtn.disabled = false;
+        deleteBtn.textContent = '🗑️ Delete';
+        
+        if (response.status === 'success') {
+            showMessage('Sale deleted successfully!', 'success');
+            setTimeout(() => {
+                window.location.href = 'saleslist.htm';
+            }, 1500);
+        } else {
+            showMessage('Error: ' + response.message, 'error');
+        }
+    });
 }
 
 // Logout function
