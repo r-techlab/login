@@ -267,12 +267,13 @@ h1 {
 <script src="session.js"></script>
 <script src="menu.js"></script>
 <script src="systemConfig.js"></script>
+<script src="themeManager.js"></script>
 <script>
 // Show skeleton loader immediately
 showMenuSkeleton('menuContainer');
 
-// Initialize system config
-initSystemConfig('home.html', 'companyNameSidebar');
+// Initialize system config with theme
+initPageWithTheme('home.html', 'companyNameSidebar');
 
 // Protect this page using IndexedDB (fast - no server call)
 protectPageWithMenuAccess(function(isValid) {

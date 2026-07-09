@@ -511,14 +511,15 @@ tbody tr:hover {
 <script src="session.js"></script>
 <script src="menu.js"></script>
 <script src="systemConfig.js"></script>
+<script src="themeManager.js"></script>
 <script>
 // Global variables
 let allRoles = [];
 let roleUsage = {};
 let editingRoleId = null;
 
-// Initialize system config
-initSystemConfig('rolemaster.htm', 'companyNameSidebar');
+// Initialize system config with theme
+initPageWithTheme('rolemaster.htm', 'companyNameSidebar');
 
 // Protect this page with menu-based access control
 protectPageWithMenuAccess(function(isValid) {

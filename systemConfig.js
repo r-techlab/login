@@ -47,6 +47,8 @@ function loadSystemParameters(callback) {
             systemParametersLoading = false;
             systemParametersCallbacks.forEach(cb => cb(systemParametersCache));
             systemParametersCallbacks = [];
+            // Also save to localStorage as backup
+            cacheParametersToStorage();
             return;
         }
         
@@ -63,9 +65,25 @@ function loadSystemParameters(callback) {
                 
                 // Save to IndexedDB for future fast access
                 saveSystemParamsToDB(systemParametersCache);
+                // Save to localStorage as backup
+                cacheParametersToStorage();
             } else {
-                // Empty cache on error
-                systemParametersCache = {};
+                // API failed - try localStorage as last resort
+                const cachedParams = localStorage.getItem('systemParams');
+                if (cachedParams) {
+                    try {
+                        systemParametersCache = JSON.parse(cachedParams);
+                        // Re-save to IndexedDB to repair the cache for future page loads
+                        if (Object.keys(systemParametersCache).length > 0) {
+                            saveSystemParamsToDB(systemParametersCache);
+                        }
+                    } catch (e) {
+                        systemParametersCache = {};
+                    }
+                } else {
+                    // Empty cache on error
+                    systemParametersCache = {};
+                }
             }
             
             // Call all waiting callbacks
@@ -163,9 +181,25 @@ function displayCompanyName(elementId, options = {}) {
     const element = document.getElementById(elementId);
     if (!element) return;
     
-    // Show loading state
-    element.innerHTML = '<span style="color: #999;">Loading...</span>';
+    // Try to show cached company name from localStorage immediately (no async delay)
+    let hasLocalCache = false;
+    try {
+        const cachedParams = localStorage.getItem('systemParams');
+        if (cachedParams) {
+            const parsed = JSON.parse(cachedParams);
+            const cachedName = parsed['CompanyName'] || '';
+            if (cachedName) {
+                hasLocalCache = true;
+                let style = options.style || '';
+                let className = options.className || '';
+                element.innerHTML = `<span class="${className}" style="${style}">${escapeHtml(cachedName)}</span>`;
+            }
+        }
+    } catch (e) {
+        // Ignore parse errors
+    }
     
+    // Also load fresh data from IndexedDB/API to update if needed
     loadSystemParameters(function(params) {
         const companyName = params['CompanyName'] || '';
         
@@ -175,11 +209,21 @@ function displayCompanyName(elementId, options = {}) {
             let className = options.className || '';
             
             element.innerHTML = `<span class="${className}" style="${style}">${escapeHtml(companyName)}</span>`;
-        } else {
-            // Clear if no company name found
+        } else if (!hasLocalCache) {
+            // Only clear if we don't have a cached value from localStorage
+            // This prevents the async callback from overwriting the displayed name
+            // when the async load fails to find the company name
             element.innerHTML = '';
         }
+        // If hasLocalCache is true but companyName is empty, keep the cached value
     });
+    
+    // ULTIMATE FALLBACK: If after 3 seconds the element is still empty, show a default
+    setTimeout(function() {
+        if (element.innerHTML.trim() === '') {
+            element.innerHTML = '<span style="font-weight:bold;">R-TechLab</span>';
+        }
+    }, 3000);
 }
 
 /**
@@ -216,6 +260,12 @@ function clearSystemParametersCache() {
     systemParametersCache = null;
     systemParametersLoading = false;
     systemParametersCallbacks = [];
+    // Also clear localStorage backup
+    try {
+        localStorage.removeItem('systemParams');
+    } catch (e) {
+        // Ignore storage errors
+    }
 }
 
 /**

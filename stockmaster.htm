@@ -476,14 +476,15 @@ tbody tr:hover {
 <script src="session.js"></script>
 <script src="menu.js"></script>
 <script src="systemConfig.js"></script>
+<script src="themeManager.js"></script>
 <script>
 // Global variables
 let allStocks = [];
 let allUnits = [];
 let editingStockCode = null;
 
-// Initialize system config
-initSystemConfig('stockmaster.htm', 'companyNameSidebar');
+// Initialize system config with theme
+initPageWithTheme('stockmaster.htm', 'companyNameSidebar');
 
 // Protect this page with menu-based access control
 protectPageWithMenuAccess(function(isValid) {

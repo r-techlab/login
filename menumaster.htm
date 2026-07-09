@@ -544,13 +544,14 @@ tbody tr:hover {
 <script src="session.js"></script>
 <script src="menu.js"></script>
 <script src="systemConfig.js"></script>
+<script src="themeManager.js"></script>
 <script>
 // Global variables
 let allMenus = [];
 let editingMenuId = null;
 
-// Initialize system config
-initSystemConfig('menumaster.htm', 'companyNameSidebar');
+// Initialize system config with theme
+initPageWithTheme('menumaster.htm', 'companyNameSidebar');
 
 // Protect this page with menu-based access control
 protectPageWithMenuAccess(function(isValid) {

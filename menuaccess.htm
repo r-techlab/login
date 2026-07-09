@@ -496,6 +496,7 @@ h1 {
 <script src="session.js"></script>
 <script src="menu.js"></script>
 <script src="systemConfig.js"></script>
+<script src="themeManager.js"></script>
 <script>
 // Global variables
 let allRoles = [];
@@ -509,8 +510,8 @@ let hasChanges = false;
 // Show skeleton loader immediately
 showMenuSkeleton('menuContainer');
 
-// Initialize system config
-initSystemConfig('menuaccess.htm', 'companyNameSidebar');
+// Initialize system config with theme
+initPageWithTheme('menuaccess.htm', 'companyNameSidebar');
 
 // Protect this page with menu-based access control
 protectPageWithMenuAccess(function(isValid) {

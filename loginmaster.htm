@@ -465,6 +465,7 @@ tbody tr:hover {
 <script src="session.js"></script>
 <script src="menu.js"></script>
 <script src="systemConfig.js"></script>
+<script src="themeManager.js"></script>
 <script>
 // Global variables
 let allUsers = [];
@@ -474,8 +475,8 @@ let editingUserId = null;
 // Show skeleton loader immediately
 showMenuSkeleton('menuContainer');
 
-// Initialize system config
-initSystemConfig('loginmaster.htm', 'companyNameSidebar');
+// Initialize system config with theme
+initPageWithTheme('loginmaster.htm', 'companyNameSidebar');
 
 // Protect this page with menu-based access control
 protectPageWithMenuAccess(function(isValid) {

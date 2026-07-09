@@ -496,6 +496,7 @@ h2 {
 <script src="session.js"></script>
 <script src="menu.js"></script>
 <script src="systemConfig.js"></script>
+<script src="themeManager.js"></script>
 <script>
 // Global variables
 let editMode = false;
@@ -507,8 +508,8 @@ let allStocks = [];
 let vatPercentage = 5; // Default, will be loaded from system parameters
 let detailLineCounter = 0;
 
-// Initialize system config
-initSystemConfig('salesform.htm', null);
+// Initialize system config with theme
+initPageWithTheme('salesform.htm', null);
 
 // Protect this page with menu-based access control
 protectPageWithMenuAccess(function(isValid) {
@@ -620,9 +621,10 @@ function loadSystemParameters() {
     // Try IndexedDB first
     getSystemParamsFromDB(function(cachedParams) {
         if (cachedParams) {
-            const vatParam = cachedParams.find ? cachedParams.find(p => p.code === 'VATPercentage') : null;
-            if (vatParam) {
-                vatPercentage = parseFloat(vatParam.value) || 5;
+            // cachedParams is now an object like {CompanyName: '...', VATPercentage: '5', ...}
+            const vatValue = cachedParams['VATPercentage'];
+            if (vatValue) {
+                vatPercentage = parseFloat(vatValue) || 5;
             }
         }
     });
@@ -635,8 +637,18 @@ function loadSystemParameters() {
             if (vatParam) {
                 vatPercentage = parseFloat(vatParam.value) || 5;
             }
-            // Save to IndexedDB
-            saveSystemParamsToDB(params);
+            // Save to IndexedDB (convert array to object format)
+            const paramsObj = {};
+            params.forEach(function(p) {
+                if (p.code) {
+                    paramsObj[p.code] = p.value;
+                }
+            });
+            saveSystemParamsToDB(paramsObj);
+            // Also save to localStorage as backup
+            try {
+                localStorage.setItem('systemParams', JSON.stringify(paramsObj));
+            } catch (e) {}
         }
     });
 }

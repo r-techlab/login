@@ -258,9 +258,10 @@ tbody tr:hover {
     justify-content: center;
     align-items: center;
     padding: 15px;
-    gap: 15px;
+    gap: 5px;
     background: #f8f9fa;
     border-top: 1px solid #eee;
+    flex-wrap: wrap;
 }
 
 .pagination .btn {
@@ -271,12 +272,90 @@ tbody tr:hover {
     font-size: 14px;
     color: #666;
     font-weight: 500;
+    margin: 0 10px;
 }
 
 .pagination .total-records {
     font-size: 12px;
     color: #999;
     margin-left: 10px;
+}
+
+.pagination .page-btn {
+    min-width: 36px;
+    height: 36px;
+    padding: 0 8px;
+    border: 1px solid #ddd;
+    background: white;
+    color: #333;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pagination .page-btn:hover:not(:disabled):not(.active) {
+    background: #e8e8e8;
+    border-color: #bbb;
+}
+
+.pagination .page-btn.active {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+    font-weight: bold;
+}
+
+.pagination .page-btn:disabled {
+    background: #f0f0f0;
+    color: #ccc;
+    cursor: not-allowed;
+    border-color: #eee;
+}
+
+.pagination .page-ellipsis {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 30px;
+    height: 36px;
+    color: #999;
+    font-size: 14px;
+    user-select: none;
+}
+
+.pagination .nav-btn {
+    min-width: 70px;
+    height: 36px;
+    padding: 0 10px;
+    border: 1px solid #ddd;
+    background: white;
+    color: #333;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+}
+
+.pagination .nav-btn:hover:not(:disabled) {
+    background: #e8e8e8;
+    border-color: #bbb;
+}
+
+.pagination .nav-btn:disabled {
+    background: #f0f0f0;
+    color: #ccc;
+    cursor: not-allowed;
+    border-color: #eee;
 }
 
 @media (max-width: 992px) {
@@ -365,10 +444,13 @@ tbody tr:hover {
                     </tbody>
                 </table>
                 <div class="pagination" id="paginationControls" style="display: none;">
-                    <button class="btn btn-small" onclick="goToPage(currentPage - 1)" id="prevPageBtn">◀ Previous</button>
+                    <button class="nav-btn" onclick="goToFirstPage()" id="firstPageBtn" title="First Page">« First</button>
+                    <button class="nav-btn" onclick="goToPage(currentPage - 1)" id="prevPageBtn" title="Previous Page">◀ Previous</button>
+                    <div id="pageNumbers" style="display: inline-flex; gap: 3px; align-items: center;"></div>
                     <span class="page-info" id="pageInfo">Page 1 of 1</span>
                     <span class="total-records" id="totalRecords"></span>
-                    <button class="btn btn-small" onclick="goToPage(currentPage + 1)" id="nextPageBtn">Next ▶</button>
+                    <button class="nav-btn" onclick="goToPage(currentPage + 1)" id="nextPageBtn" title="Next Page">Next ▶</button>
+                    <button class="nav-btn" onclick="goToLastPage()" id="lastPageBtn" title="Last Page">Last »</button>
                 </div>
             </div>
         </div>
@@ -380,6 +462,7 @@ tbody tr:hover {
 <script src="session.js"></script>
 <script src="menu.js"></script>
 <script src="systemConfig.js"></script>
+<script src="themeManager.js"></script>
 <script>
 // Global variables
 let currentPage = 1;
@@ -388,8 +471,8 @@ let totalRecords = 0;
 let totalPages = 0;
 let currentSearch = '';
 
-// Initialize system config
-initSystemConfig('saleslist.htm', 'companyNameSidebar');
+// Initialize system config with theme
+initPageWithTheme('saleslist.htm', 'companyNameSidebar');
 
 // Protect this page with menu-based access control
 protectPageWithMenuAccess(function(isValid) {
@@ -480,27 +563,113 @@ function displaySales(sales) {
     updatePaginationControls();
 }
 
-// Update pagination controls
+// Update pagination controls with page number buttons
 function updatePaginationControls() {
     const paginationControls = document.getElementById('paginationControls');
+    const firstBtn = document.getElementById('firstPageBtn');
     const prevBtn = document.getElementById('prevPageBtn');
     const nextBtn = document.getElementById('nextPageBtn');
+    const lastBtn = document.getElementById('lastPageBtn');
     const pageInfo = document.getElementById('pageInfo');
     const totalRecordsSpan = document.getElementById('totalRecords');
+    const pageNumbersDiv = document.getElementById('pageNumbers');
     
     paginationControls.style.display = 'flex';
     pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
     totalRecordsSpan.textContent = `(${totalRecords} records)`;
     
+    // Enable/disable navigation buttons
+    firstBtn.disabled = currentPage <= 1;
     prevBtn.disabled = currentPage <= 1;
     nextBtn.disabled = currentPage >= totalPages;
+    lastBtn.disabled = currentPage >= totalPages;
+    
+    // Generate page number buttons
+    pageNumbersDiv.innerHTML = '';
+    
+    if (totalPages <= 7) {
+        // Show all page numbers
+        for (let i = 1; i <= totalPages; i++) {
+            pageNumbersDiv.appendChild(createPageButton(i));
+        }
+    } else {
+        // Show sliding window of page numbers with ellipsis
+        // Always show first page
+        pageNumbersDiv.appendChild(createPageButton(1));
+        
+        if (currentPage > 3) {
+            // Show ellipsis after first page
+            pageNumbersDiv.appendChild(createEllipsis());
+        }
+        
+        // Calculate range of pages to show around current page
+        let startPage = Math.max(2, currentPage - 1);
+        let endPage = Math.min(totalPages - 1, currentPage + 1);
+        
+        // Adjust if near the beginning
+        if (currentPage <= 3) {
+            startPage = 2;
+            endPage = Math.min(4, totalPages - 1);
+        }
+        
+        // Adjust if near the end
+        if (currentPage >= totalPages - 2) {
+            startPage = Math.max(2, totalPages - 3);
+            endPage = totalPages - 1;
+        }
+        
+        for (let i = startPage; i <= endPage; i++) {
+            pageNumbersDiv.appendChild(createPageButton(i));
+        }
+        
+        if (currentPage < totalPages - 2) {
+            // Show ellipsis before last page
+            pageNumbersDiv.appendChild(createEllipsis());
+        }
+        
+        // Always show last page
+        pageNumbersDiv.appendChild(createPageButton(totalPages));
+    }
+}
+
+// Create a page number button element
+function createPageButton(pageNum) {
+    const btn = document.createElement('button');
+    btn.className = 'page-btn' + (pageNum === currentPage ? ' active' : '');
+    btn.textContent = pageNum;
+    btn.onclick = function() { goToPage(pageNum); };
+    btn.title = 'Page ' + pageNum;
+    return btn;
+}
+
+// Create an ellipsis element
+function createEllipsis() {
+    const span = document.createElement('span');
+    span.className = 'page-ellipsis';
+    span.textContent = '...';
+    return span;
 }
 
 // Go to a specific page
 function goToPage(page) {
     if (page < 1 || page > totalPages) return;
+    if (page === currentPage) return;
     
     currentPage = page;
+    loadSales();
+}
+
+// Go to first page
+function goToFirstPage() {
+    if (currentPage === 1) return;
+    currentPage = 1;
+    loadSales();
+}
+
+// Go to last page
+function goToLastPage() {
+    if (currentPage === totalPages) return;
+    currentPage = totalPages;
     loadSales();
 }
 
