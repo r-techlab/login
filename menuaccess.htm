@@ -629,12 +629,12 @@ function renderMenuTree() {
         return;
     }
     
-    const tree = buildMenuHierarchy();
+    const tree = buildMenuHierarchyForAccess();
     container.innerHTML = '<ul class="menu-tree">' + renderMenuTreeItems(tree) + '</ul>';
 }
 
-// Build menu hierarchy
-function buildMenuHierarchy() {
+// Build menu hierarchy for access management (uses allMenus from API)
+function buildMenuHierarchyForAccess() {
     const menuMap = {};
     const rootMenus = [];
     
