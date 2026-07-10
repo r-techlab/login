@@ -385,9 +385,9 @@ h2 {
             </div>
             
             <div class="form-row">
-                <div class="form-group">
+                <div class="form-group" style="grid-column: span 2;">
                     <label for="address">Address</label>
-                    <input type="text" id="address" disabled>
+                    <textarea id="address" rows="3" placeholder="Customer address..."></textarea>
                 </div>
                 <div class="form-group">
                     <label for="trn">TRN</label>
@@ -737,6 +737,7 @@ function disableFormForView() {
     // Disable header fields
     document.getElementById('date').disabled = true;
     document.getElementById('customerSearch').disabled = true;
+    document.getElementById('address').disabled = true;
     document.getElementById('vatTreatment').disabled = true;
     document.getElementById('rateType').disabled = true;
     document.getElementById('narration').disabled = true;
@@ -788,7 +789,7 @@ function setupCustomerSearch() {
         
         if (filtered.length > 0) {
             dropdown.innerHTML = filtered.map(c => 
-                `<div class="dropdown-item" onclick="selectCustomer('${c.code}', '${escapeHtml(c.description)}', '${escapeHtml(c.addressStreet || '')}', '${escapeHtml(c.trn || '')}')">
+                `<div class="dropdown-item" onclick="selectCustomer('${c.code}', '${escapeHtml(c.description)}', '${escapeHtml(c.trn || '')}')">
                     <strong>${c.code}</strong> - ${c.description}
                 </div>`
             ).join('');
@@ -804,12 +805,27 @@ function setupCustomerSearch() {
     });
 }
 
+// Build full address from customer data
+function buildFullAddress(customer) {
+    if (!customer) return '';
+    const parts = [];
+    if (customer.addressStreet) parts.push(customer.addressStreet);
+    if (customer.addressCity) parts.push(customer.addressCity);
+    if (customer.addressEmirate) parts.push(customer.addressEmirate);
+    if (customer.addressPO) parts.push('PO Box: ' + customer.addressPO);
+    if (customer.addressCountry) parts.push(customer.addressCountry);
+    return parts.join(', ');
+}
+
 // Select customer
-function selectCustomer(code, description, address, trn) {
+function selectCustomer(code, description, trn) {
+    // Find the full customer object
+    const customer = allCustomers.find(c => c.code === code);
+    
     document.getElementById('customer').value = code;
     document.getElementById('customerSearch').value = `${code} - ${description}`;
-    document.getElementById('address').value = address;
-    document.getElementById('trn').value = trn;
+    document.getElementById('address').value = buildFullAddress(customer);
+    document.getElementById('trn').value = trn || (customer ? customer.trn : '');
     document.getElementById('customerDropdown').classList.remove('active');
 }
 
