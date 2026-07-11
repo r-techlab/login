@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Logo Master - Logo Management</title>
+<link rel="stylesheet" href="menu.css">
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    margin: 0;
+    padding: 20px;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 20px;
+    margin-bottom: 30px;
+}
+
+h1 {
+    color: #333;
+    margin: 0;
+}
+
+.btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    margin-left: 10px;
+}
+
+.btn:hover {
+    background: #2980b9;
+}
+
+.btn-success {
+    background: #27ae60;
+}
+
+.btn-success:hover {
+    background: #229954;
+}
+
+.btn-danger {
+    background: #e74c3c;
+}
+
+.btn-danger:hover {
+    background: #c0392b;
+}
+
+.btn-warning {
+    background: #f39c12;
+}
+
+.btn-warning:hover {
+    background: #e67e22;
+}
+
+.btn:disabled {
+    background: #95a5a6;
+    cursor: not-allowed;
+}
+
+.layout-with-sidebar {
+    display: flex;
+    gap: 20px;
+}
+
+.sidebar {
+    width: 280px;
+    flex-shrink: 0;
+}
+
+.company-name-sidebar {
+    font-size: 16px;
+    font-weight: bold;
+    color: white;
+    padding: 12px;
+    margin-bottom: 15px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 8px;
+    text-align: center;
+}
+
+.main-content {
+    flex: 1;
+}
+
+.toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.search-box {
+    flex: 1;
+    max-width: 400px;
+}
+
+.search-box input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+.table-container {
+    overflow-x: auto;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+thead {
+    background: #667eea;
+    color: white;
+}
+
+th {
+    padding: 15px;
+    text-align: left;
+    font-weight: bold;
+}
+
+td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #eee;
+    vertical-align: middle;
+}
+
+tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 5px;
+}
+
+.btn-small {
+    padding: 5px 10px;
+    font-size: 12px;
+}
+
+.logo-thumb {
+    width: 60px;
+    height: 60px;
+    object-fit: contain;
+    border-radius: 5px;
+    border: 1px solid #ddd;
+    background: #f8f9fa;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    animation: fadeIn 0.3s;
+    overflow-y: auto;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-content {
+    background: white;
+    margin: 5% auto;
+    padding: 30px;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 550px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    animation: slideDown 0.3s;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #667eea;
+}
+
+.modal-header h2 {
+    margin: 0;
+    color: #333;
+}
+
+.close {
+    font-size: 28px;
+    font-weight: bold;
+    color: #999;
+    cursor: pointer;
+    line-height: 20px;
+}
+
+.close:hover {
+    color: #333;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #555;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.form-group input:disabled {
+    background: #f5f5f5;
+    cursor: not-allowed;
+}
+
+.form-group input[type="file"] {
+    padding: 8px;
+    background: white;
+}
+
+.form-group small {
+    display: block;
+    margin-top: 3px;
+    color: #666;
+    font-size: 12px;
+}
+
+.logo-preview-container {
+    margin-top: 10px;
+    text-align: center;
+    padding: 15px;
+    border: 2px dashed #ddd;
+    border-radius: 8px;
+    background: #fafafa;
+    min-height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.logo-preview-container img {
+    max-width: 200px;
+    max-height: 120px;
+    object-fit: contain;
+}
+
+.logo-preview-container .placeholder {
+    color: #999;
+    font-size: 14px;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 25px;
+}
+
+.message {
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    font-weight: bold;
+}
+
+.message.success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.message.error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.message.warning {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+}
+
+.loading::after {
+    content: '...';
+    animation: dots 1.5s steps(4, end) infinite;
+}
+
+@keyframes dots {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    60%, 100% { content: '...'; }
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #999;
+}
+
+.empty-state-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+}
+
+.stats-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-around;
+    text-align: center;
+}
+
+.stat-item h3 {
+    margin: 0;
+    font-size: 32px;
+}
+
+.stat-item p {
+    margin: 5px 0 0 0;
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+@media (max-width: 992px) {
+    .layout-with-sidebar {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+    }
+    
+    .toolbar {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .search-box {
+        max-width: 100%;
+    }
+    
+    .stats-card {
+        flex-direction: column;
+        gap: 15px;
+    }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>🖼️ Logo Master - Logo Management</h1>
+        <div>
+            <button class="btn" onclick="window.location.href='home.html'">🏠 Home</button>
+            <button class="btn btn-danger" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div id="breadcrumbContainer" class="breadcrumb-container"></div>
+
+    <div class="layout-with-sidebar">
+        <div class="sidebar">
+            <div id="companyNameSidebar" class="company-name-sidebar"></div>
+            <h3>Navigation Menu</h3>
+            <div id="menuContainer"></div>
+        </div>
+
+        <div class="main-content">
+            <div id="messageContainer"></div>
+
+            <div class="stats-card" id="statsCard" style="display: none;">
+                <div class="stat-item">
+                    <h3 id="totalLogos">0</h3>
+                    <p>Total Logos</p>
+                </div>
+            </div>
+
+            <div class="toolbar">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="🔍 Search by Code or Description..." onkeyup="filterLogos()">
+                </div>
+            </div>
+
+            <div class="table-container">
+                <div id="loadingIndicator" class="loading">Loading logos</div>
+                <div id="emptyState" class="empty-state" style="display: none;">
+                    <div class="empty-state-icon">🖼️</div>
+                    <h3>No Logos Found</h3>
+                    <p>Start by adding your first logo.</p>
+                </div>
+                <table id="logosTable" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Description</th>
+                            <th>Logo</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logosTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Update Logo Image Modal -->
+<div id="logoModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Update Logo Image</h2>
+            <span class="close" onclick="closeLogoModal()">&times;</span>
+        </div>
+        <form id="logoForm" onsubmit="saveLogo(event)">
+            <div class="form-group">
+                <label>Logo Code</label>
+                <input type="text" id="logoCode" disabled>
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <input type="text" id="logoDescription" disabled>
+            </div>
+            <div class="form-group">
+                <label for="logoFile">Select New Logo Image</label>
+                <input type="file" id="logoFile" accept="image/*" onchange="previewLogo(event)">
+                <small>Select an image file (PNG, JPG, GIF, etc.)</small>
+                <div class="logo-preview-container" id="logoPreviewContainer">
+                    <span class="placeholder">Current logo preview</span>
+                </div>
+                <input type="hidden" id="logoPath">
+                <input type="hidden" id="logoDataField">
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn" onclick="closeLogoModal()">Cancel</button>
+                <button type="submit" class="btn btn-warning" id="saveButton">Update Image</button>
+            </div>
+        </form>
+    </div>
+
+<script src="api.js"></script>
+<script src="indexedDB.js"></script>
+<script src="session.js"></script>
+<script src="menu.js"></script>
+<script src="systemConfig.js"></script>
+<script src="themeManager.js"></script>
+<script>
+// Global variables
+let allLogos = [];
+let editingLogoCode = null;
+let selectedLogoFile = null;
+
+// Initialize system config with theme
+initPageWithTheme('logomaster.htm', 'companyNameSidebar');
+
+// Protect this page with menu-based access control
+protectPageWithMenuAccess(function(isValid) {
+    if (isValid) {
+        // User has permission via RoleMenuAccess
+        // Render menu and breadcrumb
+        renderMenu('menuContainer');
+        renderBreadcrumb('breadcrumbContainer');
+        
+        // Load initial data
+        loadLogos();
+    }
+});
+
+// Load all logos
+function loadLogos() {
+    document.getElementById('loadingIndicator').style.display = 'block';
+    document.getElementById('logosTable').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('statsCard').style.display = 'none';
+    
+    apiGetLogos(function(response) {
+        document.getElementById('loadingIndicator').style.display = 'none';
+        
+        if (response.status === 'success') {
+            allLogos = response.logos;
+            displayLogos(allLogos);
+            updateStats();
+        } else {
+            showMessage('Error loading logos: ' + response.message, 'error');
+            document.getElementById('emptyState').style.display = 'block';
+        }
+    });
+}
+
+// Update statistics
+function updateStats() {
+    document.getElementById('totalLogos').textContent = allLogos.length;
+    document.getElementById('statsCard').style.display = 'flex';
+}
+
+// Display logos in table
+function displayLogos(logos) {
+    const tbody = document.getElementById('logosTableBody');
+    tbody.innerHTML = '';
+    
+    if (logos.length === 0) {
+        document.getElementById('logosTable').style.display = 'none';
+        document.getElementById('emptyState').style.display = 'block';
+        return;
+    }
+    
+    document.getElementById('logosTable').style.display = 'table';
+    document.getElementById('emptyState').style.display = 'none';
+    
+    logos.forEach(logo => {
+        const row = document.createElement('tr');
+        
+        // Use logoPath first, fall back to logoData (base64) if available
+        const displayPath = logo.logoPath || (logo.logoData ? 'data:image/jpeg;base64,' + logo.logoData : '');
+        const logoImg = displayPath 
+            ? `<img src="${escapeHtml(displayPath)}" class="logo-thumb" alt="${escapeHtml(logo.description)}" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2260%22 height=%2260%22%3E%3Crect fill=%22%23ddd%22 width=%2260%22 height=%2260%22/%3E%3Ctext x=%2230%22 y=%2235%22 text-anchor=%22middle%22 fill=%22%23999%22 font-size=%2224%22%3E🖼%3C/text%3E%3C/svg%3E'">`
+            : `<div class="logo-thumb" style="display:flex;align-items:center;justify-content:center;background:#f0f0f0;font-size:24px;">🖼️</div>`;
+        
+        row.innerHTML = `
+            <td><strong>${escapeHtml(logo.code)}</strong></td>
+            <td>${escapeHtml(logo.description)}</td>
+            <td>${logoImg}</td>
+            <td>
+                <div class="action-buttons">
+                    <button class="btn btn-warning btn-small" onclick="openEditLogoModal('${escapeHtml(logo.code)}')">✏️ Update Image</button>
+                </div>
+            </td>
+        `;
+        
+        tbody.appendChild(row);
+    });
+}
+
+// Filter logos based on search
+function filterLogos() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    
+    const filtered = allLogos.filter(logo => {
+        return logo.code.toLowerCase().includes(searchTerm) ||
+               logo.description.toLowerCase().includes(searchTerm);
+    });
+    
+    displayLogos(filtered);
+}
+
+// Preview selected logo (with resizing for preview)
+function previewLogo(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    selectedLogoFile = file;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const container = document.getElementById('logoPreviewContainer');
+        container.innerHTML = `<img src="${e.target.result}" alt="Logo preview">`;
+    };
+    reader.readAsDataURL(file);
+}
+
+// Open edit logo modal - only for updating the image
+function openEditLogoModal(logoCode) {
+    const logo = allLogos.find(l => l.code.toString() == logoCode.toString());
+    if (!logo) return;
+    
+    editingLogoCode = logoCode;
+    selectedLogoFile = null;
+    document.getElementById('modalTitle').textContent = 'Update Logo Image';
+    document.getElementById('logoCode').value = logo.code;
+    document.getElementById('logoDescription').value = logo.description;
+    document.getElementById('logoPath').value = logo.logoPath || '';
+    document.getElementById('logoDataField').value = '';
+    document.getElementById('logoFile').value = '';
+    
+    // Show existing logo preview
+    const container = document.getElementById('logoPreviewContainer');
+    const displayPath = logo.logoPath || (logo.logoData ? 'data:image/jpeg;base64,' + logo.logoData : '');
+    if (displayPath) {
+        container.innerHTML = `<img src="${escapeHtml(displayPath)}" alt="Current logo">`;
+    } else {
+        container.innerHTML = '<span class="placeholder">No logo uploaded</span>';
+    }
+    
+    document.getElementById('saveButton').textContent = 'Update Image';
+    document.getElementById('saveButton').disabled = false;
+    document.getElementById('logoModal').style.display = 'block';
+}
+
+// Close logo modal
+function closeLogoModal() {
+    document.getElementById('logoModal').style.display = 'none';
+    document.getElementById('logoForm').reset();
+    editingLogoCode = null;
+    selectedLogoFile = null;
+}
+
+// Save logo - only updates the image
+function saveLogo(event) {
+    event.preventDefault();
+    
+    if (!selectedLogoFile) {
+        showMessage('Please select a new logo image to upload', 'error');
+        return;
+    }
+    
+    const saveButton = document.getElementById('saveButton');
+    saveButton.disabled = true;
+    saveButton.textContent = 'Updating...';
+    
+    // Process the selected file
+    uploadLogoFile(selectedLogoFile, function(logoPath) {
+        if (logoPath) {
+            document.getElementById('logoPath').value = logoPath;
+        }
+        saveLogoData(saveButton);
+    });
+}
+
+// Upload logo file - stores base64 data directly in the sheet (no Drive needed)
+function uploadLogoFile(file, callback) {
+    // First, resize the image to reduce file size
+    const reader = new FileReader();
+    
+    reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+            // Resize to max 800px width/height while maintaining aspect ratio
+            const MAX_SIZE = 800;
+            let width = img.width;
+            let height = img.height;
+            
+            if (width > MAX_SIZE || height > MAX_SIZE) {
+                if (width > height) {
+                    height = Math.round(height * MAX_SIZE / width);
+                    width = MAX_SIZE;
+                } else {
+                    width = Math.round(width * MAX_SIZE / height);
+                    height = MAX_SIZE;
+                }
+            }
+            
+            // Draw resized image on canvas
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            // Get resized base64 data (JPEG with 0.9 quality for smaller size)
+            const resizedDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+            const base64Data = resizedDataUrl.split(',')[1];
+            
+            // Store the data URL in logoPath for display
+            document.getElementById('logoPath').value = resizedDataUrl;
+            // Store the raw base64 in logoDataField for saving to sheet
+            document.getElementById('logoDataField').value = base64Data;
+            
+            // Callback with the data URL (no separate API call needed)
+            callback(resizedDataUrl);
+        };
+        
+        img.onerror = function() {
+            // If image loading fails, use the original file data
+            const resizedDataUrl = e.target.result;
+            const base64Data = resizedDataUrl.split(',')[1];
+            
+            // Store the data URL in logoPath for display
+            document.getElementById('logoPath').value = resizedDataUrl;
+            // Store the raw base64 in logoDataField for saving to sheet
+            document.getElementById('logoDataField').value = base64Data;
+            
+            // Callback with the data URL (no separate API call needed)
+            callback(resizedDataUrl);
+        };
+        
+        img.src = e.target.result;
+    };
+    
+    reader.onerror = function() {
+        showMessage('Error reading file', 'error');
+        callback(null);
+    };
+    
+    reader.readAsDataURL(file);
+}
+
+// Save logo data to server - only updates the image
+function saveLogoData(saveButton) {
+    const logoCode = document.getElementById('logoCode').value;
+    const logoDescription = document.getElementById('logoDescription').value;
+    const logoPath = document.getElementById('logoPath').value;
+    const logoDataField = document.getElementById('logoDataField');
+    const logoDataValue = logoDataField ? logoDataField.value : '';
+    
+    const logoData = {
+        code: logoCode,
+        description: logoDescription,
+        logoPath: logoPath,
+        logoData: logoDataValue
+    };
+    
+    // Update existing logo
+    apiUpdateLogo(logoData, function(response) {
+        saveButton.disabled = false;
+        saveButton.textContent = 'Update Image';
+        
+        if (response.status === 'success') {
+            showMessage('Logo image updated successfully!', 'success');
+            closeLogoModal();
+            loadLogos();
+        } else {
+            showMessage('Error: ' + response.message, 'error');
+        }
+    });
+}
+
+// Show message
+function showMessage(message, type) {
+    const container = document.getElementById('messageContainer');
+    container.innerHTML = `<div class="message ${type}">${escapeHtml(message)}</div>`;
+    
+    setTimeout(() => {
+        container.innerHTML = '';
+    }, 5000);
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Logout function
+function logout() {
+    if (confirm('Are you sure you want to logout?')) {
+        performLogout();
+    }
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('logoModal');
+    if (event.target === modal) {
+        closeLogoModal();
+    }
+}
+</script>
+
+</body>
+</html>

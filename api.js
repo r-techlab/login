@@ -3,7 +3,7 @@
 // Centralized API calls with session validation
 // ============================================
 
-const API_URL = "https://script.google.com/macros/s/AKfycbxSGq5Ikq5_aIluwZ1ljyC-XbTd5tsVKnz8vGstfF5vpIEfh8hVYbqZKXTeuq4uzWk/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbzXoS44gk-znhUha0YH0soqfuPplSGP_QrCGdcoktkTJU1B3aPkdUOGQmy36gKn2AQ/exec";
 const API_TIMEOUT = 15000; // 15 seconds
 
 // ============================================
@@ -45,6 +45,240 @@ function apiLogin(loginid, password, callback) {
         callback({
             status: "error",
             message: "Connection error. Check your internet or Apps Script deployment."
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// ============================================
+// LOGO MASTER MANAGEMENT API
+// ============================================
+
+// Get all logos
+function apiGetLogos(callback) {
+    const callbackName = 'apiGetLogosCallback_' + Date.now();
+    const session = getSession();
+    
+    const timeoutId = setTimeout(function() {
+        if (window[callbackName]) {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+                document.body.removeChild(script);
+            }
+            callback({
+                status: "error",
+                message: "Request timeout"
+            });
+        }
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=getLogos&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// Upload logo file - stores base64 data in the sheet (no Drive needed)
+// Uses JSONP (GET) to avoid CORS issues with Apps Script
+function apiUploadLogo(base64Data, fileName, mimeType, callback) {
+    const callbackName = 'apiUploadLogoCallback_' + Date.now();
+    const session = getSession();
+    
+    const timeoutId = setTimeout(function() {
+        if (window[callbackName]) {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+                document.body.removeChild(script);
+            }
+            callback({
+                status: "error",
+                message: "Request timeout"
+            });
+        }
+    }, 30000);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=uploadLogo&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&base64Data=${encodeURIComponent(base64Data)}&fileName=${encodeURIComponent(fileName)}&mimeType=${encodeURIComponent(mimeType)}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// Create new logo (uses POST to handle large base64 data)
+function apiCreateLogo(logoData, callback) {
+    const session = getSession();
+    
+    const xhr = new XMLHttpRequest();
+    
+    const timeoutId = setTimeout(function() {
+        xhr.abort();
+        callback({
+            status: "error",
+            message: "Request timeout"
+        });
+    }, 30000); // 30 second timeout for uploads
+    
+    xhr.onload = function() {
+        clearTimeout(timeoutId);
+        try {
+            const data = JSON.parse(xhr.responseText);
+            callback(data);
+        } catch (e) {
+            callback({
+                status: "error",
+                message: "Invalid response from server"
+            });
+        }
+    };
+    
+    xhr.onerror = function() {
+        clearTimeout(timeoutId);
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    
+    xhr.open('POST', API_URL, true);
+    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+    
+    const params = new URLSearchParams();
+    params.append('action', 'createLogo');
+    params.append('sessionId', session.sessionId);
+    params.append('userId', session.userId);
+    params.append('code', logoData.code);
+    params.append('description', logoData.description);
+    params.append('logoPath', logoData.logoPath || '');
+    params.append('logoData', logoData.logoData || '');
+    
+    xhr.send(params.toString());
+}
+
+// Update existing logo (uses POST to handle large base64 data)
+function apiUpdateLogo(logoData, callback) {
+    const session = getSession();
+    
+    const xhr = new XMLHttpRequest();
+    
+    const timeoutId = setTimeout(function() {
+        xhr.abort();
+        callback({
+            status: "error",
+            message: "Request timeout"
+        });
+    }, 30000); // 30 second timeout for uploads
+    
+    xhr.onload = function() {
+        clearTimeout(timeoutId);
+        try {
+            const data = JSON.parse(xhr.responseText);
+            callback(data);
+        } catch (e) {
+            callback({
+                status: "error",
+                message: "Invalid response from server"
+            });
+        }
+    };
+    
+    xhr.onerror = function() {
+        clearTimeout(timeoutId);
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    
+    xhr.open('POST', API_URL, true);
+    xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+    
+    const params = new URLSearchParams();
+    params.append('action', 'updateLogo');
+    params.append('sessionId', session.sessionId);
+    params.append('userId', session.userId);
+    params.append('code', logoData.code);
+    params.append('description', logoData.description);
+    params.append('logoPath', logoData.logoPath || '');
+    params.append('logoData', logoData.logoData || '');
+    
+    xhr.send(params.toString());
+}
+
+// Delete logo
+function apiDeleteLogo(code, callback) {
+    const callbackName = 'apiDeleteLogoCallback_' + Date.now();
+    const session = getSession();
+    
+    const timeoutId = setTimeout(function() {
+        if (window[callbackName]) {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+                document.body.removeChild(script);
+            }
+            callback({
+                status: "error",
+                message: "Request timeout"
+            });
+        }
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=deleteLogo&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&code=${encodeURIComponent(code)}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
         });
     };
     document.body.appendChild(script);

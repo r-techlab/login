@@ -387,7 +387,7 @@ h2 {
             <div class="form-row">
                 <div class="form-group" style="grid-column: span 2;">
                     <label for="address">Address</label>
-                    <textarea id="address" rows="3" placeholder="Customer address..."></textarea>
+                    <textarea id="address" rows="4" placeholder="Customer address..." style="min-height: 80px; resize: vertical;"></textarea>
                 </div>
                 <div class="form-group">
                     <label for="trn">TRN</label>
@@ -788,11 +788,13 @@ function setupCustomerSearch() {
         );
         
         if (filtered.length > 0) {
-            dropdown.innerHTML = filtered.map(c => 
-                `<div class="dropdown-item" onclick="selectCustomer('${c.code}', '${escapeHtml(c.description)}', '${escapeHtml(c.trn || '')}')">
-                    <strong>${c.code}</strong> - ${c.description}
-                </div>`
-            ).join('');
+            dropdown.innerHTML = filtered.map(c => {
+                const addr = buildFullAddress(c);
+                const addrDisplay = addr ? `<br><small style="color:#666;">📍 ${escapeHtml(addr)}</small>` : '';
+                return `<div class="dropdown-item" onclick="selectCustomer('${c.code}', '${escapeHtml(c.description)}', '${escapeHtml(c.trn || '')}')">
+                            <strong>${c.code}</strong> - ${c.description}${addrDisplay}
+                        </div>`;
+            }).join('');
             dropdown.classList.add('active');
         } else {
             dropdown.innerHTML = '<div class="dropdown-item">No customers found</div>';

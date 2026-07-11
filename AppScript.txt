@@ -16,7 +16,20 @@ var ATTEMPT_WINDOW = 15 * 60 * 1000; // 15 minutes in milliseconds
 // POST endpoint for secure login authentication
 function doPost(e) {
   try {
-    var requestData = JSON.parse(e.postData.contents);
+    // Try to parse as JSON first, fall back to URL-encoded form data
+    var requestData;
+    try {
+      requestData = JSON.parse(e.postData.contents);
+    } catch (jsonError) {
+      // If JSON parsing fails, use e.parameter (URL-encoded form data)
+      requestData = {};
+      for (var key in e.parameter) {
+        if (e.parameter.hasOwnProperty(key) && key !== 'callback') {
+          requestData[key] = e.parameter[key];
+        }
+      }
+    }
+    
     var action = requestData.action || "login";
     
     if (action === "login") {
@@ -25,6 +38,12 @@ function doPost(e) {
       return handleValidateSession(requestData, e);
     } else if (action === "logout") {
       return handleLogout(requestData, e);
+    } else if (action === "uploadLogo") {
+      return handleUploadLogoPost(requestData, e);
+    } else if (action === "createLogo") {
+      return handleCreateLogoPost(requestData, e);
+    } else if (action === "updateLogo") {
+      return handleUpdateLogoPost(requestData, e);
     } else {
       return createJsonResponse({ 
         status: "error", 
@@ -121,6 +140,16 @@ function doGet(e) {
     return handleUpdateSaleGet(e);
   } else if (action === "deleteSale") {
     return handleDeleteSaleGet(e);
+  } else if (action === "getLogos") {
+    return handleGetLogosGet(e);
+  } else if (action === "uploadLogo") {
+    return handleUploadLogoGet(e);
+  } else if (action === "createLogo") {
+    return handleCreateLogoGet(e);
+  } else if (action === "updateLogo") {
+    return handleUpdateLogoGet(e);
+  } else if (action === "deleteLogo") {
+    return handleDeleteLogoGet(e);
   } else {
     var errorResult = { status: "error", message: "Invalid action" };
     var callback = e.parameter.callback;
@@ -3169,6 +3198,435 @@ function handleDeleteSaleGet(e) {
   }
   
   var result = { status: "success", message: "Sale deleted successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// ============================================
+// LOGO MASTER MANAGEMENT HANDLERS
+// ============================================
+
+// Get all logos
+function handleGetLogosGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get all logos from LogoMaster sheet
+  var logoSheet = ss.getSheetByName("LogoMaster");
+  if (!logoSheet) {
+    // Create sheet if it doesn't exist
+    logoSheet = ss.insertSheet("LogoMaster");
+    logoSheet.appendRow(["Code", "Description", "LogoPath", "LogoData"]);
+  }
+  
+  var logoData = logoSheet.getDataRange().getValues();
+  var logos = [];
+  
+  for (var i = 1; i < logoData.length; i++) {
+    if (logoData[i][0]) { // Check if Code exists
+      logos.push({
+        code: logoData[i][0],
+        description: logoData[i][1] || '',
+        logoPath: logoData[i][2] || '',
+        logoData: logoData[i][3] || ''
+      });
+    }
+  }
+  
+  var result = { status: "success", logos: logos };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Upload logo file - stores base64 data directly in the sheet (no Drive needed)
+function handleUploadLogoGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var base64Data = e.parameter.base64Data;
+  var fileName = e.parameter.fileName;
+  var mimeType = e.parameter.mimeType;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!base64Data || !fileName) {
+    var errorResult = { status: "error", message: "File data and name are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  try {
+    // Store the base64 data directly - no Drive upload needed
+    // The data will be saved to the sheet when createLogo or updateLogo is called
+    var dataUrl = "data:" + (mimeType || 'image/png') + ";base64," + base64Data;
+    
+    var result = { status: "success", message: "Logo processed successfully", fileUrl: dataUrl };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(result);
+  } catch (error) {
+    var errorResult = { status: "error", message: "Error processing logo: " + error.toString() };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+}
+
+// POST version of upload logo (handles large files)
+function handleUploadLogoPost(requestData, e) {
+  var sessionId = requestData.sessionId;
+  var userId = requestData.userId;
+  var base64Data = requestData.base64Data;
+  var fileName = requestData.fileName;
+  var mimeType = requestData.mimeType;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    return createJsonResponse({ status: "error", message: "Invalid or expired session" });
+  }
+  
+  // Validate input
+  if (!base64Data || !fileName) {
+    return createJsonResponse({ status: "error", message: "File data and name are required" });
+  }
+  
+  try {
+    // Store the base64 data directly - no Drive upload needed
+    var dataUrl = "data:" + (mimeType || 'image/png') + ";base64," + base64Data;
+    
+    return createJsonResponse({ status: "success", message: "Logo processed successfully", fileUrl: dataUrl });
+  } catch (error) {
+    return createJsonResponse({ status: "error", message: "Error processing logo: " + error.toString() });
+  }
+}
+
+// POST version of create logo (handles large base64 data)
+function handleCreateLogoPost(requestData, e) {
+  var sessionId = requestData.sessionId;
+  var userId = requestData.userId;
+  var code = requestData.code;
+  var description = requestData.description;
+  var logoPath = requestData.logoPath || '';
+  var logoData = requestData.logoData || '';
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    return createJsonResponse({ status: "error", message: "Invalid or expired session" });
+  }
+  
+  // Validate input
+  if (!code || !description) {
+    return createJsonResponse({ status: "error", message: "Code and Description are required" });
+  }
+  
+  var logoSheet = ss.getSheetByName("LogoMaster");
+  if (!logoSheet) {
+    logoSheet = ss.insertSheet("LogoMaster");
+    logoSheet.appendRow(["Code", "Description", "LogoPath", "LogoData"]);
+  }
+  
+  var existingData = logoSheet.getDataRange().getValues();
+  
+  // Check if logo code already exists
+  for (var i = 1; i < existingData.length; i++) {
+    if (existingData[i][0] && existingData[i][0].toString().toUpperCase() == code.toString().toUpperCase()) {
+      return createJsonResponse({ status: "error", message: "Logo code already exists" });
+    }
+  }
+  
+  // Add new logo with base64 data
+  logoSheet.appendRow([code.toUpperCase(), description, logoPath, logoData]);
+  
+  return createJsonResponse({ status: "success", message: "Logo created successfully", code: code.toUpperCase() });
+}
+
+// POST version of update logo (handles large base64 data)
+function handleUpdateLogoPost(requestData, e) {
+  var sessionId = requestData.sessionId;
+  var userId = requestData.userId;
+  var code = requestData.code;
+  var description = requestData.description;
+  var logoPath = requestData.logoPath || '';
+  var logoData = requestData.logoData || '';
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    return createJsonResponse({ status: "error", message: "Invalid or expired session" });
+  }
+  
+  // Validate input
+  if (!code || !description) {
+    return createJsonResponse({ status: "error", message: "Code and Description are required" });
+  }
+  
+  var logoSheet = ss.getSheetByName("LogoMaster");
+  if (!logoSheet) {
+    return createJsonResponse({ status: "error", message: "LogoMaster sheet not found" });
+  }
+  
+  var existingData = logoSheet.getDataRange().getValues();
+  
+  // Find and update logo
+  var found = false;
+  for (var i = 1; i < existingData.length; i++) {
+    if (existingData[i][0] && existingData[i][0].toString().toUpperCase() == code.toString().toUpperCase()) {
+      logoSheet.getRange(i + 1, 1, 1, 4).setValues([[code.toUpperCase(), description, logoPath, logoData]]);
+      found = true;
+      break;
+    }
+  }
+  
+  if (!found) {
+    return createJsonResponse({ status: "error", message: "Logo not found" });
+  }
+  
+  return createJsonResponse({ status: "success", message: "Logo updated successfully" });
+}
+
+// Create new logo
+function handleCreateLogoGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var code = e.parameter.code;
+  var description = e.parameter.description;
+  var logoPath = e.parameter.logoPath || '';
+  var logoData = e.parameter.logoData || '';
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!code || !description) {
+    var errorResult = { status: "error", message: "Code and Description are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var logoSheet = ss.getSheetByName("LogoMaster");
+  if (!logoSheet) {
+    logoSheet = ss.insertSheet("LogoMaster");
+    logoSheet.appendRow(["Code", "Description", "LogoPath", "LogoData"]);
+  }
+  
+  var existingData = logoSheet.getDataRange().getValues();
+  
+  // Check if logo code already exists
+  for (var i = 1; i < existingData.length; i++) {
+    if (existingData[i][0] && existingData[i][0].toString().toUpperCase() == code.toString().toUpperCase()) {
+      var errorResult = { status: "error", message: "Logo code already exists" };
+      if (callback) {
+        return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+          .setMimeType(ContentService.MimeType.JAVASCRIPT);
+      }
+      return createJsonResponse(errorResult);
+    }
+  }
+  
+  // Add new logo with base64 data
+  logoSheet.appendRow([code.toUpperCase(), description, logoPath, logoData]);
+  
+  var result = { status: "success", message: "Logo created successfully", code: code.toUpperCase() };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Update existing logo
+function handleUpdateLogoGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var code = e.parameter.code;
+  var description = e.parameter.description;
+  var logoPath = e.parameter.logoPath || '';
+  var logoData = e.parameter.logoData || '';
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!code || !description) {
+    var errorResult = { status: "error", message: "Code and Description are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var logoSheet = ss.getSheetByName("LogoMaster");
+  if (!logoSheet) {
+    var errorResult = { status: "error", message: "LogoMaster sheet not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var existingData = logoSheet.getDataRange().getValues();
+  
+  // Find and update logo
+  var found = false;
+  for (var i = 1; i < existingData.length; i++) {
+    if (existingData[i][0] && existingData[i][0].toString().toUpperCase() == code.toString().toUpperCase()) {
+      logoSheet.getRange(i + 1, 1, 1, 4).setValues([[code.toUpperCase(), description, logoPath, logoData]]);
+      found = true;
+      break;
+    }
+  }
+  
+  if (!found) {
+    var errorResult = { status: "error", message: "Logo not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var result = { status: "success", message: "Logo updated successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Delete logo
+function handleDeleteLogoGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var code = e.parameter.code;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var logoSheet = ss.getSheetByName("LogoMaster");
+  if (!logoSheet) {
+    var errorResult = { status: "error", message: "LogoMaster sheet not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var logoData = logoSheet.getDataRange().getValues();
+  
+  // Find and delete logo
+  var found = false;
+  for (var i = 1; i < logoData.length; i++) {
+    if (logoData[i][0] && logoData[i][0].toString().toUpperCase() == code.toString().toUpperCase()) {
+      logoSheet.deleteRow(i + 1);
+      found = true;
+      break;
+    }
+  }
+  
+  if (!found) {
+    var errorResult = { status: "error", message: "Logo not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var result = { status: "success", message: "Logo deleted successfully" };
   if (callback) {
     return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
       .setMimeType(ContentService.MimeType.JAVASCRIPT);
