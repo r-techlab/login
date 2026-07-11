@@ -230,11 +230,15 @@ function hasMenuAccess(menuId) {
 // Build hierarchical menu structure
 function buildMenuHierarchy() {
     const menuAccess = getUserMenuAccess();
+    
+    // Filter out menus with sortOrder = 0 (hidden from menu display, but still accessible via direct URL)
+    const visibleMenus = menuAccess.filter(menu => menu.sortOrder != 0);
+    
     const menuMap = {};
     const rootMenus = [];
     
     // Create a map of all menus
-    menuAccess.forEach(menu => {
+    visibleMenus.forEach(menu => {
         menuMap[menu.menuId] = {
             ...menu,
             children: []
@@ -242,7 +246,7 @@ function buildMenuHierarchy() {
     });
     
     // Build hierarchy
-    menuAccess.forEach(menu => {
+    visibleMenus.forEach(menu => {
         if (menu.parentMenuId === null || menu.parentMenuId === 'NULL' || menu.parentMenuId === '') {
             // Root level menu
             rootMenus.push(menuMap[menu.menuId]);
