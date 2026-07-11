@@ -393,6 +393,14 @@ h2 {
                     <label for="trn">TRN</label>
                     <input type="text" id="trn">
                 </div>
+                <div class="form-group">
+                    <label for="refNo">Reference Number</label>
+                    <input type="text" id="refNo" placeholder="Enter reference number...">
+                </div>
+                <div class="form-group">
+                    <label for="refDate">Reference Date</label>
+                    <input type="date" id="refDate">
+                </div>
             </div>
             
             <div class="form-row">
@@ -704,6 +712,8 @@ function loadSaleData() {
             document.getElementById('customerSearch').value = sale.header.customer;
             document.getElementById('address').value = sale.header.address || '';
             document.getElementById('trn').value = sale.header.trn || '';
+            document.getElementById('refNo').value = sale.header.refNo || '';
+            document.getElementById('refDate').value = sale.header.refDate || '';
             document.getElementById('vatTreatment').value = sale.header.vatTreatment || '';
             document.getElementById('rateType').value = sale.header.rateType || '';
             document.getElementById('narration').value = sale.header.narration || '';
@@ -738,6 +748,8 @@ function disableFormForView() {
     document.getElementById('date').disabled = true;
     document.getElementById('customerSearch').disabled = true;
     document.getElementById('address').disabled = true;
+    document.getElementById('refNo').disabled = true;
+    document.getElementById('refDate').disabled = true;
     document.getElementById('vatTreatment').disabled = true;
     document.getElementById('rateType').disabled = true;
     document.getElementById('narration').disabled = true;
@@ -1126,6 +1138,8 @@ function saveSale(event) {
             net: parseFloat(document.getElementById('summaryNet').textContent),
             address: document.getElementById('address').value,
             trn: document.getElementById('trn').value,
+            refNo: document.getElementById('refNo').value,
+            refDate: document.getElementById('refDate').value,
             vatTreatment: vatTreatment,
             rateType: rateType
         },

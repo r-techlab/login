@@ -2770,7 +2770,9 @@ function handleGetSalesGet(e) {
         address: salesHeaderData[i][12] || '',
         trn: salesHeaderData[i][13] || '',
         vatTreatment: salesHeaderData[i][14] || '',
-        rateType: salesHeaderData[i][15] || ''
+        rateType: salesHeaderData[i][15] || '',
+        refNo: salesHeaderData[i][16] || '',
+        refDate: salesHeaderData[i][17] ? Utilities.formatDate(new Date(salesHeaderData[i][17]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : ''
       });
     }
   }
@@ -2847,7 +2849,9 @@ function handleGetSaleByDocNoGet(e) {
         address: salesHeaderData[i][12] || '',
         trn: salesHeaderData[i][13] || '',
         vatTreatment: salesHeaderData[i][14] || '',
-        rateType: salesHeaderData[i][15] || ''
+        rateType: salesHeaderData[i][15] || '',
+        refNo: salesHeaderData[i][16] || '',
+        refDate: salesHeaderData[i][17] ? Utilities.formatDate(new Date(salesHeaderData[i][17]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : ''
       };
       break;
     }
@@ -2982,7 +2986,9 @@ function handleCreateSaleGet(e) {
     header.address || '',
     header.trn || '',
     header.vatTreatment || '',
-    header.rateType || ''
+    header.rateType || '',
+    header.refNo || '',
+    header.refDate || ''
   ]);
   
   // Add details
@@ -3071,7 +3077,7 @@ function handleUpdateSaleGet(e) {
   for (var i = 1; i < salesHeaderData.length; i++) {
     if (salesHeaderData[i][1] == docNo) {
       var header = saleData.header;
-      salesHeaderSheet.getRange(i + 1, 1, 1, 16).setValues([[
+      salesHeaderSheet.getRange(i + 1, 1, 1, 18).setValues([[
         'SI', // DocType
         docNo,
         header.date,
@@ -3087,7 +3093,9 @@ function handleUpdateSaleGet(e) {
         header.address || '',
         header.trn || '',
         header.vatTreatment || '',
-        header.rateType || ''
+        header.rateType || '',
+        header.refNo || '',
+        header.refDate || ''
       ]]);
       headerFound = true;
       break;
