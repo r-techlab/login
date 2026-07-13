@@ -385,6 +385,14 @@ h2 {
             </div>
             
             <div class="form-row">
+                <div class="form-group">
+                    <label for="salesman">Salesman</label>
+                    <div class="searchable-select">
+                        <input type="text" id="salesmanSearch" placeholder="Search salesman..." autocomplete="off">
+                        <input type="hidden" id="salesman">
+                        <div id="salesmanDropdown" class="searchable-dropdown"></div>
+                    </div>
+                </div>
                 <div class="form-group" style="grid-column: span 2;">
                     <label for="address">Address</label>
                     <textarea id="address" rows="4" placeholder="Customer address..." style="min-height: 80px; resize: vertical;"></textarea>
@@ -513,8 +521,10 @@ let viewMode = false;
 let viewDocNo = null;
 let allCustomers = [];
 let allStocks = [];
+let allSalesmen = [];
 let vatPercentage = 5; // Default, will be loaded from system parameters
 let detailLineCounter = 0;
+let dataLoaded = false; // Guard to prevent duplicate loadSaleData calls
 
 // Initialize system config with theme
 initPageWithTheme('salesform.htm', null);
@@ -556,9 +566,10 @@ function loadInitialData() {
         document.getElementById('saveButton').textContent = '💾 Update Sale';
     }
     
-    // Load customers, stocks, and system parameters
+    // Load customers, stocks, salesmen, and system parameters
     loadCustomers();
     loadStocks();
+    loadSalesmen();
     loadSystemParameters();
 }
 
@@ -614,13 +625,142 @@ function loadStocks() {
     });
 }
 
-// Check if both customers and stocks are loaded, then proceed
+// Load salesmen - try IndexedDB first, then API
+function loadSalesmen() {
+    console.log('Loading salesmen...');
+    // Setup search immediately (will work once data is available)
+    setupSalesmanSearch();
+    
+    // Try to load from IndexedDB first
+    getSalesmenFromDB(function(cachedSalesmen) {
+        if (cachedSalesmen && cachedSalesmen.length > 0) {
+            // Use cached data immediately
+            allSalesmen = cachedSalesmen;
+            console.log('Salesmen loaded from cache:', allSalesmen.length, 'records');
+            onSalesmenLoaded();
+        } else {
+            // No cache, fetch from API
+            apiGetSalesmen(function(response) {
+                console.log('Salesmen API response:', response);
+                if (response.status === 'success') {
+                    allSalesmen = response.salesmen || [];
+                    console.log('Salesmen loaded from API:', allSalesmen.length, 'records');
+                    // Save to IndexedDB for future use
+                    saveSalesmenToDB(allSalesmen);
+                    onSalesmenLoaded();
+                } else {
+                    console.error('Error loading salesmen:', response.message);
+                    showMessage('Error loading salesmen: ' + response.message, 'error');
+                    onSalesmenLoaded();
+                }
+            });
+        }
+    });
+}
+
+// Called when salesmen data is loaded (from cache or API)
+function onSalesmenLoaded() {
+    // Re-render the salesman dropdown if it's currently visible
+    const dropdown = document.getElementById('salesmanDropdown');
+    if (dropdown.classList.contains('active')) {
+        const searchInput = document.getElementById('salesmanSearch');
+        renderSalesmanDropdown(searchInput.value.toLowerCase());
+    }
+    checkSalesmenLoaded();
+    checkDataLoaded();
+}
+
+// Setup salesman searchable dropdown
+function setupSalesmanSearch() {
+    const searchInput = document.getElementById('salesmanSearch');
+    const dropdown = document.getElementById('salesmanDropdown');
+    const salesmanHidden = document.getElementById('salesman');
+    
+    // Show all salesmen on focus
+    searchInput.addEventListener('focus', function() {
+        renderSalesmanDropdown(this.value.toLowerCase());
+    });
+    
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        renderSalesmanDropdown(searchTerm);
+    });
+    
+    searchInput.addEventListener('blur', function() {
+        setTimeout(() => dropdown.classList.remove('active'), 200);
+    });
+}
+
+// Render salesman dropdown (global function, called from event listeners and onSalesmenLoaded)
+function renderSalesmanDropdown(searchTerm) {
+    const dropdown = document.getElementById('salesmanDropdown');
+    
+    if (allSalesmen.length === 0) {
+        dropdown.innerHTML = '<div class="dropdown-item">No salesmen found</div>';
+        dropdown.classList.add('active');
+        return;
+    }
+    
+    const filtered = allSalesmen.filter(s => 
+        String(s.code).toLowerCase().includes(searchTerm) ||
+        String(s.description).toLowerCase().includes(searchTerm)
+    );
+    
+    if (filtered.length > 0) {
+        dropdown.innerHTML = filtered.map(s => 
+            `<div class="dropdown-item" data-code="${s.code}" data-desc="${escapeHtml(s.description)}">
+                <strong>${s.code}</strong> - ${s.description}
+            </div>`
+        ).join('');
+        dropdown.classList.add('active');
+        
+        // Use mousedown instead of click to fire before blur
+        Array.from(dropdown.children).forEach(item => {
+            item.addEventListener('mousedown', function(e) {
+                e.preventDefault();
+                const code = this.getAttribute('data-code');
+                const desc = this.getAttribute('data-desc');
+                selectSalesman(code, desc);
+            });
+        });
+    } else {
+        dropdown.innerHTML = '<div class="dropdown-item">No salesmen found</div>';
+        dropdown.classList.add('active');
+    }
+}
+
+// Select salesman
+function selectSalesman(code, description) {
+    document.getElementById('salesman').value = code;
+    document.getElementById('salesmanSearch').value = `${code} - ${description}`;
+    document.getElementById('salesmanDropdown').classList.remove('active');
+}
+
+// Check if customers and stocks are loaded, then proceed
 function checkDataLoaded() {
+    // Prevent duplicate calls to loadSaleData (can be triggered by multiple async callbacks)
+    if (dataLoaded) return;
+    
     if ((editMode || viewMode) && allCustomers.length > 0 && allStocks.length > 0) {
+        dataLoaded = true;
         loadSaleData();
     } else if (!editMode && !viewMode && allCustomers.length > 0 && allStocks.length > 0) {
         // Show form for new sale
         document.getElementById('salesForm').style.display = 'block';
+    }
+}
+
+// Check if salesmen are loaded (called after loadSalesmen completes)
+function checkSalesmenLoaded() {
+    if ((editMode || viewMode) && allSalesmen.length > 0) {
+        // Re-populate salesman field now that salesmen data is available
+        const salesmanCode = document.getElementById('salesman').value;
+        if (salesmanCode) {
+            const salesman = allSalesmen.find(s => s.code === salesmanCode);
+            if (salesman) {
+                document.getElementById('salesmanSearch').value = `${salesmanCode} - ${salesman.description}`;
+            }
+        }
     }
 }
 
@@ -671,6 +811,7 @@ function refreshMasterData() {
         // Reload data from IndexedDB (now freshly populated)
         allCustomers = [];
         allStocks = [];
+        allSalesmen = [];
         
         getCustomersFromDB(function(customers) {
             allCustomers = customers || [];
@@ -679,14 +820,18 @@ function refreshMasterData() {
             getStocksFromDB(function(stocks) {
                 allStocks = stocks || [];
                 
-                refreshBtn.disabled = false;
-                refreshBtn.textContent = '🔄 Refresh Data';
-                
-                if (result.status === 'success') {
-                    showMessage('Master data refreshed successfully from server!', 'success');
-                } else {
-                    showMessage('Some data may not have refreshed. Check your connection.', 'error');
-                }
+                getSalesmenFromDB(function(salesmen) {
+                    allSalesmen = salesmen || [];
+                    
+                    refreshBtn.disabled = false;
+                    refreshBtn.textContent = '🔄 Refresh Data';
+                    
+                    if (result.status === 'success') {
+                        showMessage('Master data refreshed successfully from server!', 'success');
+                    } else {
+                        showMessage('Some data may not have refreshed. Check your connection.', 'error');
+                    }
+                });
             });
         });
     });
@@ -710,6 +855,19 @@ function loadSaleData() {
             document.getElementById('date').value = sale.header.date;
             document.getElementById('customer').value = sale.header.customer;
             document.getElementById('customerSearch').value = sale.header.customer;
+            
+            // Populate salesman
+            const salesmanCode = sale.header.salesman || '';
+            document.getElementById('salesman').value = salesmanCode;
+            if (salesmanCode) {
+                const salesman = allSalesmen.find(s => s.code === salesmanCode);
+                if (salesman) {
+                    document.getElementById('salesmanSearch').value = `${salesmanCode} - ${salesman.description}`;
+                } else {
+                    document.getElementById('salesmanSearch').value = salesmanCode;
+                }
+            }
+            
             document.getElementById('address').value = sale.header.address || '';
             document.getElementById('trn').value = sale.header.trn || '';
             document.getElementById('refNo').value = sale.header.refNo || '';
@@ -747,6 +905,7 @@ function disableFormForView() {
     // Disable header fields
     document.getElementById('date').disabled = true;
     document.getElementById('customerSearch').disabled = true;
+    document.getElementById('salesmanSearch').disabled = true;
     document.getElementById('address').disabled = true;
     document.getElementById('refNo').disabled = true;
     document.getElementById('refDate').disabled = true;
@@ -1130,6 +1289,7 @@ function saveSale(event) {
             docNo: editMode ? document.getElementById('docNo').value : null,
             date: date,
             customer: customer,
+            salesman: document.getElementById('salesman').value,
             narration: document.getElementById('narration').value,
             grossAmount: parseFloat(document.getElementById('summaryGross').textContent),
             discountPercentage: 0, // Not used at header level

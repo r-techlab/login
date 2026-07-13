@@ -5,12 +5,13 @@
 // ============================================
 
 const DB_NAME = 'AppCache';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 const STORE_NAME = 'menuAccess';
 const STORE_NAME_PARAMS = 'systemParams';
 const STORE_NAME_CUSTOMERS = 'customers';
 const STORE_NAME_STOCKS = 'stocks';
 const STORE_NAME_UNITS = 'units';
+const STORE_NAME_SALESMEN = 'salesmen';
 
 // Initialize IndexedDB database
 function initIndexedDB(callback) {
@@ -51,6 +52,12 @@ function initIndexedDB(callback) {
         if (!db.objectStoreNames.contains(STORE_NAME_UNITS)) {
             const store = db.createObjectStore(STORE_NAME_UNITS, { keyPath: 'unitCode' });
             store.createIndex('unitCode', 'unitCode', { unique: true });
+        }
+        
+        // Create object store for salesmen if it doesn't exist
+        if (!db.objectStoreNames.contains(STORE_NAME_SALESMEN)) {
+            const store = db.createObjectStore(STORE_NAME_SALESMEN, { keyPath: 'code' });
+            store.createIndex('code', 'code', { unique: true });
         }
     };
     
@@ -593,6 +600,106 @@ function clearUnitsFromDB() {
 }
 
 // ============================================
+// SALESMEN CACHING
+// ============================================
+
+// Save salesmen to IndexedDB
+function saveSalesmenToDB(salesmen) {
+    if (!salesmen || salesmen.length === 0) return;
+    
+    initIndexedDB(function(db) {
+        if (!db) return;
+        
+        try {
+            const transaction = db.transaction([STORE_NAME_SALESMEN], 'readwrite');
+            const store = transaction.objectStore(STORE_NAME_SALESMEN);
+            
+            // Clear existing data first
+            store.clear();
+            
+            // Add each salesman
+            salesmen.forEach(function(salesman) {
+                store.put(salesman);
+            });
+            
+            transaction.oncomplete = function() {
+                db.close();
+            };
+            
+            transaction.onerror = function(event) {
+                console.error('Error saving salesmen to IndexedDB:', event.target.error);
+                db.close();
+            };
+        } catch (error) {
+            console.error('Error in saveSalesmenToDB:', error);
+            db.close();
+        }
+    });
+}
+
+// Get all salesmen from IndexedDB
+function getSalesmenFromDB(callback) {
+    initIndexedDB(function(db) {
+        if (!db) {
+            if (callback) callback(null);
+            return;
+        }
+        
+        try {
+            const transaction = db.transaction([STORE_NAME_SALESMEN], 'readonly');
+            const store = transaction.objectStore(STORE_NAME_SALESMEN);
+            const request = store.getAll();
+            
+            request.onsuccess = function(event) {
+                const result = event.target.result;
+                db.close();
+                
+                if (result && result.length > 0) {
+                    if (callback) callback(result);
+                } else {
+                    if (callback) callback(null);
+                }
+            };
+            
+            request.onerror = function(event) {
+                console.error('Error reading salesmen from IndexedDB:', event.target.error);
+                db.close();
+                if (callback) callback(null);
+            };
+        } catch (error) {
+            console.error('Error in getSalesmenFromDB:', error);
+            db.close();
+            if (callback) callback(null);
+        }
+    });
+}
+
+// Clear salesmen from IndexedDB
+function clearSalesmenFromDB() {
+    initIndexedDB(function(db) {
+        if (!db) return;
+        
+        try {
+            const transaction = db.transaction([STORE_NAME_SALESMEN], 'readwrite');
+            const store = transaction.objectStore(STORE_NAME_SALESMEN);
+            store.clear();
+            
+            transaction.oncomplete = function() {
+                db.close();
+            };
+            
+            transaction.onerror = function(event) {
+                console.error('Error clearing salesmen from IndexedDB:', event.target.error);
+                db.close();
+            };
+        } catch (error) {
+            console.error('Error in clearSalesmenFromDB:', error);
+            db.close();
+        }
+    });
+}
+
+// ============================================
 // MASTER DATA REFRESH
 // Clears all cached master data and re-fetches from server
 // ============================================
@@ -608,9 +715,10 @@ function refreshMasterDataFromServer(callback) {
     clearCustomersFromDB();
     clearStocksFromDB();
     clearUnitsFromDB();
+    clearSalesmenFromDB();
     
     let completed = 0;
-    let total = 3;
+    let total = 4;
     let hasError = false;
     
     function checkComplete() {
@@ -646,6 +754,16 @@ function refreshMasterDataFromServer(callback) {
     apiGetUnits(function(response) {
         if (response.status === 'success' && response.units) {
             saveUnitsToDB(response.units);
+        } else {
+            hasError = true;
+        }
+        checkComplete();
+    });
+    
+    // Re-fetch salesmen
+    apiGetSalesmen(function(response) {
+        if (response.status === 'success' && response.salesmen) {
+            saveSalesmenToDB(response.salesmen);
         } else {
             hasError = true;
         }

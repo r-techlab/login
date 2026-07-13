@@ -130,6 +130,14 @@ function doGet(e) {
     return handleUpdateCustomerGet(e);
   } else if (action === "deleteCustomer") {
     return handleDeleteCustomerGet(e);
+  } else if (action === "getSalesmen") {
+    return handleGetSalesmenGet(e);
+  } else if (action === "createSalesman") {
+    return handleCreateSalesmanGet(e);
+  } else if (action === "updateSalesman") {
+    return handleUpdateSalesmanGet(e);
+  } else if (action === "deleteSalesman") {
+    return handleDeleteSalesmanGet(e);
   } else if (action === "getSales") {
     return handleGetSalesGet(e);
   } else if (action === "getSaleByDocNo") {
@@ -2704,6 +2712,223 @@ function handleDeleteCustomerGet(e) {
 }
 
 // ============================================
+// SALESMAN MASTER MANAGEMENT HANDLERS
+// ============================================
+
+// Get all salesmen
+function handleGetSalesmenGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get all salesmen from Salesman sheet
+  var salesmanSheet = ss.getSheetByName("Salesman");
+  var salesmanData = salesmanSheet.getDataRange().getValues();
+  var salesmen = [];
+  
+  for (var i = 1; i < salesmanData.length; i++) {
+    if (salesmanData[i][0]) { // Check if Code exists
+      salesmen.push({
+        code: salesmanData[i][0],
+        description: salesmanData[i][1] || ''
+      });
+    }
+  }
+  
+  var result = { status: "success", salesmen: salesmen };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Create new salesman
+function handleCreateSalesmanGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var code = e.parameter.code;
+  var description = e.parameter.description;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!code || !description) {
+    var errorResult = { status: "error", message: "Code and Description are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var salesmanSheet = ss.getSheetByName("Salesman");
+  var salesmanData = salesmanSheet.getDataRange().getValues();
+  
+  // Check if salesman code already exists
+  for (var i = 1; i < salesmanData.length; i++) {
+    if (salesmanData[i][0] && salesmanData[i][0].toString().toUpperCase() == code.toString().toUpperCase()) {
+      var errorResult = { status: "error", message: "Salesman code already exists" };
+      if (callback) {
+        return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+          .setMimeType(ContentService.MimeType.JAVASCRIPT);
+      }
+      return createJsonResponse(errorResult);
+    }
+  }
+  
+  // Add new salesman
+  salesmanSheet.appendRow([code.toUpperCase(), description]);
+  
+  var result = { status: "success", message: "Salesman created successfully", code: code.toUpperCase() };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Update existing salesman
+function handleUpdateSalesmanGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var code = e.parameter.code;
+  var description = e.parameter.description;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!code || !description) {
+    var errorResult = { status: "error", message: "Code and Description are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var salesmanSheet = ss.getSheetByName("Salesman");
+  var salesmanData = salesmanSheet.getDataRange().getValues();
+  
+  // Find and update salesman
+  var found = false;
+  for (var i = 1; i < salesmanData.length; i++) {
+    if (salesmanData[i][0] && salesmanData[i][0].toString().toUpperCase() == code.toString().toUpperCase()) {
+      salesmanSheet.getRange(i + 1, 1, 1, 2).setValues([[code.toUpperCase(), description]]);
+      found = true;
+      break;
+    }
+  }
+  
+  if (!found) {
+    var errorResult = { status: "error", message: "Salesman not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var result = { status: "success", message: "Salesman updated successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Delete salesman
+function handleDeleteSalesmanGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var code = e.parameter.code;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var salesmanSheet = ss.getSheetByName("Salesman");
+  var salesmanData = salesmanSheet.getDataRange().getValues();
+  
+  // Find and delete salesman
+  var found = false;
+  for (var i = 1; i < salesmanData.length; i++) {
+    if (salesmanData[i][0] && salesmanData[i][0].toString().toUpperCase() == code.toString().toUpperCase()) {
+      salesmanSheet.deleteRow(i + 1);
+      found = true;
+      break;
+    }
+  }
+  
+  if (!found) {
+    var errorResult = { status: "error", message: "Salesman not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var result = { status: "success", message: "Salesman deleted successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// ============================================
 // SALES MANAGEMENT HANDLERS
 // ============================================
 
@@ -2759,6 +2984,7 @@ function handleGetSalesGet(e) {
         docNo: docNo,
         date: date,
         customer: customer,
+        salesman: salesHeaderData[i][18] || '',
         narration: narration,
         grossAmount: salesHeaderData[i][5] || 0,
         discountPercentage: salesHeaderData[i][6] || 0,
@@ -2838,6 +3064,7 @@ function handleGetSaleByDocNoGet(e) {
         docNo: salesHeaderData[i][1],
         date: salesHeaderData[i][2] ? Utilities.formatDate(new Date(salesHeaderData[i][2]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
         customer: salesHeaderData[i][3] || '',
+        salesman: salesHeaderData[i][18] || '',
         narration: salesHeaderData[i][4] || '',
         grossAmount: salesHeaderData[i][5] || 0,
         discountPercentage: salesHeaderData[i][6] || 0,
@@ -2988,7 +3215,8 @@ function handleCreateSaleGet(e) {
     header.vatTreatment || '',
     header.rateType || '',
     header.refNo || '',
-    header.refDate || ''
+    header.refDate || '',
+    header.salesman || ''
   ]);
   
   // Add details
@@ -3077,7 +3305,7 @@ function handleUpdateSaleGet(e) {
   for (var i = 1; i < salesHeaderData.length; i++) {
     if (salesHeaderData[i][1] == docNo) {
       var header = saleData.header;
-      salesHeaderSheet.getRange(i + 1, 1, 1, 18).setValues([[
+      salesHeaderSheet.getRange(i + 1, 1, 1, 19).setValues([[
         'SI', // DocType
         docNo,
         header.date,
@@ -3095,7 +3323,8 @@ function handleUpdateSaleGet(e) {
         header.vatTreatment || '',
         header.rateType || '',
         header.refNo || '',
-        header.refDate || ''
+        header.refDate || '',
+        header.salesman || ''
       ]]);
       headerFound = true;
       break;
