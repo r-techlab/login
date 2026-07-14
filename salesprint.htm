@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Sales Print - Invoice</title>
+
+<style>
+/* ============================================
+   PRINT STYLES - Sales Invoice Print Page
+   ============================================ */
+
+/* Reset & Base */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #f0f0f0;
+    padding: 20px;
+    color: #333;
+}
+
+/* Print button bar - only visible on screen */
+.print-toolbar {
+    text-align: center;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.print-toolbar button {
+    background: #27ae60;
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    margin: 0 8px;
+    transition: background 0.2s;
+}
+
+.print-toolbar button:hover {
+    background: #229954;
+}
+
+.print-toolbar button.btn-close {
+    background: #95a5a6;
+}
+
+.print-toolbar button.btn-close:hover {
+    background: #7f8c8d;
+}
+
+.print-toolbar .hint {
+    display: block;
+    margin-top: 8px;
+    font-size: 13px;
+    color: #888;
+}
+
+/* Loading indicator */
+.loading {
+    text-align: center;
+    padding: 60px 20px;
+    font-size: 18px;
+    color: #666;
+}
+
+.loading::after {
+    content: '...';
+    animation: dots 1.5s steps(4, end) infinite;
+}
+
+@keyframes dots {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    60%, 100% { content: '...'; }
+}
+
+/* Error message */
+.error-message {
+    text-align: center;
+    padding: 40px;
+    color: #e74c3c;
+    font-size: 16px;
+}
+
+/* ============================================
+   INVOICE LAYOUT
+   ============================================ */
+.invoice {
+    max-width: 210mm;
+    margin: 0 auto;
+    background: white;
+    padding: 30px 35px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    border-radius: 5px;
+    position: relative;
+}
+
+/* Header section with logo and company info */
+.invoice-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 25px;
+    padding-bottom: 20px;
+    border-bottom: 3px double #333;
+}
+
+.company-section {
+    flex: 1;
+}
+
+.company-logo {
+    max-width: 120px;
+    max-height: 100px;
+    object-fit: contain;
+    margin-bottom: 10px;
+}
+
+.company-name {
+    font-size: 22px;
+    font-weight: bold;
+    color: #2c3e50;
+    margin-bottom: 4px;
+}
+
+.company-details {
+    font-size: 12px;
+    color: #555;
+    line-height: 1.5;
+}
+
+.company-details div {
+    margin-bottom: 2px;
+}
+
+.invoice-title-section {
+    text-align: right;
+    min-width: 180px;
+}
+
+.invoice-title {
+    font-size: 28px;
+    font-weight: bold;
+    color: #2c3e50;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.invoice-subtitle {
+    font-size: 13px;
+    color: #666;
+    margin-top: 5px;
+}
+
+/* Document info section */
+.doc-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 5px;
+    border-left: 4px solid #667eea;
+}
+
+.doc-info-left, .doc-info-right {
+    font-size: 13px;
+    line-height: 1.8;
+}
+
+.doc-info .label {
+    font-weight: bold;
+    color: #555;
+}
+
+.doc-info .value {
+    color: #333;
+}
+
+/* Party info section */
+.party-section {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 5px;
+}
+
+.party-box {
+    flex: 1;
+}
+
+.party-box:last-child {
+    text-align: right;
+}
+
+.party-box .party-label {
+    font-size: 11px;
+    font-weight: bold;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 5px;
+}
+
+.party-box .party-name {
+    font-size: 15px;
+    font-weight: bold;
+    color: #2c3e50;
+    margin-bottom: 3px;
+}
+
+.party-box .party-detail {
+    font-size: 12px;
+    color: #555;
+    line-height: 1.5;
+}
+
+/* Items table */
+.items-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+    font-size: 12px;
+}
+
+.items-table thead {
+    background: #2c3e50;
+    color: white;
+}
+
+.items-table th {
+    padding: 10px 8px;
+    text-align: left;
+    font-weight: bold;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #ffffff !important;
+}
+
+.items-table th.amount {
+    text-align: right;
+}
+
+.items-table td {
+    padding: 8px;
+    border-bottom: 1px solid #e0e0e0;
+    vertical-align: top;
+}
+
+.items-table td.amount {
+    text-align: right;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+}
+
+.items-table tbody tr:nth-child(even) {
+    background: #fafafa;
+}
+
+.items-table tbody tr:hover {
+    background: #f0f4ff;
+}
+
+.items-table .item-sr {
+    width: 30px;
+    text-align: center;
+    color: #888;
+}
+
+.items-table .item-code {
+    width: 100px;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+.items-table .item-desc {
+    color: #555;
+}
+
+.items-table .item-qty {
+    width: 60px;
+    text-align: right;
+}
+
+.items-table .item-unit {
+    width: 50px;
+    text-align: center;
+    color: #888;
+}
+
+.items-table .item-rate {
+    width: 80px;
+    text-align: right;
+}
+
+.items-table .item-gross {
+    width: 80px;
+    text-align: right;
+}
+
+.items-table .item-disc {
+    width: 60px;
+    text-align: right;
+    color: #e74c3c;
+}
+
+.items-table .item-vat {
+    width: 60px;
+    text-align: right;
+    color: #8e44ad;
+}
+
+.items-table .item-net {
+    width: 80px;
+    text-align: right;
+    font-weight: bold;
+}
+
+/* Summary section */
+.summary-section {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 20px;
+}
+
+.summary-table {
+    width: 350px;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.summary-table td {
+    padding: 6px 12px;
+}
+
+.summary-table .summary-label {
+    text-align: right;
+    font-weight: bold;
+    color: #555;
+}
+
+.summary-table .summary-value {
+    text-align: right;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    width: 120px;
+}
+
+.summary-table .summary-row {
+    border-bottom: 1px solid #eee;
+}
+
+.summary-table .summary-total td {
+    padding: 10px 12px;
+    font-size: 16px;
+    font-weight: bold;
+    border-top: 2px solid #2c3e50;
+    color: #2c3e50;
+}
+
+.summary-table .summary-total .summary-value {
+    font-size: 18px;
+}
+
+/* Amount in words */
+.amount-words {
+    margin-bottom: 20px;
+    padding: 12px 15px;
+    background: #fff8e1;
+    border-radius: 5px;
+    border-left: 4px solid #f39c12;
+    font-size: 13px;
+    color: #555;
+}
+
+.amount-words .words-label {
+    font-weight: bold;
+    color: #333;
+}
+
+.amount-words .words-value {
+    font-style: italic;
+    color: #2c3e50;
+    font-weight: bold;
+}
+
+/* Narration section */
+.narration-section {
+    margin-bottom: 20px;
+    padding: 12px 15px;
+    background: #f8f9fa;
+    border-radius: 5px;
+    font-size: 12px;
+    color: #555;
+}
+
+.narration-section .narration-label {
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 4px;
+}
+
+/* Footer */
+.invoice-footer {
+    text-align: center;
+    padding-top: 15px;
+    border-top: 1px solid #ddd;
+    font-size: 11px;
+    color: #999;
+}
+
+.invoice-footer .footer-line {
+    margin-bottom: 3px;
+}
+
+/* Signature section */
+.signature-section {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 30px;
+    padding-top: 20px;
+}
+
+.signature-box {
+    text-align: center;
+    min-width: 150px;
+}
+
+.signature-box .sig-line {
+    width: 180px;
+    border-top: 1px solid #333;
+    margin: 30px auto 5px;
+}
+
+.signature-box .sig-label {
+    font-size: 12px;
+    color: #888;
+}
+
+/* ============================================
+   PRINT-ONLY STYLES
+   ============================================ */
+@media print {
+    body {
+        background: white;
+        padding: 0;
+        margin: 0;
+    }
+    
+    .print-toolbar {
+        display: none !important;
+    }
+    
+    .invoice {
+        max-width: 100%;
+        box-shadow: none;
+        border-radius: 0;
+        padding: 20px 25px;
+        margin: 0;
+    }
+    
+    .items-table tbody tr:hover {
+        background: inherit;
+    }
+    
+    .items-table tbody tr:nth-child(even) {
+        background: #fafafa;
+    }
+    
+    @page {
+        margin: 15mm 10mm;
+        size: A4 portrait;
+    }
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media screen and (max-width: 768px) {
+    .invoice {
+        padding: 15px;
+    }
+    
+    .invoice-header {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .invoice-title-section {
+        text-align: center;
+        margin-top: 15px;
+        min-width: auto;
+    }
+    
+    .doc-info {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .party-section {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .party-box:last-child {
+        text-align: left;
+    }
+    
+    .summary-table {
+        width: 100%;
+    }
+    
+    .signature-section {
+        flex-direction: column;
+        gap: 20px;
+    }
+    
+    .items-table {
+        font-size: 11px;
+    }
+    
+    .items-table th,
+    .items-table td {
+        padding: 6px 4px;
+    }
+}
+</style>
+</head>
+<body>
+
+<!-- Print Toolbar (visible only on screen) -->
+<div class="print-toolbar" id="printToolbar">
+    <button onclick="window.print()">🖨️ Print / Save as PDF</button>
+    <button class="btn-close" onclick="window.close()">✖ Close</button>
+    <span class="hint">💡 Tip: Use browser's Print dialog to save as PDF or print on paper</span>
+</div>
+
+<!-- Loading Indicator -->
+<div id="loadingIndicator" class="loading">Loading invoice data</div>
+
+<!-- Error Message -->
+<div id="errorMessage" class="error-message" style="display: none;"></div>
+
+<!-- Invoice Content -->
+<div id="invoiceContent" class="invoice" style="display: none;">
+    
+    <!-- Header: Logo + Company Info + Invoice Title -->
+    <div class="invoice-header">
+        <div class="company-section">
+            <img id="companyLogo" class="company-logo" src="" alt="Company Logo" style="display: none;">
+            <div class="company-name" id="companyName">Company Name</div>
+            <div class="company-details">
+                <div id="companyAddress"></div>
+                <div id="companyTrn"></div>
+                <div id="companyPhone"></div>
+                <div id="companyEmail"></div>
+            </div>
+        </div>
+        <div class="invoice-title-section">
+            <div class="invoice-title">INVOICE</div>
+            <div class="invoice-subtitle" id="invoiceDocType">Sales Invoice</div>
+        </div>
+    </div>
+    
+    <!-- Document Info -->
+    <div class="doc-info">
+        <div class="doc-info-left">
+            <div><span class="label">Invoice No:</span> <span class="value" id="printDocNo"></span></div>
+            <div><span class="label">Invoice Date:</span> <span class="value" id="printDate"></span></div>
+            <div><span class="label">Reference No:</span> <span class="value" id="printRefNo"></span></div>
+            <div><span class="label">Reference Date:</span> <span class="value" id="printRefDate"></span></div>
+        </div>
+        <div class="doc-info-right">
+            <div><span class="label">Created By:</span> <span class="value" id="printCreatedBy"></span></div>
+            <div><span class="label">Created Time:</span> <span class="value" id="printCreatedTime"></span></div>
+        </div>
+    </div>
+    
+    <!-- Party Info -->
+    <div class="party-section">
+        <div class="party-box">
+            <div class="party-label">Bill To</div>
+            <div class="party-name" id="printCustomer"></div>
+            <div class="party-detail" id="printCustomerAddress"></div>
+            <div class="party-detail" id="printCustomerTrn"></div>
+        </div>
+        <div class="party-box">
+            <div class="party-label">Salesman</div>
+            <div class="party-name" id="printSalesman">-</div>
+        </div>
+    </div>
+    
+    <!-- Items Table -->
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th class="item-sr">#</th>
+                <th class="item-code">Code</th>
+                <th class="item-desc">Description</th>
+                <th class="item-qty">Qty</th>
+                <th class="item-unit">Unit</th>
+                <th class="item-rate">Rate</th>
+                <th class="item-gross amount">Gross</th>
+                <th class="item-disc amount">Disc</th>
+                <th class="item-vat amount">VAT</th>
+                <th class="item-net amount">Net Amt</th>
+            </tr>
+        </thead>
+        <tbody id="itemsTableBody">
+        </tbody>
+    </table>
+    
+    <!-- Summary -->
+    <div class="summary-section">
+        <table class="summary-table">
+            <tr class="summary-row">
+                <td class="summary-label">Total Gross Amount:</td>
+                <td class="summary-value" id="printTotalGross">0.00</td>
+            </tr>
+            <tr class="summary-row">
+                <td class="summary-label">Total Discount:</td>
+                <td class="summary-value" id="printTotalDiscount">0.00</td>
+            </tr>
+            <tr class="summary-row">
+                <td class="summary-label">Total VAT:</td>
+                <td class="summary-value" id="printTotalVAT">0.00</td>
+            </tr>
+            <tr class="summary-total">
+                <td class="summary-label">Net Amount:</td>
+                <td class="summary-value" id="printTotalNet">0.00</td>
+            </tr>
+        </table>
+    </div>
+    
+    <!-- Amount in Words -->
+    <div class="amount-words">
+        <span class="words-label">Amount in Words:</span>
+        <span class="words-value" id="printAmountWords">Zero</span>
+    </div>
+    
+    <!-- Narration -->
+    <div class="narration-section" id="narrationSection" style="display: none;">
+        <div class="narration-label">📝 Narration / Notes:</div>
+        <div id="printNarration"></div>
+    </div>
+    
+    <!-- Signature -->
+    <div class="signature-section">
+        <div class="signature-box">
+            <div class="sig-line"></div>
+            <div class="sig-label">Prepared By</div>
+        </div>
+        <div class="signature-box">
+            <div class="sig-line"></div>
+            <div class="sig-label">Approved By</div>
+        </div>
+        <div class="signature-box">
+            <div class="sig-line"></div>
+            <div class="sig-label">Customer Signature</div>
+        </div>
+    </div>
+    
+    <!-- Footer -->
+    <div class="invoice-footer">
+        <div class="footer-line" id="footerCompanyName"></div>
+        <div class="footer-line">This is a computer-generated invoice</div>
+    </div>
+</div>
+
+<script src="api.js"></script>
+<script src="indexedDB.js"></script>
+<script src="session.js"></script>
+<script src="systemConfig.js"></script>
+<script>
+// ============================================
+// SALES PRINT PAGE
+// ============================================
+
+// Global variables
+let saleData = null;
+let companyLogoUrl = '';
+let companyParams = {};
+let allCustomers = [];
+let allSalesmen = [];
+let masterDataLoaded = false;
+let saleDataLoaded = false;
+let dataReady = false;
+
+// Get docNo from URL
+const urlParams = new URLSearchParams(window.location.search);
+const docNo = urlParams.get('docno');
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    if (!docNo) {
+        showError('No document number provided. Please close and try again.');
+        return;
+    }
+    
+    // Load all data
+    loadCompanyInfo();
+    loadCustomers();
+    loadSalesmen();
+    loadSaleForPrint(docNo);
+});
+
+// Load company info from system parameters and logo
+function loadCompanyInfo() {
+    // Load system parameters
+    loadSystemParameters(function(params) {
+        companyParams = params;
+        
+        // Set company name
+        const companyName = params['CompanyName'] || 'Company Name';
+        document.getElementById('companyName').textContent = companyName;
+        document.getElementById('footerCompanyName').textContent = companyName;
+        
+        // Set company details
+        const address = params['CompanyAddress'] || '';
+        const trn = params['CompanyTRN'] || '';
+        const phone = params['CompanyPhone'] || '';
+        const email = params['CompanyEmail'] || '';
+        
+        if (address) document.getElementById('companyAddress').textContent = '📍 ' + address;
+        if (trn) document.getElementById('companyTrn').textContent = 'TRN: ' + trn;
+        if (phone) document.getElementById('companyPhone').textContent = '📞 ' + phone;
+        if (email) document.getElementById('companyEmail').textContent = '✉ ' + email;
+    });
+    
+    // Load logo
+    loadCompanyLogo();
+}
+
+// Load company logo
+function loadCompanyLogo() {
+    apiGetLogos(function(response) {
+        if (response.status === 'success' && response.logos && response.logos.length > 0) {
+            // Use the first logo
+            const logo = response.logos[0];
+            const logoPath = logo.logoPath || (logo.logoData ? 'data:image/jpeg;base64,' + logo.logoData : '');
+            
+            if (logoPath) {
+                const logoImg = document.getElementById('companyLogo');
+                logoImg.src = logoPath;
+                logoImg.style.display = 'block';
+                logoImg.onerror = function() {
+                    this.style.display = 'none';
+                };
+            }
+        }
+    });
+}
+
+// Load sale data for printing
+function loadSaleForPrint(docNo) {
+    apiGetSaleByDocNo(docNo, function(response) {
+        if (response.status === 'success') {
+            saleData = response.sale;
+            renderInvoice(saleData);
+        } else {
+            showError('Error loading sale: ' + response.message);
+        }
+    });
+}
+
+// Load customers from IndexedDB or API
+function loadCustomers() {
+    if (typeof getCustomersFromDB === 'function') {
+        getCustomersFromDB(function(cachedCustomers) {
+            if (cachedCustomers && cachedCustomers.length > 0) {
+                allCustomers = cachedCustomers;
+            } else {
+                apiGetCustomers(function(response) {
+                    if (response.status === 'success') {
+                        allCustomers = response.customers || [];
+                        if (typeof saveCustomersToDB === 'function') {
+                            saveCustomersToDB(allCustomers);
+                        }
+                    }
+                });
+            }
+        });
+    } else {
+        apiGetCustomers(function(response) {
+            if (response.status === 'success') {
+                allCustomers = response.customers || [];
+            }
+        });
+    }
+}
+
+// Load salesmen from IndexedDB or API
+function loadSalesmen() {
+    if (typeof getSalesmenFromDB === 'function') {
+        getSalesmenFromDB(function(cachedSalesmen) {
+            if (cachedSalesmen && cachedSalesmen.length > 0) {
+                allSalesmen = cachedSalesmen;
+            } else {
+                apiGetSalesmen(function(response) {
+                    if (response.status === 'success') {
+                        allSalesmen = response.salesmen || [];
+                        if (typeof saveSalesmenToDB === 'function') {
+                            saveSalesmenToDB(allSalesmen);
+                        }
+                    }
+                });
+            }
+        });
+    } else {
+        apiGetSalesmen(function(response) {
+            if (response.status === 'success') {
+                allSalesmen = response.salesmen || [];
+            }
+        });
+    }
+}
+
+// Get customer name by code
+function getCustomerName(code) {
+    if (!code) return '-';
+    const customer = allCustomers.find(function(c) { return c.code === code; });
+    if (customer) {
+        return code + ' - ' + customer.description;
+    }
+    return code;
+}
+
+// Get salesman name by code
+function getSalesmanName(code) {
+    if (!code) return '-';
+    const salesman = allSalesmen.find(function(s) { return s.code === code; });
+    if (salesman) {
+        return code + ' - ' + salesman.description;
+    }
+    return code;
+}
+
+// Render the invoice with sale data
+function renderInvoice(sale) {
+    const header = sale.header;
+    const details = sale.details || [];
+    
+    // Hide loading, show invoice
+    document.getElementById('loadingIndicator').style.display = 'none';
+    document.getElementById('invoiceContent').style.display = 'block';
+    
+    // Set document info
+    document.getElementById('printDocNo').textContent = header.docNo || '-';
+    document.getElementById('printDate').textContent = formatDate(header.date);
+    document.getElementById('printRefNo').textContent = header.refNo || '-';
+    document.getElementById('printRefDate').textContent = header.refDate ? formatDate(header.refDate) : '-';
+    
+    // Set created info
+    document.getElementById('printCreatedBy').textContent = header.createdBy || '-';
+    document.getElementById('printCreatedTime').textContent = header.createdTime || '-';
+    
+    // Set customer info (show code + name)
+    document.getElementById('printCustomer').textContent = getCustomerName(header.customer);
+    document.getElementById('printCustomerAddress').textContent = header.address || '';
+    document.getElementById('printCustomerTrn').textContent = header.trn ? 'TRN: ' + header.trn : '';
+    
+    // Set salesman (show code + name)
+    document.getElementById('printSalesman').textContent = getSalesmanName(header.salesman);
+    
+    // Render items table
+    const tbody = document.getElementById('itemsTableBody');
+    tbody.innerHTML = '';
+    
+    if (details.length === 0) {
+        const row = tbody.insertRow();
+        row.innerHTML = '<td colspan="10" style="text-align:center;padding:20px;color:#999;">No items found</td>';
+    } else {
+        details.forEach(function(item, index) {
+            const row = tbody.insertRow();
+            row.innerHTML = `
+                <td class="item-sr">${index + 1}</td>
+                <td class="item-code">${escapeHtml(item.stockCode)}</td>
+                <td class="item-desc">${escapeHtml(item.stockDescription || '')}</td>
+                <td class="item-qty">${formatQty(item.qty)}</td>
+                <td class="item-unit">${escapeHtml(item.unit || '-')}</td>
+                <td class="item-rate">${formatAmount(item.rate)}</td>
+                <td class="item-gross amount">${formatAmount(item.grossAmount)}</td>
+                <td class="item-disc amount">${formatAmount(item.discountAmount)}</td>
+                <td class="item-vat amount">${formatAmount(item.vatAmount)}</td>
+                <td class="item-net amount">${formatAmount(item.netAmount)}</td>
+            `;
+        });
+    }
+    
+    // Set summary
+    document.getElementById('printTotalGross').textContent = formatAmount(header.grossAmount);
+    document.getElementById('printTotalDiscount').textContent = formatAmount(header.discountAmount);
+    document.getElementById('printTotalVAT').textContent = formatAmount(header.vat);
+    document.getElementById('printTotalNet').textContent = formatAmount(header.net);
+    
+    // Set amount in words
+    document.getElementById('printAmountWords').textContent = numberToWords(header.net);
+    
+    // Set narration
+    if (header.narration) {
+        document.getElementById('printNarration').textContent = header.narration;
+        document.getElementById('narrationSection').style.display = 'block';
+    }
+    
+    // Auto-trigger print after a short delay to ensure images load
+    setTimeout(function() {
+        // Check if logo is still loading
+        const logoImg = document.getElementById('companyLogo');
+        if (logoImg.src && !logoImg.complete) {
+            logoImg.onload = function() {
+                window.print();
+            };
+        } else {
+            window.print();
+        }
+    }, 1000);
+}
+
+// ============================================
+// UTILITY FUNCTIONS
+// ============================================
+
+// Format date
+function formatDate(dateStr) {
+    if (!dateStr) return '-';
+    try {
+        const date = new Date(dateStr);
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return day + '/' + month + '/' + year;
+    } catch (e) {
+        return dateStr;
+    }
+}
+
+// Format amount
+function formatAmount(amount) {
+    if (amount === null || amount === undefined) return '0.00';
+    return parseFloat(amount).toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+}
+
+// Format quantity (remove trailing zeros for whole numbers)
+function formatQty(qty) {
+    if (qty === null || qty === undefined) return '0';
+    const num = parseFloat(qty);
+    if (Number.isInteger(num)) {
+        return num.toString();
+    }
+    return num.toFixed(2);
+}
+
+// Escape HTML
+function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Show error
+function showError(message) {
+    document.getElementById('loadingIndicator').style.display = 'none';
+    const errorDiv = document.getElementById('errorMessage');
+    errorDiv.textContent = message;
+    errorDiv.style.display = 'block';
+}
+
+// ============================================
+// NUMBER TO WORDS CONVERSION
+// ============================================
+function numberToWords(num) {
+    if (num === null || num === undefined || isNaN(num)) return 'Zero';
+    
+    num = parseFloat(num);
+    
+    if (num === 0) return 'Zero';
+    
+    const wholePart = Math.floor(num);
+    const decimalPart = Math.round((num - wholePart) * 100);
+    
+    let words = convertHundreds(wholePart);
+    
+    if (decimalPart > 0) {
+        words += ' and ' + decimalPart.toString().padStart(2, '0') + '/100';
+    }
+    
+    return words;
+}
+
+function convertHundreds(num) {
+    if (num === 0) return '';
+    
+    const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
+                  'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 
+                  'Seventeen', 'Eighteen', 'Nineteen'];
+    const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+    
+    let result = '';
+    
+    if (num >= 1000000) {
+        const millions = Math.floor(num / 1000000);
+        result += convertHundreds(millions) + ' Million ';
+        num = num % 1000000;
+    }
+    
+    if (num >= 1000) {
+        const thousands = Math.floor(num / 1000);
+        result += convertHundreds(thousands) + ' Thousand ';
+        num = num % 1000;
+    }
+    
+    if (num >= 100) {
+        const hundreds = Math.floor(num / 100);
+        result += ones[hundreds] + ' Hundred ';
+        num = num % 100;
+    }
+    
+    if (num > 0) {
+        if (result !== '') result += 'and ';
+        
+        if (num < 20) {
+            result += ones[num];
+        } else {
+            const ten = Math.floor(num / 10);
+            const one = num % 10;
+            result += tens[ten];
+            if (one > 0) {
+                result += '-' + ones[one];
+            }
+        }
+    }
+    
+    return result.trim();
+}
+
+// Load system parameters (local version for this page)
+function loadSystemParameters(callback) {
+    // Try localStorage first for speed
+    try {
+        const cached = localStorage.getItem('systemParams');
+        if (cached) {
+            const params = JSON.parse(cached);
+            if (params && Object.keys(params).length > 0) {
+                callback(params);
+                return;
+            }
+        }
+    } catch (e) {}
+    
+    // Try IndexedDB
+    if (typeof getSystemParamsFromDB === 'function') {
+        getSystemParamsFromDB(function(paramsFromDB) {
+            if (paramsFromDB && Object.keys(paramsFromDB).length > 0) {
+                callback(paramsFromDB);
+                return;
+            }
+        });
+    }
+    
+    // Fallback: fetch from API
+    if (typeof apiGetSystemParameters === 'function') {
+        apiGetSystemParameters(function(response) {
+            if (response.status === 'success' && response.parameters) {
+                const params = {};
+                response.parameters.forEach(function(p) {
+                    if (p.code) params[p.code] = p.value;
+                });
+                callback(params);
+            } else {
+                callback({});
+            }
+        });
+    } else {
+        callback({});
+    }
+}
+</script>
+
+</body>
+</html>

@@ -353,6 +353,7 @@ h2 {
             <button class="btn btn-secondary" id="refreshBtn" onclick="refreshMasterData()">🔄 Refresh Data</button>
             <button class="btn btn-warning" id="viewEditBtn" style="display: none;" onclick="editFromView()">✏️ Edit</button>
             <button class="btn btn-danger" id="viewDeleteBtn" style="display: none;" onclick="deleteFromView()">🗑️ Delete</button>
+            <button class="btn btn-success" id="viewPrintBtn" style="display: none;" onclick="printFromView()">🖨️ Print</button>
             <button class="btn btn-danger" onclick="logout()">Logout</button>
         </div>
     </div>
@@ -557,9 +558,10 @@ function loadInitialData() {
         document.getElementById('pageTitle').textContent = '🧾 Sales Management - View Sale';
         document.getElementById('saveButton').style.display = 'none';
         document.querySelector('.form-actions .btn-secondary').textContent = '🔙 Back to List';
-        // Show Edit and Delete buttons for view mode
+        // Show Edit, Delete and Print buttons for view mode
         document.getElementById('viewEditBtn').style.display = 'inline-block';
         document.getElementById('viewDeleteBtn').style.display = 'inline-block';
+        document.getElementById('viewPrintBtn').style.display = 'inline-block';
     } else if (editDocNo) {
         editMode = true;
         document.getElementById('pageTitle').textContent = '🧾 Sales Management - Edit Sale';
@@ -1399,6 +1401,13 @@ function deleteFromView() {
             showMessage('Error: ' + response.message, 'error');
         }
     });
+}
+
+// Print from view mode - open print page
+function printFromView() {
+    if (viewDocNo) {
+        window.open('salesprint.htm?docno=' + encodeURIComponent(viewDocNo), '_blank');
+    }
 }
 
 // Logout function
