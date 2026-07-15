@@ -3,7 +3,7 @@
 // Centralized API calls with session validation
 // ============================================
 
-const API_URL = "https://script.google.com/macros/s/AKfycbyhBXxRGDDn8i2rGeh6gpjyey3UBXXQOLAbdT6h9QeXov4P_dgWJUvnkiGZIK23aT8/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxJXyYhs72UuN5ay6n0-zNBxRDtzlJoRkJkOmxaH0g5iH-vfPp41tUT3sOYFajK3cQ/exec";
 const API_TIMEOUT = 15000; // 15 seconds
 
 // ============================================
@@ -515,6 +515,62 @@ function apiDeleteSale(docNo, callback) {
 }
 
 // ============================================
+// SALES REPORT API
+// ============================================
+
+// Get sales report with date range and filters
+function apiGetSalesReport(filters, callback) {
+    const callbackName = 'apiGetSalesReportCallback_' + Date.now();
+    const session = getSession();
+    
+    const timeoutId = setTimeout(function() {
+        if (window[callbackName]) {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+                document.body.removeChild(script);
+            }
+            callback({
+                status: "error",
+                message: "Request timeout"
+            });
+        }
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    var params = 'action=getSalesReport' +
+        '&sessionId=' + encodeURIComponent(session.sessionId) +
+        '&userId=' + encodeURIComponent(session.userId) +
+        '&fromDate=' + encodeURIComponent(filters.fromDate || '') +
+        '&toDate=' + encodeURIComponent(filters.toDate || '') +
+        '&customer=' + encodeURIComponent(filters.customer || '') +
+        '&salesman=' + encodeURIComponent(filters.salesman || '') +
+        '&callback=' + callbackName;
+    
+    const script = document.createElement('script');
+    script.src = API_URL + '?' + params;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// ============================================
 // CUSTOMER MASTER MANAGEMENT API
 // ============================================
 
@@ -852,68 +908,6 @@ function apiDeleteSalesman(code, callback) {
     
     const script = document.createElement('script');
     script.src = `${API_URL}?action=deleteSalesman&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&code=${encodeURIComponent(code)}&callback=${callbackName}`;
-    script.onerror = function() {
-        clearTimeout(timeoutId);
-        delete window[callbackName];
-        if (script && script.parentNode) {
-            document.body.removeChild(script);
-        }
-        callback({
-            status: "error",
-            message: "Connection error"
-        });
-    };
-    document.body.appendChild(script);
-}
-
-// ============================================
-// SALES REPORT API
-// ============================================
-
-// Get sales report with filters
-function apiGetSalesReport(filters, callback) {
-    const callbackName = 'apiGetSalesReportCallback_' + Date.now();
-    const session = getSession();
-    
-    const timeoutId = setTimeout(function() {
-        if (window[callbackName]) {
-            delete window[callbackName];
-            if (script && script.parentNode) {
-                document.body.removeChild(script);
-            }
-            callback({
-                status: "error",
-                message: "Request timeout"
-            });
-        }
-    }, API_TIMEOUT);
-    
-    window[callbackName] = function(data) {
-        clearTimeout(timeoutId);
-        delete window[callbackName];
-        if (script && script.parentNode) {
-            document.body.removeChild(script);
-        }
-        callback(data);
-    };
-    
-    var url = `${API_URL}?action=getSalesReport&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&reportType=${encodeURIComponent(filters.reportType || 'headerwise')}&callback=${callbackName}`;
-    
-    if (filters.customer) {
-        url += `&customer=${encodeURIComponent(filters.customer)}`;
-    }
-    if (filters.salesman) {
-        url += `&salesman=${encodeURIComponent(filters.salesman)}`;
-    }
-    if (filters.fromDate) {
-        url += `&fromDate=${encodeURIComponent(filters.fromDate)}`;
-    }
-    if (filters.toDate) {
-        url += `&toDate=${encodeURIComponent(filters.toDate)}`;
-    }
-    
-    const script = document.createElement('script');
-    script.src = url;
     script.onerror = function() {
         clearTimeout(timeoutId);
         delete window[callbackName];
