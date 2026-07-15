@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Sales Report</title>
+<title>Sales Management - Sales Report</title>
 <link rel="stylesheet" href="menu.css">
 
 <style>
@@ -12,15 +12,6 @@ body {
     margin: 0;
     padding: 20px;
     min-height: 100vh;
-}
-
-.container {
-    max-width: 1200px;
-    margin: 0 auto;
-    background: white;
-    border-radius: 15px;
-    padding: 30px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
 }
 
 .header {
@@ -35,6 +26,14 @@ body {
 h1 {
     color: #333;
     margin: 0;
+}
+
+h2 {
+    color: #667eea;
+    margin: 0 0 15px 0;
+    font-size: 18px;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 8px;
 }
 
 .btn {
@@ -53,12 +52,280 @@ h1 {
     background: #2980b9;
 }
 
+.btn-success {
+    background: #27ae60;
+}
+
+.btn-success:hover {
+    background: #229954;
+}
+
 .btn-danger {
     background: #e74c3c;
 }
 
 .btn-danger:hover {
     background: #c0392b;
+}
+
+.btn-warning {
+    background: #f39c12;
+}
+
+.btn-warning:hover {
+    background: #e67e22;
+}
+
+.btn-secondary {
+    background: #95a5a6;
+}
+
+.btn-secondary:hover {
+    background: #7f8c8d;
+}
+
+.btn:disabled {
+    background: #95a5a6;
+    cursor: not-allowed;
+}
+
+.form-card {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.form-group {
+    margin-bottom: 0;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #555;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.searchable-select {
+    position: relative;
+}
+
+.searchable-select input {
+    width: 100%;
+}
+
+.searchable-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: 200px;
+    overflow-y: auto;
+    background: white;
+    border: 1px solid #ddd;
+    border-top: none;
+    border-radius: 0 0 5px 5px;
+    z-index: 1000;
+    display: none;
+}
+
+.searchable-dropdown.active {
+    display: block;
+}
+
+.dropdown-item {
+    padding: 10px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+}
+
+.dropdown-item:hover {
+    background: #f8f9fa;
+}
+
+.dropdown-item:last-child {
+    border-bottom: none;
+}
+
+.radio-group {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    padding-top: 8px;
+}
+
+.radio-group label {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-weight: normal;
+    cursor: pointer;
+}
+
+.radio-group input[type="radio"] {
+    width: auto;
+    margin: 0;
+}
+
+.filter-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 5px;
+}
+
+.table-container {
+    overflow-x: auto;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+thead {
+    background: #667eea;
+    color: white;
+}
+
+th {
+    padding: 12px 10px;
+    text-align: left;
+    font-weight: bold;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+td {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    font-size: 13px;
+}
+
+tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.amount {
+    text-align: right;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.message {
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    font-weight: bold;
+}
+
+.message.success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.message.error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.message.warning {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.message.info {
+    background: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+}
+
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+}
+
+.loading::after {
+    content: '...';
+    animation: dots 1.5s steps(4, end) infinite;
+}
+
+@keyframes dots {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    60%, 100% { content: '...'; }
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #999;
+}
+
+.empty-state-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+}
+
+.summary-section {
+    background: #e8f4f8;
+    padding: 15px 20px;
+    border-radius: 8px;
+    margin-top: 20px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 40px;
+}
+
+.summary-item {
+    text-align: right;
+}
+
+.summary-item .label {
+    font-size: 12px;
+    color: #666;
+    font-weight: bold;
+}
+
+.summary-item .value {
+    font-size: 18px;
+    font-weight: bold;
+    color: #667eea;
 }
 
 .layout-with-sidebar {
@@ -71,46 +338,19 @@ h1 {
     flex-shrink: 0;
 }
 
-.main-content {
-    flex: 1;
-}
-
-.page-content {
-    background: #f8f9fa;
-    padding: 30px;
-    border-radius: 10px;
-    min-height: 400px;
-}
-
-.page-icon {
-    font-size: 48px;
-    margin-bottom: 20px;
-}
-
-.report-cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 15px;
-    margin: 20px 0;
-}
-
-.report-card {
-    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+.company-name-sidebar {
+    font-size: 16px;
+    font-weight: bold;
     color: white;
-    padding: 20px;
-    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 15px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 8px;
     text-align: center;
 }
 
-.report-card h3 {
-    margin: 0 0 5px 0;
-    font-size: 28px;
-}
-
-.report-card p {
-    margin: 0;
-    font-size: 14px;
-    opacity: 0.9;
+.main-content {
+    flex: 1;
 }
 
 @media (max-width: 992px) {
@@ -121,83 +361,636 @@ h1 {
     .sidebar {
         width: 100%;
     }
+
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .summary-section {
+        flex-direction: column;
+        gap: 10px;
+    }
 }
 </style>
 </head>
 
 <body>
 
-<div class="container">
-    <div class="header">
-        <h1>📊 Sales Report</h1>
-        <div>
-            <button class="btn" onclick="window.location.href='home.html'">🏠 Home</button>
-            <button class="btn btn-danger" onclick="logout()">Logout</button>
+<div class="layout-with-sidebar">
+    <div class="sidebar">
+        <div id="companyNameSidebar" class="company-name-sidebar"></div>
+        <h3>Navigation Menu</h3>
+        <div id="menuContainer"></div>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <h1>📊 Sales Report</h1>
+            <div>
+                <button class="btn" onclick="window.location.href='home.html'">🏠 Home</button>
+                <button class="btn btn-danger" onclick="logout()">Logout</button>
+            </div>
+        </div>
+
+        <div id="breadcrumbContainer" class="breadcrumb-container"></div>
+
+        <div id="messageContainer"></div>
+
+    <!-- Filter Section -->
+    <div class="form-card">
+        <h2>🔍 Filter Options</h2>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label for="customerSearch">Customer</label>
+                <div class="searchable-select">
+                    <input type="text" id="customerSearch" placeholder="All Customers..." autocomplete="off">
+                    <input type="hidden" id="customer" value="">
+                    <div id="customerDropdown" class="searchable-dropdown"></div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="salesmanSearch">Salesman</label>
+                <div class="searchable-select">
+                    <input type="text" id="salesmanSearch" placeholder="All Salesmen..." autocomplete="off">
+                    <input type="hidden" id="salesman" value="">
+                    <div id="salesmanDropdown" class="searchable-dropdown"></div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="fromDate">From Date</label>
+                <input type="date" id="fromDate">
+            </div>
+            <div class="form-group">
+                <label for="toDate">To Date</label>
+                <input type="date" id="toDate">
+            </div>
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label>Report Type</label>
+                <div class="radio-group">
+                    <label>
+                        <input type="radio" name="reportType" value="headerwise" checked>
+                        Headerwise
+                    </label>
+                    <label>
+                        <input type="radio" name="reportType" value="itemwise">
+                        Itemwise
+                    </label>
+                </div>
+            </div>
+            <div class="form-group" style="display: flex; align-items: flex-end; justify-content: flex-end;">
+                <div class="filter-actions">
+                    <button class="btn btn-success" onclick="generateReport()" id="showBtn">📊 Show</button>
+                    <button class="btn btn-warning" onclick="exportToExcel()" id="exportBtn" style="display: none;">📥 Export to Excel</button>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div id="breadcrumbContainer" class="breadcrumb-container"></div>
-
-    <div class="layout-with-sidebar">
-        <div class="sidebar">
-            <h3>Navigation Menu</h3>
-            <div id="menuContainer"></div>
-        </div>
-
-        <div class="main-content">
-            <div class="page-content">
-                <div class="page-icon">📊</div>
-                <h2>Sales Report</h2>
-                <p>View comprehensive sales analytics and reports.</p>
-                
-                <div class="report-cards">
-                    <div class="report-card">
-                        <h3>$45,230</h3>
-                        <p>Total Sales</p>
-                    </div>
-                    <div class="report-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-                        <h3>1,234</h3>
-                        <p>Orders</p>
-                    </div>
-                    <div class="report-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                        <h3>567</h3>
-                        <p>Customers</p>
-                    </div>
-                    <div class="report-card" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
-                        <h3>$36.67</h3>
-                        <p>Avg Order Value</p>
-                    </div>
+    <!-- Results Section -->
+    <div id="resultsSection" style="display: none;">
+        <div class="form-card">
+            <h2>📋 Report Results</h2>
+            
+            <div id="reportLoading" class="loading" style="display: none;">Loading report data</div>
+            
+            <div id="emptyState" class="empty-state" style="display: none;">
+                <div class="empty-state-icon">📊</div>
+                <h3>No Records Found</h3>
+                <p>No sales records match the selected filter criteria.</p>
+            </div>
+            
+            <div class="table-container" id="tableContainer" style="display: none;">
+                <table id="reportTable">
+                    <thead id="reportTableHead">
+                    </thead>
+                    <tbody id="reportTableBody">
+                    </tbody>
+                </table>
+            </div>
+            
+            <div id="summarySection" class="summary-section" style="display: none;">
+                <div class="summary-item">
+                    <div class="label">Total Records</div>
+                    <div class="value" id="totalRecords">0</div>
                 </div>
-                
-                <h3>Available Reports:</h3>
-                <ul>
-                    <li>Daily Sales Summary</li>
-                    <li>Monthly Sales Trends</li>
-                    <li>Product Performance Analysis</li>
-                    <li>Customer Purchase History</li>
-                    <li>Sales by Region</li>
-                    <li>Top Selling Products</li>
-                </ul>
-                <p><strong>Note:</strong> This is a sample page demonstrating role-based access control.</p>
-                <p>Only users with access to this menu item can view this page.</p>
+                <div class="summary-item">
+                    <div class="label">Total Gross Amount</div>
+                    <div class="value" id="totalGross">0.00</div>
+                </div>
+                <div class="summary-item">
+                    <div class="label">Total Discount</div>
+                    <div class="value" id="totalDiscount">0.00</div>
+                </div>
+                <div class="summary-item">
+                    <div class="label">Total VAT</div>
+                    <div class="value" id="totalVAT">0.00</div>
+                </div>
+                <div class="summary-item">
+                    <div class="label">Total Net Amount</div>
+                    <div class="value" id="totalNet">0.00</div>
+                </div>
             </div>
         </div>
     </div>
 </div>
+</div>
 
 <script src="api.js"></script>
+<script src="indexedDB.js"></script>
 <script src="session.js"></script>
 <script src="menu.js"></script>
+<script src="systemConfig.js"></script>
+<script src="themeManager.js"></script>
 <script>
+// Global variables
+let allCustomers = [];
+let allSalesmen = [];
+let reportData = [];
+
+// Initialize system config with theme
+initPageWithTheme('salesreport.htm', 'companyNameSidebar');
+
 // Protect this page with menu-based access control
 protectPageWithMenuAccess(function(isValid) {
     if (isValid) {
-        // Render menu and breadcrumb
         renderMenu('menuContainer');
         renderBreadcrumb('breadcrumbContainer');
+        loadMasterData();
     }
 });
 
+// Load master data (customers and salesmen)
+function loadMasterData() {
+    // Load customers from IndexedDB first, then API
+    getCustomersFromDB(function(customers) {
+        if (customers && customers.length > 0) {
+            allCustomers = customers;
+            setupCustomerSearch();
+        }
+        // Also fetch from API to ensure latest
+        apiGetCustomers(function(response) {
+            if (response.status === 'success') {
+                allCustomers = response.customers || [];
+                saveCustomersToDB(allCustomers);
+                setupCustomerSearch();
+            }
+        });
+    });
+    
+    // Load salesmen
+    getSalesmenFromDB(function(salesmen) {
+        if (salesmen && salesmen.length > 0) {
+            allSalesmen = salesmen;
+            setupSalesmanSearch();
+        }
+        apiGetSalesmen(function(response) {
+            if (response.status === 'success') {
+                allSalesmen = response.salesmen || [];
+                saveSalesmenToDB(allSalesmen);
+                setupSalesmanSearch();
+            }
+        });
+    });
+}
+
+// Setup customer searchable dropdown
+function setupCustomerSearch() {
+    const searchInput = document.getElementById('customerSearch');
+    const dropdown = document.getElementById('customerDropdown');
+    
+    // Remove old listeners by cloning
+    const newInput = searchInput.cloneNode(true);
+    searchInput.parentNode.replaceChild(newInput, searchInput);
+    
+    const newDropdown = dropdown.cloneNode(false);
+    dropdown.parentNode.replaceChild(newDropdown, dropdown);
+    
+    const currentSearchInput = document.getElementById('customerSearch');
+    const currentDropdown = document.getElementById('customerDropdown');
+    
+    currentSearchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        
+        if (searchTerm.length < 1) {
+            // Show all customers when empty
+            currentDropdown.innerHTML = '<div class="dropdown-item" data-code="" data-desc="">-- All Customers --</div>' +
+                allCustomers.map(c => 
+                    `<div class="dropdown-item" data-code="${c.code}" data-desc="${escapeHtml(c.description)}">
+                        <strong>${c.code}</strong> - ${escapeHtml(c.description)}
+                    </div>`
+                ).join('');
+            currentDropdown.classList.add('active');
+            return;
+        }
+        
+        const filtered = allCustomers.filter(c => 
+            c.code.toLowerCase().includes(searchTerm) ||
+            c.description.toLowerCase().includes(searchTerm)
+        );
+        
+        if (filtered.length > 0) {
+            currentDropdown.innerHTML = filtered.map(c => 
+                `<div class="dropdown-item" data-code="${c.code}" data-desc="${escapeHtml(c.description)}">
+                    <strong>${c.code}</strong> - ${escapeHtml(c.description)}
+                </div>`
+            ).join('');
+            currentDropdown.classList.add('active');
+        } else {
+            currentDropdown.innerHTML = '<div class="dropdown-item">No customers found</div>';
+            currentDropdown.classList.add('active');
+        }
+    });
+    
+    currentSearchInput.addEventListener('focus', function() {
+        // Show all customers on focus
+        currentDropdown.innerHTML = '<div class="dropdown-item" data-code="" data-desc="">-- All Customers --</div>' +
+            allCustomers.map(c => 
+                `<div class="dropdown-item" data-code="${c.code}" data-desc="${escapeHtml(c.description)}">
+                    <strong>${c.code}</strong> - ${escapeHtml(c.description)}
+                </div>`
+            ).join('');
+        currentDropdown.classList.add('active');
+    });
+    
+    currentSearchInput.addEventListener('blur', function() {
+        setTimeout(() => currentDropdown.classList.remove('active'), 200);
+    });
+    
+    // Use mousedown for dropdown items
+    currentDropdown.addEventListener('mousedown', function(e) {
+        const item = e.target.closest('.dropdown-item');
+        if (!item) return;
+        e.preventDefault();
+        const code = item.getAttribute('data-code');
+        const desc = item.getAttribute('data-desc');
+        selectCustomer(code, desc);
+    });
+}
+
+// Select customer
+function selectCustomer(code, description) {
+    document.getElementById('customer').value = code;
+    if (code) {
+        document.getElementById('customerSearch').value = `${code} - ${description}`;
+    } else {
+        document.getElementById('customerSearch').value = '';
+    }
+    document.getElementById('customerDropdown').classList.remove('active');
+}
+
+// Setup salesman searchable dropdown
+function setupSalesmanSearch() {
+    const searchInput = document.getElementById('salesmanSearch');
+    const dropdown = document.getElementById('salesmanDropdown');
+    
+    // Remove old listeners by cloning
+    const newInput = searchInput.cloneNode(true);
+    searchInput.parentNode.replaceChild(newInput, searchInput);
+    
+    const newDropdown = dropdown.cloneNode(false);
+    dropdown.parentNode.replaceChild(newDropdown, dropdown);
+    
+    const currentSearchInput = document.getElementById('salesmanSearch');
+    const currentDropdown = document.getElementById('salesmanDropdown');
+    
+    currentSearchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        
+        if (searchTerm.length < 1) {
+            currentDropdown.innerHTML = '<div class="dropdown-item" data-code="" data-desc="">-- All Salesmen --</div>' +
+                allSalesmen.map(s => 
+                    `<div class="dropdown-item" data-code="${s.code}" data-desc="${escapeHtml(s.description)}">
+                        <strong>${s.code}</strong> - ${escapeHtml(s.description)}
+                    </div>`
+                ).join('');
+            currentDropdown.classList.add('active');
+            return;
+        }
+        
+        const filtered = allSalesmen.filter(s => 
+            s.code.toLowerCase().includes(searchTerm) ||
+            s.description.toLowerCase().includes(searchTerm)
+        );
+        
+        if (filtered.length > 0) {
+            currentDropdown.innerHTML = filtered.map(s => 
+                `<div class="dropdown-item" data-code="${s.code}" data-desc="${escapeHtml(s.description)}">
+                    <strong>${s.code}</strong> - ${escapeHtml(s.description)}
+                </div>`
+            ).join('');
+            currentDropdown.classList.add('active');
+        } else {
+            currentDropdown.innerHTML = '<div class="dropdown-item">No salesmen found</div>';
+            currentDropdown.classList.add('active');
+        }
+    });
+    
+    currentSearchInput.addEventListener('focus', function() {
+        currentDropdown.innerHTML = '<div class="dropdown-item" data-code="" data-desc="">-- All Salesmen --</div>' +
+            allSalesmen.map(s => 
+                `<div class="dropdown-item" data-code="${s.code}" data-desc="${escapeHtml(s.description)}">
+                    <strong>${s.code}</strong> - ${escapeHtml(s.description)}
+                </div>`
+            ).join('');
+        currentDropdown.classList.add('active');
+    });
+    
+    currentSearchInput.addEventListener('blur', function() {
+        setTimeout(() => currentDropdown.classList.remove('active'), 200);
+    });
+    
+    currentDropdown.addEventListener('mousedown', function(e) {
+        const item = e.target.closest('.dropdown-item');
+        if (!item) return;
+        e.preventDefault();
+        const code = item.getAttribute('data-code');
+        const desc = item.getAttribute('data-desc');
+        selectSalesman(code, desc);
+    });
+}
+
+// Select salesman
+function selectSalesman(code, description) {
+    document.getElementById('salesman').value = code;
+    if (code) {
+        document.getElementById('salesmanSearch').value = `${code} - ${description}`;
+    } else {
+        document.getElementById('salesmanSearch').value = '';
+    }
+    document.getElementById('salesmanDropdown').classList.remove('active');
+}
+
+// Generate report
+function generateReport() {
+    const customer = document.getElementById('customer').value;
+    const salesman = document.getElementById('salesman').value;
+    const fromDate = document.getElementById('fromDate').value;
+    const toDate = document.getElementById('toDate').value;
+    const reportType = document.querySelector('input[name="reportType"]:checked').value;
+    
+    // Show loading
+    document.getElementById('reportLoading').style.display = 'block';
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('tableContainer').style.display = 'none';
+    document.getElementById('summarySection').style.display = 'none';
+    document.getElementById('exportBtn').style.display = 'none';
+    document.getElementById('resultsSection').style.display = 'block';
+    
+    // Call API
+    apiGetSalesReport({
+        customer: customer,
+        salesman: salesman,
+        fromDate: fromDate,
+        toDate: toDate,
+        reportType: reportType
+    }, function(response) {
+        document.getElementById('reportLoading').style.display = 'none';
+        
+        if (response.status === 'success') {
+            reportData = response.data || [];
+            
+            if (reportData.length === 0) {
+                document.getElementById('emptyState').style.display = 'block';
+                document.getElementById('exportBtn').style.display = 'none';
+                document.getElementById('summarySection').style.display = 'none';
+                return;
+            }
+            
+            if (reportType === 'headerwise') {
+                displayHeaderwiseReport(reportData);
+            } else {
+                displayItemwiseReport(reportData);
+            }
+            
+            // Show summary
+            document.getElementById('totalRecords').textContent = response.totalRecords || reportData.length;
+            document.getElementById('totalGross').textContent = formatAmount(response.totalGross || 0);
+            document.getElementById('totalDiscount').textContent = formatAmount(response.totalDiscount || 0);
+            document.getElementById('totalVAT').textContent = formatAmount(response.totalVAT || 0);
+            document.getElementById('totalNet').textContent = formatAmount(response.totalNet || 0);
+            document.getElementById('summarySection').style.display = 'flex';
+            document.getElementById('exportBtn').style.display = 'inline-block';
+        } else {
+            showMessage('Error generating report: ' + response.message, 'error');
+        }
+    });
+}
+
+// Display headerwise report
+function displayHeaderwiseReport(data) {
+    const thead = document.getElementById('reportTableHead');
+    const tbody = document.getElementById('reportTableBody');
+    
+    thead.innerHTML = `
+        <tr>
+            <th>Doc No</th>
+            <th>Date</th>
+            <th>Customer</th>
+            <th>Salesman</th>
+            <th class="amount">Gross Amount</th>
+            <th class="amount">Discount</th>
+            <th class="amount">VAT</th>
+            <th class="amount">Net Amount</th>
+        </tr>
+    `;
+    
+    tbody.innerHTML = data.map(row => `
+        <tr>
+            <td><strong>${escapeHtml(row.docNo)}</strong></td>
+            <td>${formatDate(row.date)}</td>
+            <td>${escapeHtml(row.customer || '-')}</td>
+            <td>${escapeHtml(row.salesman || '-')}</td>
+            <td class="amount">${formatAmount(row.grossAmount)}</td>
+            <td class="amount">${formatAmount(row.discountAmount)}</td>
+            <td class="amount">${formatAmount(row.vat)}</td>
+            <td class="amount">${formatAmount(row.net)}</td>
+        </tr>
+    `).join('');
+    
+    document.getElementById('tableContainer').style.display = 'block';
+}
+
+// Display itemwise report
+function displayItemwiseReport(data) {
+    const thead = document.getElementById('reportTableHead');
+    const tbody = document.getElementById('reportTableBody');
+    
+    thead.innerHTML = `
+        <tr>
+            <th>Doc No</th>
+            <th>Date</th>
+            <th>Customer</th>
+            <th>Salesman</th>
+            <th>Stock Code</th>
+            <th>Description</th>
+            <th class="amount">Qty</th>
+            <th>Unit</th>
+            <th class="amount">Rate</th>
+            <th class="amount">Gross</th>
+            <th class="amount">Disc %</th>
+            <th class="amount">Disc Amt</th>
+            <th class="amount">VAT %</th>
+            <th class="amount">VAT Amt</th>
+            <th class="amount">Net</th>
+        </tr>
+    `;
+    
+    tbody.innerHTML = data.map(row => `
+        <tr>
+            <td><strong>${escapeHtml(row.docNo)}</strong></td>
+            <td>${formatDate(row.date)}</td>
+            <td>${escapeHtml(row.customer || '-')}</td>
+            <td>${escapeHtml(row.salesman || '-')}</td>
+            <td>${escapeHtml(row.stockCode || '-')}</td>
+            <td>${escapeHtml(row.stockDescription || '-')}</td>
+            <td class="amount">${formatQty(row.qty)}</td>
+            <td>${escapeHtml(row.unit || '-')}</td>
+            <td class="amount">${formatAmount(row.rate)}</td>
+            <td class="amount">${formatAmount(row.grossAmount)}</td>
+            <td class="amount">${formatAmount(row.discountPercentage)}</td>
+            <td class="amount">${formatAmount(row.discountAmount)}</td>
+            <td class="amount">${formatAmount(row.vatPercentage)}</td>
+            <td class="amount">${formatAmount(row.vatAmount)}</td>
+            <td class="amount">${formatAmount(row.netAmount)}</td>
+        </tr>
+    `).join('');
+    
+    document.getElementById('tableContainer').style.display = 'block';
+}
+
+// Export to Excel
+function exportToExcel() {
+    const reportType = document.querySelector('input[name="reportType"]:checked').value;
+    
+    let html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">';
+    html += '<head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Sales Report</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head>';
+    html += '<body>';
+    html += '<table border="1">';
+    
+    if (reportType === 'headerwise') {
+        html += '<tr><th>Doc No</th><th>Date</th><th>Customer</th><th>Salesman</th><th>Gross Amount</th><th>Discount</th><th>VAT</th><th>Net Amount</th></tr>';
+        reportData.forEach(row => {
+            html += `<tr>
+                <td>${escapeHtml(row.docNo)}</td>
+                <td>${formatDate(row.date)}</td>
+                <td>${escapeHtml(row.customer || '')}</td>
+                <td>${escapeHtml(row.salesman || '')}</td>
+                <td style="text-align:right">${formatAmount(row.grossAmount)}</td>
+                <td style="text-align:right">${formatAmount(row.discountAmount)}</td>
+                <td style="text-align:right">${formatAmount(row.vat)}</td>
+                <td style="text-align:right">${formatAmount(row.net)}</td>
+            </tr>`;
+        });
+        // Add summary row
+        html += `<tr style="font-weight:bold; background:#e8f4f8;">
+            <td colspan="4" style="text-align:right">TOTAL</td>
+            <td style="text-align:right">${formatAmount(calculateTotal('grossAmount'))}</td>
+            <td style="text-align:right">${formatAmount(calculateTotal('discountAmount'))}</td>
+            <td style="text-align:right">${formatAmount(calculateTotal('vat'))}</td>
+            <td style="text-align:right">${formatAmount(calculateTotal('net'))}</td>
+        </tr>`;
+    } else {
+        html += '<tr><th>Doc No</th><th>Date</th><th>Customer</th><th>Salesman</th><th>Stock Code</th><th>Description</th><th>Qty</th><th>Unit</th><th>Rate</th><th>Gross</th><th>Disc %</th><th>Disc Amt</th><th>VAT %</th><th>VAT Amt</th><th>Net</th></tr>';
+        reportData.forEach(row => {
+            html += `<tr>
+                <td>${escapeHtml(row.docNo)}</td>
+                <td>${formatDate(row.date)}</td>
+                <td>${escapeHtml(row.customer || '')}</td>
+                <td>${escapeHtml(row.salesman || '')}</td>
+                <td>${escapeHtml(row.stockCode || '')}</td>
+                <td>${escapeHtml(row.stockDescription || '')}</td>
+                <td style="text-align:right">${formatQty(row.qty)}</td>
+                <td>${escapeHtml(row.unit || '')}</td>
+                <td style="text-align:right">${formatAmount(row.rate)}</td>
+                <td style="text-align:right">${formatAmount(row.grossAmount)}</td>
+                <td style="text-align:right">${formatAmount(row.discountPercentage)}</td>
+                <td style="text-align:right">${formatAmount(row.discountAmount)}</td>
+                <td style="text-align:right">${formatAmount(row.vatPercentage)}</td>
+                <td style="text-align:right">${formatAmount(row.vatAmount)}</td>
+                <td style="text-align:right">${formatAmount(row.netAmount)}</td>
+            </tr>`;
+        });
+        // Add summary row
+        html += `<tr style="font-weight:bold; background:#e8f4f8;">
+            <td colspan="6" style="text-align:right">TOTAL</td>
+            <td style="text-align:right">${formatQty(calculateTotal('qty'))}</td>
+            <td></td>
+            <td></td>
+            <td style="text-align:right">${formatAmount(calculateTotal('grossAmount'))}</td>
+            <td></td>
+            <td style="text-align:right">${formatAmount(calculateTotal('discountAmount'))}</td>
+            <td></td>
+            <td style="text-align:right">${formatAmount(calculateTotal('vatAmount'))}</td>
+            <td style="text-align:right">${formatAmount(calculateTotal('netAmount'))}</td>
+        </tr>`;
+    }
+    
+    html += '</table>';
+    html += '</body></html>';
+    
+    // Create blob and download
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Sales_Report_${new Date().toISOString().slice(0,10)}.xls`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+// Calculate total for a field
+function calculateTotal(field) {
+    return reportData.reduce((sum, row) => sum + (parseFloat(row[field]) || 0), 0);
+}
+
+// Format date for display
+function formatDate(dateStr) {
+    if (!dateStr) return '-';
+    try {
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('en-GB');
+    } catch (e) {
+        return dateStr;
+    }
+}
+
+// Format amount for display
+function formatAmount(amount) {
+    if (amount === null || amount === undefined) return '0.00';
+    return parseFloat(amount).toFixed(2);
+}
+
+// Format quantity for display
+function formatQty(qty) {
+    if (qty === null || qty === undefined) return '0';
+    const num = parseFloat(qty);
+    return Number.isInteger(num) ? num.toString() : num.toFixed(2);
+}
+
+// Show message
+function showMessage(message, type) {
+    const container = document.getElementById('messageContainer');
+    container.innerHTML = `<div class="message ${type}">${escapeHtml(message)}</div>`;
+    setTimeout(() => {
+        container.innerHTML = '';
+    }, 5000);
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Logout function
 function logout() {
     if (confirm('Are you sure you want to logout?')) {
         performLogout();

@@ -158,6 +158,8 @@ function doGet(e) {
     return handleUpdateLogoGet(e);
   } else if (action === "deleteLogo") {
     return handleDeleteLogoGet(e);
+  } else if (action === "getSalesReport") {
+    return handleGetSalesReportGet(e);
   } else {
     var errorResult = { status: "error", message: "Invalid action" };
     var callback = e.parameter.callback;
@@ -3864,6 +3866,173 @@ function handleDeleteLogoGet(e) {
   }
   
   var result = { status: "success", message: "Logo deleted successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// ============================================
+// SALES REPORT HANDLER
+// ============================================
+
+// Get sales report with filters
+function handleGetSalesReportGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get filter parameters
+  var filterCustomer = e.parameter.customer || '';
+  var filterSalesman = e.parameter.salesman || '';
+  var filterFromDate = e.parameter.fromDate || '';
+  var filterToDate = e.parameter.toDate || '';
+  var reportType = e.parameter.reportType || 'headerwise';
+  
+  // Get all sales from SalesHeader sheet
+  var salesHeaderSheet = ss.getSheetByName("SalesHeader");
+  var salesHeaderData = salesHeaderSheet.getDataRange().getValues();
+  
+  // Get all details from SalesDetails sheet
+  var salesDetailsSheet = ss.getSheetByName("SalesDetails");
+  var salesDetailsData = salesDetailsSheet.getDataRange().getValues();
+  
+  var resultData = [];
+  var totalGross = 0;
+  var totalDiscount = 0;
+  var totalVAT = 0;
+  var totalNet = 0;
+  
+  if (reportType === 'headerwise') {
+    // Headerwise report - one row per sale header
+    for (var i = 1; i < salesHeaderData.length; i++) {
+      if (!salesHeaderData[i][1]) continue; // Skip if no DocNo
+      
+      var docNo = salesHeaderData[i][1].toString();
+      var date = salesHeaderData[i][2] ? Utilities.formatDate(new Date(salesHeaderData[i][2]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '';
+      var customer = salesHeaderData[i][3] || '';
+      var salesman = salesHeaderData[i][18] || '';
+      var grossAmount = parseFloat(salesHeaderData[i][5]) || 0;
+      var discountAmount = parseFloat(salesHeaderData[i][7]) || 0;
+      var vat = parseFloat(salesHeaderData[i][8]) || 0;
+      var net = parseFloat(salesHeaderData[i][9]) || 0;
+      
+      // Apply filters
+      if (filterCustomer && customer.toString().toUpperCase() !== filterCustomer.toString().toUpperCase()) continue;
+      if (filterSalesman && salesman.toString().toUpperCase() !== filterSalesman.toString().toUpperCase()) continue;
+      if (filterFromDate && date < filterFromDate) continue;
+      if (filterToDate && date > filterToDate) continue;
+      
+      resultData.push({
+        docNo: docNo,
+        date: date,
+        customer: customer,
+        salesman: salesman,
+        grossAmount: grossAmount,
+        discountAmount: discountAmount,
+        vat: vat,
+        net: net
+      });
+      
+      totalGross += grossAmount;
+      totalDiscount += discountAmount;
+      totalVAT += vat;
+      totalNet += net;
+    }
+  } else {
+    // Itemwise report - one row per detail line
+    // First, build a map of header data keyed by DocNo for quick lookup
+    var headerMap = {};
+    for (var i = 1; i < salesHeaderData.length; i++) {
+      if (!salesHeaderData[i][1]) continue;
+      var hDocNo = salesHeaderData[i][1].toString();
+      headerMap[hDocNo] = {
+        date: salesHeaderData[i][2] ? Utilities.formatDate(new Date(salesHeaderData[i][2]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
+        customer: salesHeaderData[i][3] || '',
+        salesman: salesHeaderData[i][18] || ''
+      };
+    }
+    
+    // Iterate through details and join with header data
+    for (var j = 1; j < salesDetailsData.length; j++) {
+      if (!salesDetailsData[j][1]) continue;
+      
+      var dDocNo = salesDetailsData[j][1].toString();
+      var headerInfo = headerMap[dDocNo];
+      if (!headerInfo) continue;
+      
+      var dDate = headerInfo.date;
+      var dCustomer = headerInfo.customer;
+      var dSalesman = headerInfo.salesman;
+      
+      // Apply filters
+      if (filterCustomer && dCustomer.toString().toUpperCase() !== filterCustomer.toString().toUpperCase()) continue;
+      if (filterSalesman && dSalesman.toString().toUpperCase() !== filterSalesman.toString().toUpperCase()) continue;
+      if (filterFromDate && dDate < filterFromDate) continue;
+      if (filterToDate && dDate > filterToDate) continue;
+      
+      var dGrossAmount = parseFloat(salesDetailsData[j][8]) || 0;
+      var dDiscountAmount = parseFloat(salesDetailsData[j][9]) || 0;
+      var dDiscountPercentage = parseFloat(salesDetailsData[j][10]) || 0;
+      var dVatAmount = parseFloat(salesDetailsData[j][11]) || 0;
+      var dVatPercentage = parseFloat(salesDetailsData[j][12]) || 0;
+      var dNetAmount = parseFloat(salesDetailsData[j][13]) || 0;
+      
+      resultData.push({
+        docNo: dDocNo,
+        date: dDate,
+        customer: dCustomer,
+        salesman: dSalesman,
+        stockCode: salesDetailsData[j][3] || '',
+        stockDescription: salesDetailsData[j][4] || '',
+        qty: salesDetailsData[j][5] || 0,
+        unit: salesDetailsData[j][6] || '',
+        rate: salesDetailsData[j][7] || 0,
+        grossAmount: dGrossAmount,
+        discountPercentage: dDiscountPercentage,
+        discountAmount: dDiscountAmount,
+        vatPercentage: dVatPercentage,
+        vatAmount: dVatAmount,
+        netAmount: dNetAmount
+      });
+      
+      totalGross += dGrossAmount;
+      totalDiscount += dDiscountAmount;
+      totalVAT += dVatAmount;
+      totalNet += dNetAmount;
+    }
+  }
+  
+  // Sort by DocNo descending
+  resultData.sort(function(a, b) {
+    return b.docNo.localeCompare(a.docNo);
+  });
+  
+  var result = {
+    status: "success",
+    data: resultData,
+    totalRecords: resultData.length,
+    totalGross: totalGross,
+    totalDiscount: totalDiscount,
+    totalVAT: totalVAT,
+    totalNet: totalNet
+  };
+  
   if (callback) {
     return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
       .setMimeType(ContentService.MimeType.JAVASCRIPT);
