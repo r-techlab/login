@@ -160,6 +160,10 @@ function doGet(e) {
     return handleUpdateLogoGet(e);
   } else if (action === "deleteLogo") {
     return handleDeleteLogoGet(e);
+  } else if (action === "getDashboard") {
+    return handleGetDashboardGet(e);
+  } else if (action === "updateDashboard") {
+    return handleUpdateDashboardGet(e);
   } else {
     var errorResult = { status: "error", message: "Invalid action" };
     var callback = e.parameter.callback;
@@ -4075,4 +4079,123 @@ function cleanupExpiredSessions() {
   }
   
   Logger.log("Cleaned up expired sessions");
+}
+
+// ============================================
+// DASHBOARD MASTER HANDLERS
+// ============================================
+
+// Get all dashboard records
+function handleGetDashboardGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get all records from Dashboard sheet
+  var dashboardSheet = ss.getSheetByName("Dashboard");
+  if (!dashboardSheet) {
+    // Create sheet if it doesn't exist
+    dashboardSheet = ss.insertSheet("Dashboard");
+    dashboardSheet.appendRow(["Code", "Description", "Roles", "Users"]);
+  }
+  
+  var dashboardData = dashboardSheet.getDataRange().getValues();
+  var dashboard = [];
+  
+  for (var i = 1; i < dashboardData.length; i++) {
+    if (dashboardData[i][0]) { // Check if Code exists
+      dashboard.push({
+        code: dashboardData[i][0].toString(),
+        description: dashboardData[i][1] || '',
+        roles: dashboardData[i][2] || '',
+        users: dashboardData[i][3] || ''
+      });
+    }
+  }
+  
+  var result = { status: "success", dashboard: dashboard };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Update dashboard record
+function handleUpdateDashboardGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var code = e.parameter.code;
+  var description = e.parameter.description || '';
+  var roles = e.parameter.roles || '';
+  var users = e.parameter.users || '';
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!code) {
+    var errorResult = { status: "error", message: "Code is required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var dashboardSheet = ss.getSheetByName("Dashboard");
+  if (!dashboardSheet) {
+    dashboardSheet = ss.insertSheet("Dashboard");
+    dashboardSheet.appendRow(["Code", "Description", "Roles", "Users"]);
+  }
+  
+  var dashboardData = dashboardSheet.getDataRange().getValues();
+  
+  // Find and update record
+  var found = false;
+  for (var i = 1; i < dashboardData.length; i++) {
+    if (dashboardData[i][0] && dashboardData[i][0].toString() == code.toString()) {
+      dashboardSheet.getRange(i + 1, 1, 1, 4).setValues([[code, description, roles, users]]);
+      found = true;
+      break;
+    }
+  }
+  
+  if (!found) {
+    // If not found, append as new row
+    dashboardSheet.appendRow([code, description, roles, users]);
+  }
+  
+  var result = { status: "success", message: "Dashboard record updated successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
 }

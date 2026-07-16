@@ -3,7 +3,7 @@
 // Centralized API calls with session validation
 // ============================================
 
-const API_URL = "https://script.google.com/macros/s/AKfycbwtvC4gC2vjCNVBOGEGBibpQrZpeyQSNmgFP8LiTEQ_lj5W2W0mj_bgIWb3FEvGkCs/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxaUpfTt4qLs5AFWX_BaEGkn4-lUJKPsZ3SzrqqWHwPe_hsxzGuGOnrss6BlGUzYRQ/exec";
 const API_TIMEOUT = 15000; // 15 seconds
 
 // ============================================
@@ -45,6 +45,92 @@ function apiLogin(loginid, password, callback) {
         callback({
             status: "error",
             message: "Connection error. Check your internet or Apps Script deployment."
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// Get dashboard data
+function apiGetDashboard(callback) {
+    const callbackName = 'apiGetDashboardCallback_' + Date.now();
+    const session = getSession();
+    
+    const timeoutId = setTimeout(function() {
+        if (window[callbackName]) {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+                document.body.removeChild(script);
+            }
+            callback({
+                status: "error",
+                message: "Request timeout"
+            });
+        }
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=getDashboard&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// Update dashboard record
+function apiUpdateDashboard(dashboardData, callback) {
+    const callbackName = 'apiUpdateDashboardCallback_' + Date.now();
+    const session = getSession();
+    
+    const timeoutId = setTimeout(function() {
+        if (window[callbackName]) {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+                document.body.removeChild(script);
+            }
+            callback({
+                status: "error",
+                message: "Request timeout"
+            });
+        }
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=updateDashboard&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&code=${encodeURIComponent(dashboardData.code)}&description=${encodeURIComponent(dashboardData.description || '')}&roles=${encodeURIComponent(dashboardData.roles || '')}&users=${encodeURIComponent(dashboardData.users || '')}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
         });
     };
     document.body.appendChild(script);

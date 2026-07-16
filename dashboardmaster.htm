@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard Master</title>
+<link rel="stylesheet" href="menu.css">
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    margin: 0;
+    padding: 20px;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 20px;
+    margin-bottom: 30px;
+}
+
+h1 {
+    color: #333;
+    margin: 0;
+}
+
+.btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    margin-left: 10px;
+}
+
+.btn:hover {
+    background: #2980b9;
+}
+
+.btn-success {
+    background: #27ae60;
+}
+
+.btn-success:hover {
+    background: #229954;
+}
+
+.btn-danger {
+    background: #e74c3c;
+}
+
+.btn-danger:hover {
+    background: #c0392b;
+}
+
+.btn-warning {
+    background: #f39c12;
+}
+
+.btn-warning:hover {
+    background: #e67e22;
+}
+
+.btn:disabled {
+    background: #95a5a6;
+    cursor: not-allowed;
+}
+
+.layout-with-sidebar {
+    display: flex;
+    gap: 20px;
+}
+
+.sidebar {
+    width: 280px;
+    flex-shrink: 0;
+}
+
+.company-name-sidebar {
+    font-size: 16px;
+    font-weight: bold;
+    color: white;
+    padding: 12px;
+    margin-bottom: 15px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 8px;
+    text-align: center;
+}
+
+.main-content {
+    flex: 1;
+}
+
+.toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.search-box {
+    flex: 1;
+    max-width: 400px;
+}
+
+.search-box input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+.table-container {
+    overflow-x: auto;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+thead {
+    background: #667eea;
+    color: white;
+}
+
+th {
+    padding: 15px;
+    text-align: left;
+    font-weight: bold;
+}
+
+td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #eee;
+    vertical-align: middle;
+}
+
+tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 5px;
+}
+
+.btn-small {
+    padding: 5px 10px;
+    font-size: 12px;
+}
+
+/* Multi-select dropdown styles */
+.multi-select-container {
+    position: relative;
+    min-width: 250px;
+}
+
+.multi-select-display {
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 8px 12px;
+    min-height: 36px;
+    cursor: pointer;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+    background: white;
+}
+
+.multi-select-display:hover {
+    border-color: #667eea;
+}
+
+.multi-select-tag {
+    display: inline-flex;
+    align-items: center;
+    background: #667eea;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    gap: 4px;
+}
+
+.multi-select-tag .remove-tag {
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 14px;
+    line-height: 1;
+}
+
+.multi-select-tag .remove-tag:hover {
+    color: #ffcccc;
+}
+
+.multi-select-placeholder {
+    color: #999;
+    font-size: 13px;
+}
+
+.multi-select-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 100;
+    max-height: 250px;
+    overflow-y: auto;
+    margin-top: 2px;
+}
+
+.multi-select-dropdown.open {
+    display: block;
+}
+
+.multi-select-option {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    cursor: pointer;
+    gap: 8px;
+    font-size: 13px;
+}
+
+.multi-select-option:hover {
+    background: #f0f0ff;
+}
+
+.multi-select-option input[type="checkbox"] {
+    margin: 0;
+    cursor: pointer;
+}
+
+.multi-select-option label {
+    cursor: pointer;
+    flex: 1;
+}
+
+.message {
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    font-weight: bold;
+}
+
+.message.success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.message.error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.message.warning {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+}
+
+.loading::after {
+    content: '...';
+    animation: dots 1.5s steps(4, end) infinite;
+}
+
+@keyframes dots {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    60%, 100% { content: '...'; }
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #999;
+}
+
+.empty-state-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+}
+
+@media (max-width: 992px) {
+    .layout-with-sidebar {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>📋 Dashboard Master</h1>
+        <div>
+            <button class="btn" onclick="window.location.href='home.html'">🏠 Home</button>
+            <button class="btn btn-danger" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div id="breadcrumbContainer" class="breadcrumb-container"></div>
+
+    <div class="layout-with-sidebar">
+        <div class="sidebar">
+            <div id="companyNameSidebar" class="company-name-sidebar"></div>
+            <h3>Navigation Menu</h3>
+            <div id="menuContainer"></div>
+        </div>
+
+        <div class="main-content">
+            <div id="messageContainer"></div>
+
+            <div class="toolbar">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="🔍 Search by Code or Description..." onkeyup="filterTable()">
+                </div>
+                <div>
+                    <button class="btn btn-success" onclick="saveAllChanges()">💾 Save All Changes</button>
+                    <button class="btn" onclick="loadDashboardData()">🔄 Refresh</button>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <div id="loadingIndicator" class="loading">Loading dashboard data</div>
+                <div id="emptyState" class="empty-state" style="display: none;">
+                    <div class="empty-state-icon">📋</div>
+                    <h3>No Dashboard Records Found</h3>
+                    <p>Please add records to the Dashboard sheet in the Google Sheet.</p>
+                </div>
+                <table id="dashboardTable" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Description</th>
+                            <th>Roles</th>
+                            <th>Users</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dashboardTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="api.js"></script>
+<script src="indexedDB.js"></script>
+<script src="session.js"></script>
+<script src="menu.js"></script>
+<script src="systemConfig.js"></script>
+<script src="themeManager.js"></script>
+<script>
+// Global variables
+let dashboardData = [];
+let allRoles = [];
+let allUsers = [];
+let openDropdown = null;
+
+// Initialize system config with theme
+initPageWithTheme('dashboardmaster.htm', 'companyNameSidebar');
+
+// Protect this page with menu-based access control
+protectPageWithMenuAccess(function(isValid) {
+    if (isValid) {
+        renderMenu('menuContainer');
+        renderBreadcrumb('breadcrumbContainer');
+        
+        // Load roles, users, and dashboard data
+        loadReferenceData();
+    }
+});
+
+// Load reference data (roles and users) then dashboard
+function loadReferenceData() {
+    // Load all roles
+    apiGetRoles(function(response) {
+        if (response.status === 'success') {
+            allRoles = response.roles || [];
+        }
+        
+        // Load all users
+        apiGetUsers(function(response) {
+            if (response.status === 'success') {
+                allUsers = response.users || [];
+            }
+            
+            // Now load dashboard data
+            loadDashboardData();
+        });
+    });
+}
+
+// Parse XML string to array
+function parseXmlToArray(xmlStr, tagName) {
+    if (!xmlStr) return [];
+    var results = [];
+    var regex = new RegExp('<' + tagName + '>([^<]*)<\\/' + tagName + '>', 'gi');
+    var match;
+    while ((match = regex.exec(xmlStr)) !== null) {
+        if (match[1].trim()) {
+            results.push(match[1].trim());
+        }
+    }
+    return results;
+}
+
+// Build XML string from array
+function buildXmlFromArray(arr, tagName) {
+    if (!arr || arr.length === 0) return '';
+    return arr.map(function(item) { return '<' + tagName + '>' + item + '</' + tagName + '>'; }).join('');
+}
+
+// Get role name by role ID
+function getRoleNameById(roleId) {
+    if (!roleId || !allRoles || allRoles.length === 0) return roleId;
+    for (var i = 0; i < allRoles.length; i++) {
+        if (String(allRoles[i].roleId) === String(roleId)) {
+            return allRoles[i].roleName || roleId;
+        }
+    }
+    return roleId;
+}
+
+// Get user name by login ID
+function getUserNameById(loginId) {
+    if (!loginId || !allUsers || allUsers.length === 0) return loginId;
+    for (var i = 0; i < allUsers.length; i++) {
+        if (String(allUsers[i].loginId) === String(loginId)) {
+            return allUsers[i].userName || loginId;
+        }
+    }
+    return loginId;
+}
+
+// Load dashboard data
+function loadDashboardData() {
+
+    document.getElementById('loadingIndicator').style.display = 'block';
+    document.getElementById('dashboardTable').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'none';
+    
+    apiGetDashboard(function(response) {
+        document.getElementById('loadingIndicator').style.display = 'none';
+        
+        if (response.status === 'success') {
+            dashboardData = response.dashboard || [];
+            
+            if (dashboardData.length === 0) {
+                document.getElementById('emptyState').style.display = 'block';
+                return;
+            }
+            
+            document.getElementById('dashboardTable').style.display = 'table';
+            renderTable();
+        } else {
+            showMessage('Error loading dashboard data: ' + response.message, 'error');
+            document.getElementById('emptyState').style.display = 'block';
+        }
+    });
+}
+
+// Render table
+function renderTable() {
+    var tbody = document.getElementById('dashboardTableBody');
+    tbody.innerHTML = '';
+    
+    dashboardData.forEach(function(item, index) {
+        var row = document.createElement('tr');
+        row.setAttribute('data-index', index);
+        
+        var roles = parseXmlToArray(item.roles, 'role');
+        var users = parseXmlToArray(item.users, 'user');
+        
+        row.innerHTML = `
+            <td><strong>${escapeHtml(item.code)}</strong></td>
+            <td>${escapeHtml(item.description)}</td>
+            <td>
+                <div class="multi-select-container" data-field="roles" data-index="${index}">
+                    <div class="multi-select-display" onclick="toggleDropdown(this)">
+                        <span class="multi-select-placeholder" style="${roles.length > 0 ? 'display:none;' : ''}">Select roles...</span>
+                        ${roles.map(function(r) { 
+                            var roleName = getRoleNameById(r);
+                            return '<span class="multi-select-tag" data-value="' + escapeHtml(r) + '">' + escapeHtml(roleName || r) + '<span class="remove-tag" onclick="event.stopPropagation(); removeTag(this, \'' + index + '\', \'roles\', \'' + escapeHtml(r) + '\')">&times;</span></span>';
+                        }).join('')}
+                    </div>
+                    <div class="multi-select-dropdown">
+                        ${allRoles.map(function(role) {
+                            var checked = roles.indexOf(String(role.roleId || role.roleName)) !== -1 ? 'checked' : '';
+                            return '<div class="multi-select-option"><input type="checkbox" value="' + escapeHtml(role.roleId || role.roleName) + '" ' + checked + ' onchange="onCheckboxChange(this, \'' + index + '\', \'roles\')"><label>' + escapeHtml(role.roleName || role.roleId) + '</label></div>';
+                        }).join('')}
+                    </div>
+                </div>
+            </td>
+            <td>
+                <div class="multi-select-container" data-field="users" data-index="${index}">
+                    <div class="multi-select-display" onclick="toggleDropdown(this)">
+                        <span class="multi-select-placeholder" style="${users.length > 0 ? 'display:none;' : ''}">Select users...</span>
+                        ${users.map(function(u) { 
+                            var userName = getUserNameById(u);
+                            return '<span class="multi-select-tag" data-value="' + escapeHtml(u) + '">' + escapeHtml(userName || u) + '<span class="remove-tag" onclick="event.stopPropagation(); removeTag(this, \'' + index + '\', \'users\', \'' + escapeHtml(u) + '\')">&times;</span></span>';
+                        }).join('')}
+                    </div>
+                    <div class="multi-select-dropdown">
+                        ${allUsers.map(function(user) {
+                            var loginId = user.loginId || user.userId || '';
+                            var userName = user.userName || loginId;
+                            var checked = users.indexOf(String(loginId)) !== -1 ? 'checked' : '';
+                            return '<div class="multi-select-option"><input type="checkbox" value="' + escapeHtml(loginId) + '" ' + checked + ' onchange="onCheckboxChange(this, \'' + index + '\', \'users\')"><label>' + escapeHtml(userName) + '</label></div>';
+                        }).join('')}
+                    </div>
+                </div>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+// Toggle dropdown
+function toggleDropdown(displayElement) {
+    var container = displayElement.closest('.multi-select-container');
+    var dropdown = container.querySelector('.multi-select-dropdown');
+    
+    // Close any other open dropdown
+    if (openDropdown && openDropdown !== dropdown) {
+        openDropdown.classList.remove('open');
+    }
+    
+    dropdown.classList.toggle('open');
+    openDropdown = dropdown.classList.contains('open') ? dropdown : null;
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.multi-select-container')) {
+        if (openDropdown) {
+            openDropdown.classList.remove('open');
+            openDropdown = null;
+        }
+    }
+});
+
+// Handle checkbox change
+function onCheckboxChange(checkbox, index, field) {
+    var container = checkbox.closest('.multi-select-container');
+    var display = container.querySelector('.multi-select-display');
+    var placeholder = display.querySelector('.multi-select-placeholder');
+    var value = checkbox.value;
+    
+    if (checkbox.checked) {
+        // Add tag - show name for roles, ID for users
+        var displayName = value;
+        if (field === 'roles') {
+            displayName = getRoleNameById(value) || value;
+        } else if (field === 'users') {
+            displayName = getUserNameById(value) || value;
+        }
+        var tag = document.createElement('span');
+        tag.className = 'multi-select-tag';
+        tag.setAttribute('data-value', value);
+        tag.innerHTML = escapeHtml(displayName) + '<span class="remove-tag" onclick="event.stopPropagation(); removeTag(this, \'' + index + '\', \'' + field + '\', \'' + escapeHtml(value) + '\')">&times;</span>';
+        display.insertBefore(tag, placeholder);
+    } else {
+        // Remove tag
+        var tag = display.querySelector('.multi-select-tag[data-value="' + value.replace(/"/g, '\\"') + '"]');
+        if (tag) tag.remove();
+    }
+    
+    // Toggle placeholder
+    var tags = display.querySelectorAll('.multi-select-tag');
+    placeholder.style.display = tags.length > 0 ? 'none' : '';
+    
+    // Update data model
+    updateDataModel(index, field);
+}
+
+// Remove tag
+function removeTag(element, index, field, value) {
+    var tag = element.closest('.multi-select-tag');
+    tag.remove();
+    
+    // Uncheck the corresponding checkbox
+    var container = tag.closest('.multi-select-container');
+    var checkbox = container.querySelector('.multi-select-dropdown input[value="' + value.replace(/"/g, '\\"') + '"]');
+    if (checkbox) checkbox.checked = false;
+    
+    // Toggle placeholder
+    var display = container.querySelector('.multi-select-display');
+    var placeholder = display.querySelector('.multi-select-placeholder');
+    var tags = display.querySelectorAll('.multi-select-tag');
+    placeholder.style.display = tags.length > 0 ? 'none' : '';
+    
+    // Update data model
+    updateDataModel(index, field);
+}
+
+// Update data model from UI
+function updateDataModel(index, field) {
+    var row = document.querySelector('#dashboardTableBody tr[data-index="' + index + '"]');
+    if (!row) return;
+    
+    var container = row.querySelector('.multi-select-container[data-field="' + field + '"]');
+    if (!container) return;
+    
+    var tags = container.querySelectorAll('.multi-select-tag');
+    var values = [];
+    tags.forEach(function(tag) {
+        values.push(tag.getAttribute('data-value'));
+    });
+    
+    // Update the data model
+    if (dashboardData[index]) {
+        dashboardData[index][field] = buildXmlFromArray(values, field === 'roles' ? 'role' : 'user');
+    }
+}
+
+// Save all changes
+function saveAllChanges() {
+    // First, sync all data from UI to model
+    var rows = document.querySelectorAll('#dashboardTableBody tr');
+    rows.forEach(function(row) {
+        var index = row.getAttribute('data-index');
+        if (index !== null) {
+            updateDataModel(parseInt(index), 'roles');
+            updateDataModel(parseInt(index), 'users');
+        }
+    });
+    
+    // Check if there are any changes
+    var hasChanges = false;
+    dashboardData.forEach(function(item) {
+        if (item._changed) hasChanges = true;
+    });
+    
+    // Save each item
+    var savedCount = 0;
+    var errorCount = 0;
+    var totalToSave = dashboardData.length;
+    
+    if (totalToSave === 0) {
+        showMessage('No data to save.', 'warning');
+        return;
+    }
+    
+    showMessage('Saving ' + totalToSave + ' record(s)...', 'success');
+    
+    dashboardData.forEach(function(item, index) {
+        apiUpdateDashboard({
+            code: item.code,
+            description: item.description,
+            roles: item.roles || '',
+            users: item.users || ''
+        }, function(response) {
+            if (response.status === 'success') {
+                savedCount++;
+            } else {
+                errorCount++;
+            }
+            
+            // Check if all saves are complete
+            if (savedCount + errorCount === totalToSave) {
+                if (errorCount === 0) {
+                    showMessage('All ' + savedCount + ' record(s) saved successfully!', 'success');
+                } else {
+                    showMessage(savedCount + ' saved, ' + errorCount + ' failed.', errorCount > 0 ? 'warning' : 'success');
+                }
+                loadDashboardData();
+            }
+        });
+    });
+}
+
+// Filter table
+function filterTable() {
+    var search = document.getElementById('searchInput').value.toLowerCase();
+    var rows = document.querySelectorAll('#dashboardTableBody tr');
+    
+    rows.forEach(function(row) {
+        var text = row.textContent.toLowerCase();
+        row.style.display = text.indexOf(search) > -1 ? '' : 'none';
+    });
+}
+
+// Show message
+function showMessage(message, type) {
+    const container = document.getElementById('messageContainer');
+    container.innerHTML = '<div class="message ' + type + '">' + escapeHtml(message) + '</div>';
+    
+    setTimeout(function() {
+        container.innerHTML = '';
+    }, 5000);
+}
+
+// Escape HTML
+function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Logout
+function logout() {
+    if (confirm('Are you sure you want to logout?')) {
+        performLogout();
+    }
+}
+</script>
+
+</body>
+</html>
