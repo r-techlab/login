@@ -3902,6 +3902,7 @@ function handleGetSalesReportGet(e) {
   var toDate = e.parameter.toDate || '';
   var customerFilter = (e.parameter.customer || '').toLowerCase();
   var salesmanFilter = (e.parameter.salesman || '').toLowerCase();
+  var reportType = (e.parameter.reportType || 'headerwise').toLowerCase();
   
   // Build customer lookup map (code -> description)
   var customerSheet = ss.getSheetByName("CustomerMaster");
@@ -3976,29 +3977,75 @@ function handleGetSalesReportGet(e) {
     return b.docNo.localeCompare(a.docNo);
   });
   
+  // If reportType is itemwise, fetch item details for each sale
+  if (reportType === 'itemwise') {
+    var salesDetailsSheet = ss.getSheetByName("SalesDetails");
+    var salesDetailsData = salesDetailsSheet.getDataRange().getValues();
+    
+    // Build a map of docNo -> details array
+    var detailsMap = {};
+    for (var d = 1; d < salesDetailsData.length; d++) {
+      var detailDocNo = salesDetailsData[d][1];
+      if (detailDocNo) {
+        if (!detailsMap[detailDocNo]) {
+          detailsMap[detailDocNo] = [];
+        }
+        detailsMap[detailDocNo].push({
+          docSrNo: salesDetailsData[d][2] || 0,
+          stockCode: salesDetailsData[d][3] || '',
+          stockDescription: salesDetailsData[d][4] || '',
+          qty: parseFloat(salesDetailsData[d][5]) || 0,
+          unit: salesDetailsData[d][6] || '',
+          rate: parseFloat(salesDetailsData[d][7]) || 0,
+          grossAmount: parseFloat(salesDetailsData[d][8]) || 0,
+          discountAmount: parseFloat(salesDetailsData[d][9]) || 0,
+          discountPercentage: parseFloat(salesDetailsData[d][10]) || 0,
+          vatAmount: parseFloat(salesDetailsData[d][11]) || 0,
+          vatPercentage: parseFloat(salesDetailsData[d][12]) || 0,
+          netAmount: parseFloat(salesDetailsData[d][13]) || 0,
+          vatTreatment: salesDetailsData[d][14] || '',
+          rateType: salesDetailsData[d][15] || ''
+        });
+      }
+    }
+    
+    // Attach details to each sale
+    for (var si = 0; si < allSales.length; si++) {
+      allSales[si].details = detailsMap[allSales[si].docNo] || [];
+    }
+  }
+  
   // Calculate summary
   var totalCount = allSales.length;
   var totalGross = 0;
   var totalDiscount = 0;
   var totalVat = 0;
   var totalNet = 0;
+  var totalItemQty = 0;
   
   for (var i = 0; i < allSales.length; i++) {
     totalGross += allSales[i].grossAmount;
     totalDiscount += allSales[i].discountAmount;
     totalVat += allSales[i].vat;
     totalNet += allSales[i].net;
+    if (reportType === 'itemwise' && allSales[i].details) {
+      for (var di = 0; di < allSales[i].details.length; di++) {
+        totalItemQty += allSales[i].details[di].qty;
+      }
+    }
   }
   
   var result = { 
     status: "success", 
     sales: allSales,
+    reportType: reportType,
     summary: {
       totalCount: totalCount,
       totalGross: Math.round(totalGross * 100) / 100,
       totalDiscount: Math.round(totalDiscount * 100) / 100,
       totalVat: Math.round(totalVat * 100) / 100,
-      totalNet: Math.round(totalNet * 100) / 100
+      totalNet: Math.round(totalNet * 100) / 100,
+      totalItemQty: Math.round(totalItemQty * 100) / 100
     }
   };
   

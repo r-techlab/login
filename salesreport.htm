@@ -105,6 +105,8 @@ h1 {
 
 .main-content {
     flex: 1;
+    min-width: 0;
+    overflow: hidden;
 }
 
 /* Filter Section */
@@ -159,14 +161,17 @@ h1 {
 
 .table-container {
     overflow-x: auto;
+    overflow-y: auto;
     background: white;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    max-width: 100%;
 }
 
 table {
-    width: 100%;
+    width: auto;
     border-collapse: collapse;
+    min-width: 600px;
 }
 
 thead {
@@ -179,12 +184,14 @@ th {
     text-align: left;
     font-weight: bold;
     font-size: 13px;
+    white-space: nowrap;
 }
 
 td {
     padding: 10px 15px;
     border-bottom: 1px solid #eee;
     font-size: 13px;
+    white-space: nowrap;
 }
 
 tbody tr:hover {
@@ -316,6 +323,17 @@ tbody tr:hover {
                             <option value="">All Salesmen</option>
                         </select>
                     </div>
+                    <div class="filter-group">
+                        <label>Report Type</label>
+                        <div style="display: flex; gap: 15px; padding-top: 5px;">
+                            <label style="font-weight: normal; font-size: 14px; cursor: pointer;">
+                                <input type="radio" name="reportType" value="headerwise" checked onchange="onReportTypeChange()"> Headerwise
+                            </label>
+                            <label style="font-weight: normal; font-size: 14px; cursor: pointer;">
+                                <input type="radio" name="reportType" value="itemwise" onchange="onReportTypeChange()"> Itemwise
+                            </label>
+                        </div>
+                    </div>
                     <div class="filter-actions">
                         <button class="btn btn-success" onclick="loadReport()">🔍 Generate Report</button>
                         <button class="btn btn-warning" onclick="resetFilters()">↺ Reset</button>
@@ -390,6 +408,92 @@ protectPageWithMenuAccess(function(isValid) {
     }
 });
 
+// Get selected report type
+function getReportType() {
+    var radios = document.getElementsByName('reportType');
+    for (var i = 0; i < radios.length; i++) {
+        if (radios[i].checked) {
+            return radios[i].value;
+        }
+    }
+    return 'headerwise';
+}
+
+// Called when report type radio changes - update table headers
+function onReportTypeChange() {
+    var isItemwise = getReportType() === 'itemwise';
+    var thead = document.querySelector('#reportTable thead tr');
+    var tfoot = document.getElementById('reportTableFooter');
+    
+    if (isItemwise) {
+        // Update headers for itemwise
+        thead.innerHTML = `
+            <th>Doc No</th>
+            <th>Date</th>
+            <th>Customer Code</th>
+            <th>Customer Name</th>
+            <th>Salesman Code</th>
+            <th>Salesman Name</th>
+            <th>Stock Code</th>
+            <th>Stock Description</th>
+            <th class="amount">Qty</th>
+            <th>Unit</th>
+            <th class="amount">Rate</th>
+            <th class="amount">Item Gross</th>
+            <th class="amount">Item Discount</th>
+            <th class="amount">Item VAT</th>
+            <th class="amount">Item Net</th>
+        `;
+        // Update footer colspan
+        tfoot.querySelector('td:first-child').colSpan = 6;
+        // Add item qty to footer
+        var footerHtml = 'Total (<span id="totalCountSpan">0</span> Invoices):';
+        tfoot.querySelector('td:first-child').innerHTML = footerHtml;
+        // Ensure footer has all needed cells aligned to correct columns
+        var footerRow = tfoot.querySelector('tr');
+        footerRow.innerHTML = `
+            <td colspan="6" style="text-align: right; padding: 12px 15px; font-size: 14px;">Total (<span id="totalCountSpan">0</span> Invoices):</td>
+            <td></td>
+            <td></td>
+            <td class="amount" style="padding: 12px 15px; font-size: 14px;" id="totalItemQtyDisplay">0.00</td>
+            <td></td>
+            <td></td>
+            <td class="amount" style="padding: 12px 15px; font-size: 14px;" id="totalGrossDisplay">0.00</td>
+            <td class="amount" style="padding: 12px 15px; font-size: 14px;" id="totalDiscountDisplay">0.00</td>
+            <td class="amount" style="padding: 12px 15px; font-size: 14px;" id="totalVatDisplay">0.00</td>
+            <td class="amount" style="padding: 12px 15px; font-size: 14px;" id="totalNetDisplay">0.00</td>
+        `;
+    } else {
+        // Update headers for headerwise
+        thead.innerHTML = `
+            <th>Doc No</th>
+            <th>Date</th>
+            <th>Customer Code</th>
+            <th>Customer Name</th>
+            <th>Salesman Code</th>
+            <th>Salesman Name</th>
+            <th class="amount">Gross Amount</th>
+            <th class="amount">Discount</th>
+            <th class="amount">VAT</th>
+            <th class="amount">Net Amount</th>
+        `;
+        // Reset footer
+        var footerRow = tfoot.querySelector('tr');
+        footerRow.innerHTML = `
+            <td colspan="6" style="text-align: right; padding: 12px 15px; font-size: 14px;">Total (<span id="totalCountSpan">0</span> Invoices):</td>
+            <td class="amount" style="padding: 12px 15px; font-size: 14px;" id="totalGrossDisplay">0.00</td>
+            <td class="amount" style="padding: 12px 15px; font-size: 14px;" id="totalDiscountDisplay">0.00</td>
+            <td class="amount" style="padding: 12px 15px; font-size: 14px;" id="totalVatDisplay">0.00</td>
+            <td class="amount" style="padding: 12px 15px; font-size: 14px;" id="totalNetDisplay">0.00</td>
+        `;
+    }
+    
+    // Re-fetch data with new report type if we have data
+    if (reportData.length > 0) {
+        loadReport();
+    }
+}
+
 // Load filter dropdown data (customers and salesmen)
 function loadFilterData() {
     // Load customers
@@ -433,7 +537,8 @@ function loadReport() {
         fromDate: document.getElementById('fromDate').value,
         toDate: document.getElementById('toDate').value,
         customer: document.getElementById('customerFilter').value,
-        salesman: document.getElementById('salesmanFilter').value
+        salesman: document.getElementById('salesmanFilter').value,
+        reportType: getReportType()
     };
     
     apiGetSalesReport(filters, function(response) {
@@ -466,23 +571,49 @@ function displayReport(sales) {
     document.getElementById('reportTable').style.display = 'table';
     document.getElementById('emptyState').style.display = 'none';
     
+    var isItemwise = getReportType() === 'itemwise';
+    
     sales.forEach(function(sale) {
-        const row = document.createElement('tr');
-        
-        row.innerHTML = `
-            <td><strong>${escapeHtml(sale.docNo)}</strong></td>
-            <td>${formatDate(sale.date)}</td>
-            <td>${escapeHtml(sale.customer || '-')}</td>
-            <td>${escapeHtml(sale.customerName || '-')}</td>
-            <td>${escapeHtml(sale.salesman || '-')}</td>
-            <td>${escapeHtml(sale.salesmanName || '-')}</td>
-            <td class="amount">${formatAmount(sale.grossAmount)}</td>
-            <td class="amount">${formatAmount(sale.discountAmount)}</td>
-            <td class="amount">${formatAmount(sale.vat)}</td>
-            <td class="amount">${formatAmount(sale.net)}</td>
-        `;
-        
-        tbody.appendChild(row);
+        if (isItemwise && sale.details && sale.details.length > 0) {
+            // Itemwise: one row per item with header info repeated
+            sale.details.forEach(function(item) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><strong>${escapeHtml(sale.docNo)}</strong></td>
+                    <td>${formatDate(sale.date)}</td>
+                    <td>${escapeHtml(sale.customer || '-')}</td>
+                    <td>${escapeHtml(sale.customerName || '-')}</td>
+                    <td>${escapeHtml(sale.salesman || '-')}</td>
+                    <td>${escapeHtml(sale.salesmanName || '-')}</td>
+                    <td>${escapeHtml(item.stockCode || '-')}</td>
+                    <td>${escapeHtml(item.stockDescription || '-')}</td>
+                    <td class="amount">${formatAmount(item.qty)}</td>
+                    <td>${escapeHtml(item.unit || '-')}</td>
+                    <td class="amount">${formatAmount(item.rate)}</td>
+                    <td class="amount">${formatAmount(item.grossAmount)}</td>
+                    <td class="amount">${formatAmount(item.discountAmount)}</td>
+                    <td class="amount">${formatAmount(item.vatAmount)}</td>
+                    <td class="amount">${formatAmount(item.netAmount)}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        } else {
+            // Headerwise: one row per invoice
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><strong>${escapeHtml(sale.docNo)}</strong></td>
+                <td>${formatDate(sale.date)}</td>
+                <td>${escapeHtml(sale.customer || '-')}</td>
+                <td>${escapeHtml(sale.customerName || '-')}</td>
+                <td>${escapeHtml(sale.salesman || '-')}</td>
+                <td>${escapeHtml(sale.salesmanName || '-')}</td>
+                <td class="amount">${formatAmount(sale.grossAmount)}</td>
+                <td class="amount">${formatAmount(sale.discountAmount)}</td>
+                <td class="amount">${formatAmount(sale.vat)}</td>
+                <td class="amount">${formatAmount(sale.net)}</td>
+            `;
+            tbody.appendChild(row);
+        }
     });
     
     // Show summary footer
@@ -492,6 +623,11 @@ function displayReport(sales) {
         document.getElementById('totalDiscountDisplay').textContent = formatAmount(reportSummary.totalDiscount);
         document.getElementById('totalVatDisplay').textContent = formatAmount(reportSummary.totalVat);
         document.getElementById('totalNetDisplay').textContent = formatAmount(reportSummary.totalNet);
+        
+        if (isItemwise && document.getElementById('totalItemQtyDisplay')) {
+            document.getElementById('totalItemQtyDisplay').textContent = formatAmount(reportSummary.totalItemQty || 0);
+        }
+        
         document.getElementById('reportTableFooter').style.display = '';
     }
 }
@@ -516,31 +652,73 @@ function exportToCSV() {
         return;
     }
     
-    // Build CSV content
-    var csv = 'Doc No,Date,Customer Code,Customer Name,Salesman Code,Salesman Name,Gross Amount,Discount,VAT,Net Amount\n';
+    var isItemwise = getReportType() === 'itemwise';
+    var csv = '';
     
-    reportData.forEach(function(sale) {
-        csv += '"' + (sale.docNo || '') + '",';
-        csv += '"' + (sale.date || '') + '",';
-        csv += '"' + (sale.customer || '') + '",';
-        csv += '"' + (sale.customerName || '') + '",';
-        csv += '"' + (sale.salesman || '') + '",';
-        csv += '"' + (sale.salesmanName || '') + '",';
-        csv += (sale.grossAmount || 0) + ',';
-        csv += (sale.discountAmount || 0) + ',';
-        csv += (sale.vat || 0) + ',';
-        csv += (sale.net || 0) + '\n';
-    });
+    if (isItemwise) {
+        // Itemwise CSV headers
+        csv = 'Doc No,Date,Customer Code,Customer Name,Salesman Code,Salesman Name,Stock Code,Stock Description,Qty,Unit,Rate,Item Gross,Item Discount,Item VAT,Item Net\n';
+        
+        reportData.forEach(function(sale) {
+            if (sale.details && sale.details.length > 0) {
+                sale.details.forEach(function(item) {
+                    csv += '"' + (sale.docNo || '') + '",';
+                    csv += '"' + (sale.date || '') + '",';
+                    csv += '"' + (sale.customer || '') + '",';
+                    csv += '"' + (sale.customerName || '') + '",';
+                    csv += '"' + (sale.salesman || '') + '",';
+                    csv += '"' + (sale.salesmanName || '') + '",';
+                    csv += '"' + (item.stockCode || '') + '",';
+                    csv += '"' + (item.stockDescription || '') + '",';
+                    csv += (item.qty || 0) + ',';
+                    csv += '"' + (item.unit || '') + '",';
+                    csv += (item.rate || 0) + ',';
+                    csv += (item.grossAmount || 0) + ',';
+                    csv += (item.discountAmount || 0) + ',';
+                    csv += (item.vatAmount || 0) + ',';
+                    csv += (item.netAmount || 0) + '\n';
+                });
+            } else {
+                // Sale with no details - still output header info
+                csv += '"' + (sale.docNo || '') + '",';
+                csv += '"' + (sale.date || '') + '",';
+                csv += '"' + (sale.customer || '') + '",';
+                csv += '"' + (sale.customerName || '') + '",';
+                csv += '"' + (sale.salesman || '') + '",';
+                csv += '"' + (sale.salesmanName || '') + '",';
+                csv += ',,,,,,,,\n';
+            }
+        });
+    } else {
+        // Headerwise CSV
+        csv = 'Doc No,Date,Customer Code,Customer Name,Salesman Code,Salesman Name,Gross Amount,Discount,VAT,Net Amount\n';
+        
+        reportData.forEach(function(sale) {
+            csv += '"' + (sale.docNo || '') + '",';
+            csv += '"' + (sale.date || '') + '",';
+            csv += '"' + (sale.customer || '') + '",';
+            csv += '"' + (sale.customerName || '') + '",';
+            csv += '"' + (sale.salesman || '') + '",';
+            csv += '"' + (sale.salesmanName || '') + '",';
+            csv += (sale.grossAmount || 0) + ',';
+            csv += (sale.discountAmount || 0) + ',';
+            csv += (sale.vat || 0) + ',';
+            csv += (sale.net || 0) + '\n';
+        });
+    }
     
     // Add summary rows
     if (reportSummary) {
         csv += '\n';
-        csv += 'SUMMARY,,,,,,,,,\n';
-        csv += 'Total Invoices:,' + reportSummary.totalCount + ',,,,,,,,\n';
-        csv += 'Total Gross:,,,,,,' + reportSummary.totalGross + ',,,\n';
-        csv += 'Total Discount:,,,,,,,' + reportSummary.totalDiscount + ',,\n';
-        csv += 'Total VAT:,,,,,,,,' + reportSummary.totalVat + ',\n';
-        csv += 'Total Net:,,,,,,,,,' + reportSummary.totalNet + '\n';
+        csv += 'SUMMARY\n';
+        csv += 'Total Invoices:,' + reportSummary.totalCount + '\n';
+        csv += 'Total Gross:,' + reportSummary.totalGross + '\n';
+        csv += 'Total Discount:,' + reportSummary.totalDiscount + '\n';
+        csv += 'Total VAT:,' + reportSummary.totalVat + '\n';
+        csv += 'Total Net:,' + reportSummary.totalNet + '\n';
+        if (isItemwise && reportSummary.totalItemQty) {
+            csv += 'Total Item Qty:,' + reportSummary.totalItemQty + '\n';
+        }
     }
     
     // Create download link

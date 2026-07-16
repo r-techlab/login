@@ -3,7 +3,7 @@
 // Centralized API calls with session validation
 // ============================================
 
-const API_URL = "https://script.google.com/macros/s/AKfycbxaQafuR0wbhytWEhQ-4LICDPuaSVnN7GK7zt8-5fwGZSi0HMhZWHgV-5jZeG5x17A/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbwtvC4gC2vjCNVBOGEGBibpQrZpeyQSNmgFP8LiTEQ_lj5W2W0mj_bgIWb3FEvGkCs/exec";
 const API_TIMEOUT = 15000; // 15 seconds
 
 // ============================================
@@ -552,6 +552,7 @@ function apiGetSalesReport(filters, callback) {
         '&toDate=' + encodeURIComponent(filters.toDate || '') +
         '&customer=' + encodeURIComponent(filters.customer || '') +
         '&salesman=' + encodeURIComponent(filters.salesman || '') +
+        '&reportType=' + encodeURIComponent(filters.reportType || 'headerwise') +
         '&callback=' + callbackName;
     
     const script = document.createElement('script');
