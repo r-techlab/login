@@ -5,13 +5,14 @@
 // ============================================
 
 const DB_NAME = 'AppCache';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 const STORE_NAME = 'menuAccess';
 const STORE_NAME_PARAMS = 'systemParams';
 const STORE_NAME_CUSTOMERS = 'customers';
 const STORE_NAME_STOCKS = 'stocks';
 const STORE_NAME_UNITS = 'units';
 const STORE_NAME_SALESMEN = 'salesmen';
+const STORE_NAME_DASHBOARDS = 'dashboards';
 
 // Initialize IndexedDB database
 function initIndexedDB(callback) {
@@ -58,6 +59,12 @@ function initIndexedDB(callback) {
         if (!db.objectStoreNames.contains(STORE_NAME_SALESMEN)) {
             const store = db.createObjectStore(STORE_NAME_SALESMEN, { keyPath: 'code' });
             store.createIndex('code', 'code', { unique: true });
+        }
+        
+        // Create object store for dashboards if it doesn't exist
+        if (!db.objectStoreNames.contains(STORE_NAME_DASHBOARDS)) {
+            const store = db.createObjectStore(STORE_NAME_DASHBOARDS, { keyPath: 'userId' });
+            store.createIndex('userId', 'userId', { unique: true });
         }
     };
     
@@ -694,6 +701,113 @@ function clearSalesmenFromDB() {
             };
         } catch (error) {
             console.error('Error in clearSalesmenFromDB:', error);
+            db.close();
+        }
+    });
+}
+
+// ============================================
+// DASHBOARDS CACHING
+// ============================================
+
+// Save dashboards for a user to IndexedDB
+function saveDashboardsToDB(userId, dashboards) {
+    if (!userId || !dashboards) return;
+    
+    initIndexedDB(function(db) {
+        if (!db) return;
+        
+        try {
+            const transaction = db.transaction([STORE_NAME_DASHBOARDS], 'readwrite');
+            const store = transaction.objectStore(STORE_NAME_DASHBOARDS);
+            
+            const data = {
+                userId: userId,
+                dashboards: dashboards,
+                savedAt: new Date().getTime()
+            };
+            
+            store.put(data);
+            
+            transaction.oncomplete = function() {
+                db.close();
+            };
+            
+            transaction.onerror = function(event) {
+                console.error('Error saving dashboards to IndexedDB:', event.target.error);
+                db.close();
+            };
+        } catch (error) {
+            console.error('Error in saveDashboardsToDB:', error);
+            db.close();
+        }
+    });
+}
+
+// Get dashboards for a user from IndexedDB
+function getDashboardsFromDB(userId, callback) {
+    if (!userId) {
+        if (callback) callback(null);
+        return;
+    }
+    
+    initIndexedDB(function(db) {
+        if (!db) {
+            if (callback) callback(null);
+            return;
+        }
+        
+        try {
+            const transaction = db.transaction([STORE_NAME_DASHBOARDS], 'readonly');
+            const store = transaction.objectStore(STORE_NAME_DASHBOARDS);
+            const request = store.get(userId);
+            
+            request.onsuccess = function(event) {
+                const result = event.target.result;
+                db.close();
+                
+                if (result && result.dashboards) {
+                    if (callback) callback(result.dashboards);
+                } else {
+                    if (callback) callback(null);
+                }
+            };
+            
+            request.onerror = function(event) {
+                console.error('Error reading dashboards from IndexedDB:', event.target.error);
+                db.close();
+                if (callback) callback(null);
+            };
+        } catch (error) {
+            console.error('Error in getDashboardsFromDB:', error);
+            db.close();
+            if (callback) callback(null);
+        }
+    });
+}
+
+// Clear dashboards for a user from IndexedDB
+function clearDashboardsFromDB(userId) {
+    if (!userId) return;
+    
+    initIndexedDB(function(db) {
+        if (!db) return;
+        
+        try {
+            const transaction = db.transaction([STORE_NAME_DASHBOARDS], 'readwrite');
+            const store = transaction.objectStore(STORE_NAME_DASHBOARDS);
+            store.delete(userId);
+            
+            transaction.oncomplete = function() {
+                db.close();
+            };
+            
+            transaction.onerror = function(event) {
+                console.error('Error clearing dashboards from IndexedDB:', event.target.error);
+                db.close();
+            };
+        } catch (error) {
+            console.error('Error in clearDashboardsFromDB:', error);
             db.close();
         }
     });

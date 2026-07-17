@@ -3,7 +3,7 @@
 // Centralized API calls with session validation
 // ============================================
 
-const API_URL = "https://script.google.com/macros/s/AKfycbwPUmqIQoV9xNNQobaFF2Jqldq5dmJH1VClFX3gP_dO49X07hG8_Pk3DP57EhqASf8/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbycSDqRG4son_aWvad1gRI2j0pUViEpqN-8v_EJFzy5RSiDfXT-jq18Z-KqP7UQx5o/exec";
 const API_TIMEOUT = 15000; // 15 seconds
 
 // ============================================
@@ -212,6 +212,49 @@ function apiGetSalesmanSalesSummary(callback) {
     
     const script = document.createElement('script');
     script.src = `${API_URL}?action=getSalesmanSalesSummary&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// Get customer sales summary for dashboard (code 10002)
+function apiGetCustomerSalesSummary(callback) {
+    const callbackName = 'apiGetCustomerSalesSummaryCallback_' + Date.now();
+    const session = getSession();
+    
+    const timeoutId = setTimeout(function() {
+        if (window[callbackName]) {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+                document.body.removeChild(script);
+            }
+            callback({
+                status: "error",
+                message: "Request timeout"
+            });
+        }
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=getCustomerSalesSummary&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&callback=${callbackName}`;
     script.onerror = function() {
         clearTimeout(timeoutId);
         delete window[callbackName];

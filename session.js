@@ -129,6 +129,7 @@ function clearSession() {
     const session = getSession();
     if (session && session.userId) {
         clearMenuAccessFromDB(session.userId);
+        clearDashboardsFromDB(session.userId);
     }
     // Clear system parameters from IndexedDB
     clearSystemParamsFromDB();

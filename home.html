@@ -127,12 +127,6 @@ h1 {
     box-shadow: 0 6px 12px rgba(0,0,0,0.2);
 }
 
-.dashboard-card .card-code {
-    font-size: 12px;
-    opacity: 0.8;
-    margin-bottom: 5px;
-}
-
 .dashboard-card .card-title {
     font-size: 16px;
     font-weight: bold;
@@ -191,7 +185,7 @@ h1 {
         </div>
 
         <div class="main-content">
-            <div class="dashboard-section">
+            <div class="dashboard-section" id="dashboardSection">
                 <h2>📊 Your Dashboards</h2>
                 <div id="dashboardContainer">
                     <div class="dashboard-loading">Loading dashboards...</div>
@@ -237,30 +231,70 @@ protectPageWithMenuAccess(function(isValid) {
 // Load and render dashboards accessible to the current user
 function loadUserDashboards() {
     const container = document.getElementById('dashboardContainer');
+    const section = document.getElementById('dashboardSection');
+    const session = getSession();
     
-    apiGetUserDashboards(function(data) {
-        if (data.status === 'success' && data.dashboard && data.dashboard.length > 0) {
-            var html = '<div class="dashboard-grid">';
-            for (var i = 0; i < data.dashboard.length; i++) {
-                var d = data.dashboard[i];
-                html += '<div class="dashboard-card" onclick="openDashboard(\'' + d.code + '\')">';
-                html += '<div class="card-code">' + d.code + '</div>';
-                html += '<div class="card-title">' + escapeHtml(d.description) + '</div>';
-                html += '</div>';
-            }
-            html += '</div>';
-            container.innerHTML = html;
+    if (!session) {
+        if (section) section.style.display = 'none';
+        return;
+    }
+    
+    // Try to load from IndexedDB cache first (fast - no server call)
+    getDashboardsFromDB(session.userId, function(cachedDashboards) {
+        if (cachedDashboards && cachedDashboards.length > 0) {
+            // Use cached data - render immediately
+            if (section) section.style.display = '';
+            renderDashboardCards(cachedDashboards);
         } else {
-            container.innerHTML = '<div class="dashboard-empty">No dashboards available for you.</div>';
+            // No cache found - fetch from server
+            fetchDashboardsFromServer(session.userId);
         }
     });
 }
 
-// Open a specific dashboard
+// Render dashboard cards from data
+function renderDashboardCards(dashboards) {
+    const container = document.getElementById('dashboardContainer');
+    const section = document.getElementById('dashboardSection');
+    if (section) section.style.display = '';
+    var html = '<div class="dashboard-grid">';
+    for (var i = 0; i < dashboards.length; i++) {
+        var d = dashboards[i];
+        html += '<div class="dashboard-card" onclick="openDashboard(\'' + d.code + '\')">';
+        html += '<div class="card-title">' + escapeHtml(d.description) + '</div>';
+        html += '</div>';
+    }
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+// Fetch dashboards from server and cache them
+function fetchDashboardsFromServer(userId) {
+    const container = document.getElementById('dashboardContainer');
+    const section = document.getElementById('dashboardSection');
+    
+    apiGetUserDashboards(function(data) {
+        if (data.status === 'success' && data.dashboard && data.dashboard.length > 0) {
+            // Save to IndexedDB cache for future visits
+            saveDashboardsToDB(userId, data.dashboard);
+            if (section) section.style.display = '';
+            renderDashboardCards(data.dashboard);
+        } else {
+            // No dashboards - hide the entire section
+            if (section) section.style.display = 'none';
+            container.innerHTML = '';
+        }
+    });
+}
+
+// Open a specific dashboard - always fetch from server
 function openDashboard(code) {
     if (code === '10001') {
         // Sales By Salesman Summary - render inline bar chart
         renderSalesmanSalesSummaryChart();
+    } else if (code === '10002') {
+        // Customer Sales Summary - render inline bar chart
+        renderCustomerSalesSummaryChart();
     } else {
         alert('Dashboard "' + code + '" is not yet configured. Please contact administrator.');
     }
@@ -355,6 +389,95 @@ function renderSalesmanSalesSummaryChart() {
     });
 }
 
+
+// Render Customer Sales Summary bar chart (code 10002)
+function renderCustomerSalesSummaryChart() {
+    var container = document.getElementById('dashboardContainer');
+    container.innerHTML = '<div class="dashboard-loading">Loading Customer Sales Summary...</div>';
+    
+    apiGetCustomerSalesSummary(function(data) {
+        if (data.status === 'success' && data.summary && data.summary.length > 0) {
+            var html = '<div class="dashboard-section">';
+            html += '<h2>📊 Customer Sales Summary (' + data.month + '/' + data.year + ')</h2>';
+            
+            // Find max value for scaling
+            var maxGross = 0;
+            for (var i = 0; i < data.summary.length; i++) {
+                if (data.summary[i].totalGross > maxGross) {
+                    maxGross = data.summary[i].totalGross;
+                }
+            }
+            
+            // Bar chart
+            html += '<div style="padding: 20px 0;">';
+            for (var i = 0; i < data.summary.length; i++) {
+                var item = data.summary[i];
+                var barWidth = (item.totalGross / maxGross) * 100;
+                var barColor = 'hsl(' + (i * 30 + 180) + ', 70%, 50%)';
+                
+                html += '<div style="margin-bottom: 15px;">';
+                html += '<div style="display: flex; justify-content: space-between; margin-bottom: 3px;">';
+                html += '<span style="font-weight: bold; font-size: 13px;">' + escapeHtml(item.customerName) + '</span>';
+                html += '<span style="font-size: 13px;">' + item.totalGross.toFixed(2) + ' (' + item.invoiceCount + ' invoices)</span>';
+                html += '</div>';
+                html += '<div style="background: #eee; border-radius: 4px; height: 28px; overflow: hidden;">';
+                html += '<div style="height: 100%; width: ' + barWidth + '%; background: ' + barColor + '; border-radius: 4px; transition: width 0.5s; display: flex; align-items: center; padding-left: 8px; color: white; font-size: 12px; font-weight: bold; min-width: 40px;">';
+                html += item.totalGross.toFixed(2);
+                html += '</div>';
+                html += '</div>';
+                html += '</div>';
+            }
+            html += '</div>';
+            
+            // Summary table
+            html += '<h3 style="margin-top: 20px;">📋 Detailed Summary</h3>';
+            html += '<table style="width: 100%; border-collapse: collapse; margin-top: 10px;">';
+            html += '<thead><tr style="background: #667eea; color: white;">';
+            html += '<th style="padding: 8px; text-align: left;">Customer</th>';
+            html += '<th style="padding: 8px; text-align: right;">Gross Amount</th>';
+            html += '<th style="padding: 8px; text-align: right;">Net Amount</th>';
+            html += '<th style="padding: 8px; text-align: right;">Invoices</th>';
+            html += '</tr></thead><tbody>';
+            
+            var totalGross = 0;
+            var totalNet = 0;
+            var totalInvoices = 0;
+            
+            for (var i = 0; i < data.summary.length; i++) {
+                var item = data.summary[i];
+                totalGross += item.totalGross;
+                totalNet += item.totalNet;
+                totalInvoices += item.invoiceCount;
+                html += '<tr' + (i % 2 === 0 ? ' style="background: #f5f5f5;"' : '') + '>';
+                html += '<td style="padding: 8px;">' + escapeHtml(item.customerName) + '</td>';
+                html += '<td style="padding: 8px; text-align: right;">' + item.totalGross.toFixed(2) + '</td>';
+                html += '<td style="padding: 8px; text-align: right;">' + item.totalNet.toFixed(2) + '</td>';
+                html += '<td style="padding: 8px; text-align: right;">' + item.invoiceCount + '</td>';
+                html += '</tr>';
+            }
+            
+            // Total row
+            html += '<tr style="background: #e8e8e8; font-weight: bold;">';
+            html += '<td style="padding: 8px;">Total</td>';
+            html += '<td style="padding: 8px; text-align: right;">' + totalGross.toFixed(2) + '</td>';
+            html += '<td style="padding: 8px; text-align: right;">' + totalNet.toFixed(2) + '</td>';
+            html += '<td style="padding: 8px; text-align: right;">' + totalInvoices + '</td>';
+            html += '</tr>';
+            
+            html += '</tbody></table>';
+            html += '</div>';
+            
+            // Back button
+            html += '<div style="margin-top: 20px;">';
+            html += '<button onclick="loadUserDashboards()" style="background: #667eea; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 14px;">← Back to Dashboards</button>';
+            html += '</div>';
+            
+            container.innerHTML = html;
+        } else {
+            container.innerHTML = '<div class="dashboard-empty">No customer sales data available for this month.</div>';
+        }
+    });
+}
 
 // Helper: escape HTML to prevent XSS
 function escapeHtml(text) {

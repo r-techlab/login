@@ -168,6 +168,8 @@ function doGet(e) {
     return handleUpdateDashboardGet(e);
   } else if (action === "getSalesmanSalesSummary") {
     return handleGetSalesmanSalesSummaryGet(e);
+  } else if (action === "getCustomerSalesSummary") {
+    return handleGetCustomerSalesSummaryGet(e);
   } else {
     var errorResult = { status: "error", message: "Invalid action" };
     var callback = e.parameter.callback;
@@ -203,13 +205,14 @@ function handleLogin(requestData, e) {
   var rateLimitResult = checkRateLimit(ss, ipAddress, loginid);
   if (!rateLimitResult.allowed) {
     logLoginAttempt(ipAddress, loginid, false, rateLimitResult.message);
-    return createJsonResponse({ 
-      status: "error", 
-      message: rateLimitResult.message
-    });
+    var result = { status: "error", message: rateLimitResult.message };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(result);
   }
   
-  // Check credentials
   var loginSheet = ss.getSheetByName("LogIn");
   var loginData = loginSheet.getDataRange().getValues();
   
@@ -4406,3 +4409,226 @@ function handleGetSalesmanSalesSummaryGet(e) {
   }
   return createJsonResponse(result);
 }
+// ============================================
+// CUSTOMER SALES SUMMARY HANDLER (DASHBOARD)
+// ============================================
+
+// Get sales summary grouped by customer for the current month
+function handleGetCustomerSalesSummaryGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Calculate current month date range
+  var now = new Date();
+  var year = now.getFullYear();
+  var month = now.getMonth(); // 0-based
+  var firstDay = new Date(year, month, 1);
+  var lastDay = new Date(year, month + 1, 0); // Last day of current month
+  
+  var fromDate = Utilities.formatDate(firstDay, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  var toDate = Utilities.formatDate(lastDay, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  
+  // Build customer lookup map (code -> description)
+  var customerSheet = ss.getSheetByName("CustomerMaster");
+  var customerData = customerSheet.getDataRange().getValues();
+  var customerMap = {};
+  for (var c = 1; c < customerData.length; c++) {
+    if (customerData[c][0]) {
+      customerMap[String(customerData[c][0]).toLowerCase()] = customerData[c][1] || '';
+    }
+  }
+  
+  // Get all sales from SalesHeader sheet
+  var salesHeaderSheet = ss.getSheetByName("SalesHeader");
+  var salesHeaderData = salesHeaderSheet.getDataRange().getValues();
+  
+  // Aggregate sales by customer
+  var salesByCustomer = {};
+  
+  for (var i = 1; i < salesHeaderData.length; i++) {
+    if (salesHeaderData[i][1]) { // Check if DocNo exists
+      var dateObj = salesHeaderData[i][2] ? new Date(salesHeaderData[i][2]) : null;
+      var dateStr = dateObj ? Utilities.formatDate(dateObj, Session.getScriptTimeZone(), 'yyyy-MM-dd') : '';
+      
+      // Filter by current month
+      if (dateStr < fromDate || dateStr > toDate) continue;
+      
+      var customerCode = String(salesHeaderData[i][3] || '').toLowerCase();
+      if (!customerCode) continue;
+      
+      var grossAmount = parseFloat(salesHeaderData[i][5]) || 0;
+      var netAmount = parseFloat(salesHeaderData[i][9]) || 0;
+      
+      if (!salesByCustomer[customerCode]) {
+        salesByCustomer[customerCode] = {
+          customerCode: customerCode,
+          customerName: customerMap[customerCode] || customerCode,
+          totalGross: 0,
+          totalNet: 0,
+          invoiceCount: 0
+        };
+      }
+      
+      salesByCustomer[customerCode].totalGross += grossAmount;
+      salesByCustomer[customerCode].totalNet += netAmount;
+      salesByCustomer[customerCode].invoiceCount++;
+    }
+  }
+  
+  // Convert to array and sort by totalGross descending
+  var summary = [];
+  for (var key in salesByCustomer) {
+    if (salesByCustomer.hasOwnProperty(key)) {
+      var item = salesByCustomer[key];
+      item.totalGross = Math.round(item.totalGross * 100) / 100;
+      item.totalNet = Math.round(item.totalNet * 100) / 100;
+      summary.push(item);
+    }
+  }
+  
+  summary.sort(function(a, b) {
+    return b.totalGross - a.totalGross;
+  });
+  
+  var result = { 
+    status: "success", 
+    summary: summary,
+    month: month + 1,
+    year: year,
+    fromDate: fromDate,
+    toDate: toDate
+  };
+  
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+// ============================================
+// CUSTOMER SALES SUMMARY HANDLER (DASHBOARD)
+// ============================================
+
+// Get sales summary grouped by customer for the current month
+function handleGetCustomerSalesSummaryGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Calculate current month date range
+  var now = new Date();
+  var year = now.getFullYear();
+  var month = now.getMonth(); // 0-based
+  var firstDay = new Date(year, month, 1);
+  var lastDay = new Date(year, month + 1, 0); // Last day of current month
+  
+  var fromDate = Utilities.formatDate(firstDay, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  var toDate = Utilities.formatDate(lastDay, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  
+  // Build customer lookup map (code -> description)
+  var customerSheet = ss.getSheetByName("CustomerMaster");
+  var customerData = customerSheet.getDataRange().getValues();
+  var customerMap = {};
+  for (var c = 1; c < customerData.length; c++) {
+    if (customerData[c][0]) {
+      customerMap[String(customerData[c][0]).toLowerCase()] = customerData[c][1] || '';
+    }
+  }
+  
+  // Get all sales from SalesHeader sheet
+  var salesHeaderSheet = ss.getSheetByName("SalesHeader");
+  var salesHeaderData = salesHeaderSheet.getDataRange().getValues();
+  
+  // Aggregate sales by customer
+  var salesByCustomer = {};
+  
+  for (var i = 1; i < salesHeaderData.length; i++) {
+    if (salesHeaderData[i][1]) { // Check if DocNo exists
+      var dateObj = salesHeaderData[i][2] ? new Date(salesHeaderData[i][2]) : null;
+      var dateStr = dateObj ? Utilities.formatDate(dateObj, Session.getScriptTimeZone(), 'yyyy-MM-dd') : '';
+      
+      // Filter by current month
+      if (dateStr < fromDate || dateStr > toDate) continue;
+      
+      var customerCode = String(salesHeaderData[i][3] || '').toLowerCase();
+      if (!customerCode) continue;
+      
+      var grossAmount = parseFloat(salesHeaderData[i][5]) || 0;
+      var netAmount = parseFloat(salesHeaderData[i][9]) || 0;
+      
+      if (!salesByCustomer[customerCode]) {
+        salesByCustomer[customerCode] = {
+          customerCode: customerCode,
+          customerName: customerMap[customerCode] || customerCode,
+          totalGross: 0,
+          totalNet: 0,
+          invoiceCount: 0
+        };
+      }
+      
+      salesByCustomer[customerCode].totalGross += grossAmount;
+      salesByCustomer[customerCode].totalNet += netAmount;
+      salesByCustomer[customerCode].invoiceCount++;
+    }
+  }
+  
+  // Convert to array and sort by totalGross descending
+  var summary = [];
+  for (var key in salesByCustomer) {
+    if (salesByCustomer.hasOwnProperty(key)) {
+      var item = salesByCustomer[key];
+      item.totalGross = Math.round(item.totalGross * 100) / 100;
+      item.totalNet = Math.round(item.totalNet * 100) / 100;
+      summary.push(item);
+    }
+  }
+  
+  summary.sort(function(a, b) {
+    return b.totalGross - a.totalGross;
+  });
+  
+  var result = { 
+    status: "success", 
+    summary: summary,
+    month: month + 1,
+    year: year,
+    fromDate: fromDate,
+    toDate: toDate
+  };
+  
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+  
