@@ -3,7 +3,7 @@
 // Centralized API calls with session validation
 // ============================================
 
-const API_URL = "https://script.google.com/macros/s/AKfycbztjs_lx6dprpMAKl-cQb9mMR0RTDlgk9NB5Eoy35mcODTcxczAHAeRiXSW1hjFVUU/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbwPUmqIQoV9xNNQobaFF2Jqldq5dmJH1VClFX3gP_dO49X07hG8_Pk3DP57EhqASf8/exec";
 const API_TIMEOUT = 15000; // 15 seconds
 
 // ============================================
@@ -122,6 +122,96 @@ function apiUpdateDashboard(dashboardData, callback) {
     
     const script = document.createElement('script');
     script.src = `${API_URL}?action=updateDashboard&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&code=${encodeURIComponent(dashboardData.code)}&description=${encodeURIComponent(dashboardData.description || '')}&roles=${encodeURIComponent(dashboardData.roles || '')}&users=${encodeURIComponent(dashboardData.users || '')}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// Get user-specific dashboards (filtered by role and user)
+function apiGetUserDashboards(callback) {
+    const callbackName = 'apiGetUserDashboardsCallback_' + Date.now();
+    const session = getSession();
+    
+    const timeoutId = setTimeout(function() {
+        if (window[callbackName]) {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+                document.body.removeChild(script);
+            }
+            callback({
+                status: "error",
+                message: "Request timeout"
+            });
+        }
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=getUserDashboards&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&roleId=${encodeURIComponent(session.roleId)}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// ============================================
+// DASHBOARD API
+// ============================================
+
+// Get salesman sales summary for dashboard (code 10001)
+function apiGetSalesmanSalesSummary(callback) {
+    const callbackName = 'apiGetSalesmanSalesSummaryCallback_' + Date.now();
+    const session = getSession();
+    
+    const timeoutId = setTimeout(function() {
+        if (window[callbackName]) {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+                document.body.removeChild(script);
+            }
+            callback({
+                status: "error",
+                message: "Request timeout"
+            });
+        }
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=getSalesmanSalesSummary&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&callback=${callbackName}`;
     script.onerror = function() {
         clearTimeout(timeoutId);
         delete window[callbackName];

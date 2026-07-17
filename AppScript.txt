@@ -162,8 +162,12 @@ function doGet(e) {
     return handleDeleteLogoGet(e);
   } else if (action === "getDashboard") {
     return handleGetDashboardGet(e);
+  } else if (action === "getUserDashboards") {
+    return handleGetUserDashboardsGet(e);
   } else if (action === "updateDashboard") {
     return handleUpdateDashboardGet(e);
+  } else if (action === "getSalesmanSalesSummary") {
+    return handleGetSalesmanSalesSummaryGet(e);
   } else {
     var errorResult = { status: "error", message: "Invalid action" };
     var callback = e.parameter.callback;
@@ -366,7 +370,6 @@ function handleLoginGet(e) {
   }
   return createJsonResponse(result);
 }
-
 // ============================================
 // SESSION VALIDATION HANDLER
 // ============================================
@@ -4135,6 +4138,98 @@ function handleGetDashboardGet(e) {
   return createJsonResponse(result);
 }
 
+// Get user-specific dashboard records (filtered by role and user)
+function handleGetUserDashboardsGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var roleId = e.parameter.roleId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get all records from Dashboard sheet
+  var dashboardSheet = ss.getSheetByName("Dashboard");
+  if (!dashboardSheet) {
+    var result = { status: "success", dashboard: [] };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(result);
+  }
+  
+  var dashboardData = dashboardSheet.getDataRange().getValues();
+  var userDashboard = [];
+  
+  for (var i = 1; i < dashboardData.length; i++) {
+    if (dashboardData[i][0]) { // Check if Code exists
+      var rolesStr = dashboardData[i][2] || '';
+      var usersStr = dashboardData[i][3] || '';
+      
+      // Parse roles XML
+      var roleMatch = false;
+      if (rolesStr) {
+        var roleRegex = new RegExp('<role>([^<]*)<\\/role>', 'gi');
+        var roleMatchResult;
+        while ((roleMatchResult = roleRegex.exec(rolesStr)) !== null) {
+          if (roleMatchResult[1].trim() == roleId) {
+            roleMatch = true;
+            break;
+          }
+        }
+      }
+      
+      // Parse users XML
+      var userMatch = false;
+      if (usersStr) {
+        var userRegex = new RegExp('<user>([^<]*)<\\/user>', 'gi');
+        var userMatchResult;
+        while ((userMatchResult = userRegex.exec(usersStr)) !== null) {
+          if (userMatchResult[1].trim().toLowerCase() == userId.toLowerCase()) {
+            userMatch = true;
+            break;
+          }
+        }
+      }
+      
+      // If both roles and users are empty, show to everyone
+      // Otherwise, check if user's role or user ID matches
+      var showDashboard = false;
+      if (!rolesStr && !usersStr) {
+        showDashboard = true; // Visible to all
+      } else if (roleMatch || userMatch) {
+        showDashboard = true;
+      }
+      
+      if (showDashboard) {
+        userDashboard.push({
+          code: dashboardData[i][0].toString(),
+          description: dashboardData[i][1] || ''
+        });
+      }
+    }
+  }
+  
+  var result = { status: "success", dashboard: userDashboard };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
 // Update dashboard record
 function handleUpdateDashboardGet(e) {
   var sessionId = e.parameter.sessionId;
@@ -4193,6 +4288,118 @@ function handleUpdateDashboardGet(e) {
   }
   
   var result = { status: "success", message: "Dashboard record updated successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// ============================================
+// SALESMAN SALES SUMMARY HANDLER (DASHBOARD)
+// ============================================
+
+// Get sales summary grouped by salesman for the current month
+function handleGetSalesmanSalesSummaryGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Calculate current month date range
+  var now = new Date();
+  var year = now.getFullYear();
+  var month = now.getMonth(); // 0-based
+  var firstDay = new Date(year, month, 1);
+  var lastDay = new Date(year, month + 1, 0); // Last day of current month
+  
+  var fromDate = Utilities.formatDate(firstDay, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  var toDate = Utilities.formatDate(lastDay, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  
+  // Build salesman lookup map (code -> description)
+  var salesmanSheet = ss.getSheetByName("Salesman");
+  var salesmanData = salesmanSheet.getDataRange().getValues();
+  var salesmanMap = {};
+  for (var s = 1; s < salesmanData.length; s++) {
+    if (salesmanData[s][0]) {
+      salesmanMap[String(salesmanData[s][0]).toLowerCase()] = salesmanData[s][1] || '';
+    }
+  }
+  
+  // Get all sales from SalesHeader sheet
+  var salesHeaderSheet = ss.getSheetByName("SalesHeader");
+  var salesHeaderData = salesHeaderSheet.getDataRange().getValues();
+  
+  // Aggregate sales by salesman
+  var salesBySalesman = {};
+  
+  for (var i = 1; i < salesHeaderData.length; i++) {
+    if (salesHeaderData[i][1]) { // Check if DocNo exists
+      var dateObj = salesHeaderData[i][2] ? new Date(salesHeaderData[i][2]) : null;
+      var dateStr = dateObj ? Utilities.formatDate(dateObj, Session.getScriptTimeZone(), 'yyyy-MM-dd') : '';
+      
+      // Filter by current month
+      if (dateStr < fromDate || dateStr > toDate) continue;
+      
+      var salesmanCode = String(salesHeaderData[i][18] || '').toLowerCase();
+      if (!salesmanCode) continue;
+      
+      var grossAmount = parseFloat(salesHeaderData[i][5]) || 0;
+      var netAmount = parseFloat(salesHeaderData[i][9]) || 0;
+      
+      if (!salesBySalesman[salesmanCode]) {
+        salesBySalesman[salesmanCode] = {
+          salesmanCode: salesmanCode,
+          salesmanName: salesmanMap[salesmanCode] || salesmanCode,
+          totalGross: 0,
+          totalNet: 0,
+          invoiceCount: 0
+        };
+      }
+      
+      salesBySalesman[salesmanCode].totalGross += grossAmount;
+      salesBySalesman[salesmanCode].totalNet += netAmount;
+      salesBySalesman[salesmanCode].invoiceCount++;
+    }
+  }
+  
+  // Convert to array and sort by totalGross descending
+  var summary = [];
+  for (var key in salesBySalesman) {
+    if (salesBySalesman.hasOwnProperty(key)) {
+      var item = salesBySalesman[key];
+      item.totalGross = Math.round(item.totalGross * 100) / 100;
+      item.totalNet = Math.round(item.totalNet * 100) / 100;
+      summary.push(item);
+    }
+  }
+  
+  summary.sort(function(a, b) {
+    return b.totalGross - a.totalGross;
+  });
+  
+  var result = { 
+    status: "success", 
+    summary: summary,
+    month: month + 1,
+    year: year,
+    fromDate: fromDate,
+    toDate: toDate
+  };
+  
   if (callback) {
     return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
       .setMimeType(ContentService.MimeType.JAVASCRIPT);

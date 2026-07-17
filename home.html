@@ -94,6 +94,67 @@ h1 {
     flex: 1;
 }
 
+.dashboard-section {
+    margin-bottom: 30px;
+}
+
+.dashboard-section h2 {
+    color: #333;
+    font-size: 20px;
+    margin-bottom: 15px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #667eea;
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 15px;
+}
+
+.dashboard-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 10px;
+    padding: 20px;
+    color: white;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.dashboard-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+}
+
+.dashboard-card .card-code {
+    font-size: 12px;
+    opacity: 0.8;
+    margin-bottom: 5px;
+}
+
+.dashboard-card .card-title {
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.dashboard-empty {
+    text-align: center;
+    padding: 40px;
+    color: #999;
+    font-size: 16px;
+    background: #f9f9f9;
+    border-radius: 10px;
+    border: 2px dashed #ddd;
+}
+
+.dashboard-loading {
+    text-align: center;
+    padding: 20px;
+    color: #667eea;
+    font-size: 14px;
+}
+
 @media (max-width: 992px) {
     .layout-with-sidebar {
         flex-direction: column;
@@ -130,7 +191,12 @@ h1 {
         </div>
 
         <div class="main-content">
-            <!-- Clean main content area -->
+            <div class="dashboard-section">
+                <h2>📊 Your Dashboards</h2>
+                <div id="dashboardContainer">
+                    <div class="dashboard-loading">Loading dashboards...</div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -161,9 +227,141 @@ protectPageWithMenuAccess(function(isValid) {
             
             // Render the dynamic menu (replaces skeleton)
             renderMenu('menuContainer');
+            
+            // Load user-specific dashboards
+            loadUserDashboards();
         }
     }
 });
+
+// Load and render dashboards accessible to the current user
+function loadUserDashboards() {
+    const container = document.getElementById('dashboardContainer');
+    
+    apiGetUserDashboards(function(data) {
+        if (data.status === 'success' && data.dashboard && data.dashboard.length > 0) {
+            var html = '<div class="dashboard-grid">';
+            for (var i = 0; i < data.dashboard.length; i++) {
+                var d = data.dashboard[i];
+                html += '<div class="dashboard-card" onclick="openDashboard(\'' + d.code + '\')">';
+                html += '<div class="card-code">' + d.code + '</div>';
+                html += '<div class="card-title">' + escapeHtml(d.description) + '</div>';
+                html += '</div>';
+            }
+            html += '</div>';
+            container.innerHTML = html;
+        } else {
+            container.innerHTML = '<div class="dashboard-empty">No dashboards available for you.</div>';
+        }
+    });
+}
+
+// Open a specific dashboard
+function openDashboard(code) {
+    if (code === '10001') {
+        // Sales By Salesman Summary - render inline bar chart
+        renderSalesmanSalesSummaryChart();
+    } else {
+        alert('Dashboard "' + code + '" is not yet configured. Please contact administrator.');
+    }
+}
+
+// Render Salesman Sales Summary bar chart (code 10001)
+function renderSalesmanSalesSummaryChart() {
+    var container = document.getElementById('dashboardContainer');
+    container.innerHTML = '<div class="dashboard-loading">Loading Salesman Sales Summary...</div>';
+    
+    apiGetSalesmanSalesSummary(function(data) {
+        if (data.status === 'success' && data.summary && data.summary.length > 0) {
+            var html = '<div class="dashboard-section">';
+            html += '<h2>📊 Sales By Salesman Summary (' + data.month + '/' + data.year + ')</h2>';
+            
+            // Find max value for scaling
+            var maxGross = 0;
+            for (var i = 0; i < data.summary.length; i++) {
+                if (data.summary[i].totalGross > maxGross) {
+                    maxGross = data.summary[i].totalGross;
+                }
+            }
+            
+            // Bar chart
+            html += '<div style="padding: 20px 0;">';
+            for (var i = 0; i < data.summary.length; i++) {
+                var item = data.summary[i];
+                var barWidth = (item.totalGross / maxGross) * 100;
+                var barColor = 'hsl(' + (i * 40) + ', 70%, 50%)';
+                
+                html += '<div style="margin-bottom: 15px;">';
+                html += '<div style="display: flex; justify-content: space-between; margin-bottom: 3px;">';
+                html += '<span style="font-weight: bold; font-size: 13px;">' + escapeHtml(item.salesmanName) + '</span>';
+                html += '<span style="font-size: 13px;">' + item.totalGross.toFixed(2) + ' (' + item.invoiceCount + ' invoices)</span>';
+                html += '</div>';
+                html += '<div style="background: #eee; border-radius: 4px; height: 28px; overflow: hidden;">';
+                html += '<div style="height: 100%; width: ' + barWidth + '%; background: ' + barColor + '; border-radius: 4px; transition: width 0.5s; display: flex; align-items: center; padding-left: 8px; color: white; font-size: 12px; font-weight: bold; min-width: 40px;">';
+                html += item.totalGross.toFixed(2);
+                html += '</div>';
+                html += '</div>';
+                html += '</div>';
+            }
+            html += '</div>';
+            
+            // Summary table
+            html += '<h3 style="margin-top: 20px;">📋 Detailed Summary</h3>';
+            html += '<table style="width: 100%; border-collapse: collapse; margin-top: 10px;">';
+            html += '<thead><tr style="background: #667eea; color: white;">';
+            html += '<th style="padding: 8px; text-align: left;">Salesman</th>';
+            html += '<th style="padding: 8px; text-align: right;">Gross Amount</th>';
+            html += '<th style="padding: 8px; text-align: right;">Net Amount</th>';
+            html += '<th style="padding: 8px; text-align: right;">Invoices</th>';
+            html += '</tr></thead><tbody>';
+            
+            var totalGross = 0;
+            var totalNet = 0;
+            var totalInvoices = 0;
+            
+            for (var i = 0; i < data.summary.length; i++) {
+                var item = data.summary[i];
+                totalGross += item.totalGross;
+                totalNet += item.totalNet;
+                totalInvoices += item.invoiceCount;
+                html += '<tr' + (i % 2 === 0 ? ' style="background: #f5f5f5;"' : '') + '>';
+                html += '<td style="padding: 8px;">' + escapeHtml(item.salesmanName) + '</td>';
+                html += '<td style="padding: 8px; text-align: right;">' + item.totalGross.toFixed(2) + '</td>';
+                html += '<td style="padding: 8px; text-align: right;">' + item.totalNet.toFixed(2) + '</td>';
+                html += '<td style="padding: 8px; text-align: right;">' + item.invoiceCount + '</td>';
+                html += '</tr>';
+            }
+            
+            // Total row
+            html += '<tr style="background: #e8e8e8; font-weight: bold;">';
+            html += '<td style="padding: 8px;">Total</td>';
+            html += '<td style="padding: 8px; text-align: right;">' + totalGross.toFixed(2) + '</td>';
+            html += '<td style="padding: 8px; text-align: right;">' + totalNet.toFixed(2) + '</td>';
+            html += '<td style="padding: 8px; text-align: right;">' + totalInvoices + '</td>';
+            html += '</tr>';
+            
+            html += '</tbody></table>';
+            html += '</div>';
+            
+            // Back button
+            html += '<div style="margin-top: 20px;">';
+            html += '<button onclick="loadUserDashboards()" style="background: #667eea; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 14px;">← Back to Dashboards</button>';
+            html += '</div>';
+            
+            container.innerHTML = html;
+        } else {
+            container.innerHTML = '<div class="dashboard-empty">No sales data available for this month.</div>';
+        }
+    });
+}
+
+
+// Helper: escape HTML to prevent XSS
+function escapeHtml(text) {
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(text));
+    return div.innerHTML;
+}
 
 function logout() {
     if (confirm('Are you sure you want to logout?')) {
