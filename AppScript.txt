@@ -130,6 +130,14 @@ function doGet(e) {
     return handleUpdateCustomerGet(e);
   } else if (action === "deleteCustomer") {
     return handleDeleteCustomerGet(e);
+  } else if (action === "getSuppliers") {
+    return handleGetSuppliersGet(e);
+  } else if (action === "createSupplier") {
+    return handleCreateSupplierGet(e);
+  } else if (action === "updateSupplier") {
+    return handleUpdateSupplierGet(e);
+  } else if (action === "deleteSupplier") {
+    return handleDeleteSupplierGet(e);
   } else if (action === "getSalesmen") {
     return handleGetSalesmenGet(e);
   } else if (action === "createSalesman") {
@@ -150,6 +158,16 @@ function doGet(e) {
     return handleDeleteSaleGet(e);
   } else if (action === "getSalesReport") {
     return handleGetSalesReportGet(e);
+  } else if (action === "getPurchases") {
+    return handleGetPurchasesGet(e);
+  } else if (action === "getPurchaseByDocNo") {
+    return handleGetPurchaseByDocNoGet(e);
+  } else if (action === "createPurchase") {
+    return handleCreatePurchaseGet(e);
+  } else if (action === "updatePurchase") {
+    return handleUpdatePurchaseGet(e);
+  } else if (action === "deletePurchase") {
+    return handleDeletePurchaseGet(e);
   } else if (action === "getLogos") {
     return handleGetLogosGet(e);
   } else if (action === "uploadLogo") {
@@ -2724,6 +2742,300 @@ function handleDeleteCustomerGet(e) {
 }
 
 // ============================================
+// SUPPLIER MASTER MANAGEMENT HANDLERS
+// ============================================
+
+// Get all suppliers
+function handleGetSuppliersGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get all suppliers from SupplierMaster sheet
+  var supplierSheet = ss.getSheetByName("SupplierMaster");
+  var supplierData = supplierSheet.getDataRange().getValues();
+  var suppliers = [];
+  
+  for (var i = 1; i < supplierData.length; i++) {
+    if (supplierData[i][0]) { // Check if Code exists
+      suppliers.push({
+        code: supplierData[i][0],
+        description: supplierData[i][1] || '',
+        trn: supplierData[i][2] || '',
+        tel1: supplierData[i][3] || '',
+        tel2: supplierData[i][4] || '',
+        mobile: supplierData[i][5] || '',
+        email1: supplierData[i][6] || '',
+        email2: supplierData[i][7] || '',
+        homePage: supplierData[i][8] || '',
+        addressStreet: supplierData[i][9] || '',
+        addressCity: supplierData[i][10] || '',
+        addressEmirate: supplierData[i][11] || '',
+        addressPO: supplierData[i][12] || '',
+        addressCountry: supplierData[i][13] || ''
+      });
+    }
+  }
+  
+  var result = { status: "success", suppliers: suppliers };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Create new supplier
+function handleCreateSupplierGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var code = e.parameter.code;
+  var description = e.parameter.description;
+  var trn = e.parameter.trn || '';
+  var tel1 = e.parameter.tel1 || '';
+  var tel2 = e.parameter.tel2 || '';
+  var mobile = e.parameter.mobile || '';
+  var email1 = e.parameter.email1 || '';
+  var email2 = e.parameter.email2 || '';
+  var homePage = e.parameter.homePage || '';
+  var addressStreet = e.parameter.addressStreet || '';
+  var addressCity = e.parameter.addressCity || '';
+  var addressEmirate = e.parameter.addressEmirate || '';
+  var addressPO = e.parameter.addressPO || '';
+  var addressCountry = e.parameter.addressCountry || '';
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!code || !description) {
+    var errorResult = { status: "error", message: "Code and Description are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate code format (SUPP + numbers)
+  var codePattern = /^SUPP\d+$/i;
+  if (!codePattern.test(code)) {
+    var errorResult = { status: "error", message: "Supplier code must follow format: SUPP + numbers (e.g., SUPP001)" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var supplierSheet = ss.getSheetByName("SupplierMaster");
+  var supplierData = supplierSheet.getDataRange().getValues();
+  
+  // Check if supplier code already exists
+  for (var i = 1; i < supplierData.length; i++) {
+    if (supplierData[i][0] && supplierData[i][0].toString().toUpperCase() == code.toString().toUpperCase()) {
+      var errorResult = { status: "error", message: "Supplier code already exists" };
+      if (callback) {
+        return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+          .setMimeType(ContentService.MimeType.JAVASCRIPT);
+      }
+      return createJsonResponse(errorResult);
+    }
+  }
+  
+  // Add new supplier
+  supplierSheet.appendRow([
+    code.toUpperCase(),
+    description,
+    trn,
+    tel1,
+    tel2,
+    mobile,
+    email1,
+    email2,
+    homePage,
+    addressStreet,
+    addressCity,
+    addressEmirate,
+    addressPO,
+    addressCountry
+  ]);
+  
+  var result = { status: "success", message: "Supplier created successfully", code: code.toUpperCase() };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Update existing supplier
+function handleUpdateSupplierGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var code = e.parameter.code;
+  var description = e.parameter.description;
+  var trn = e.parameter.trn || '';
+  var tel1 = e.parameter.tel1 || '';
+  var tel2 = e.parameter.tel2 || '';
+  var mobile = e.parameter.mobile || '';
+  var email1 = e.parameter.email1 || '';
+  var email2 = e.parameter.email2 || '';
+  var homePage = e.parameter.homePage || '';
+  var addressStreet = e.parameter.addressStreet || '';
+  var addressCity = e.parameter.addressCity || '';
+  var addressEmirate = e.parameter.addressEmirate || '';
+  var addressPO = e.parameter.addressPO || '';
+  var addressCountry = e.parameter.addressCountry || '';
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!code || !description) {
+    var errorResult = { status: "error", message: "Code and Description are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var supplierSheet = ss.getSheetByName("SupplierMaster");
+  var supplierData = supplierSheet.getDataRange().getValues();
+  
+  // Find and update supplier
+  var found = false;
+  for (var i = 1; i < supplierData.length; i++) {
+    if (supplierData[i][0] && supplierData[i][0].toString().toUpperCase() == code.toString().toUpperCase()) {
+      supplierSheet.getRange(i + 1, 1, 1, 14).setValues([[
+        code.toUpperCase(),
+        description,
+        trn,
+        tel1,
+        tel2,
+        mobile,
+        email1,
+        email2,
+        homePage,
+        addressStreet,
+        addressCity,
+        addressEmirate,
+        addressPO,
+        addressCountry
+      ]]);
+      found = true;
+      break;
+    }
+  }
+  
+  if (!found) {
+    var errorResult = { status: "error", message: "Supplier not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var result = { status: "success", message: "Supplier updated successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Delete supplier
+function handleDeleteSupplierGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var code = e.parameter.code;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var supplierSheet = ss.getSheetByName("SupplierMaster");
+  var supplierData = supplierSheet.getDataRange().getValues();
+  
+  // Find and delete supplier
+  var found = false;
+  for (var i = 1; i < supplierData.length; i++) {
+    if (supplierData[i][0] && supplierData[i][0].toString().toUpperCase() == code.toString().toUpperCase()) {
+      supplierSheet.deleteRow(i + 1);
+      found = true;
+      break;
+    }
+  }
+  
+  if (!found) {
+    var errorResult = { status: "error", message: "Supplier not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var result = { status: "success", message: "Supplier deleted successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// ============================================
 // SALESMAN MASTER MANAGEMENT HANDLERS
 // ============================================
 
@@ -3447,6 +3759,520 @@ function handleDeleteSaleGet(e) {
   }
   
   var result = { status: "success", message: "Sale deleted successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// ============================================
+// PURCHASE MANAGEMENT HANDLERS
+// ============================================
+
+// Get all purchases
+function handleGetPurchasesGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Read pagination and search parameters
+  var page = parseInt(e.parameter.page) || 1;
+  var pageSize = parseInt(e.parameter.pageSize) || 10;
+  var search = (e.parameter.search || '').toLowerCase();
+  
+  // Get all purchases from PurchaseHeader sheet
+  var purchaseHeaderSheet = ss.getSheetByName("PurchaseHeader");
+  var purchaseHeaderData = purchaseHeaderSheet.getDataRange().getValues();
+  var allPurchases = [];
+  
+  for (var i = 1; i < purchaseHeaderData.length; i++) {
+    if (purchaseHeaderData[i][1]) { // Check if DocNo exists
+      var docNo = purchaseHeaderData[i][1].toString();
+      var supplier = purchaseHeaderData[i][3] || '';
+      var narration = purchaseHeaderData[i][4] || '';
+      var date = purchaseHeaderData[i][2] ? Utilities.formatDate(new Date(purchaseHeaderData[i][2]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '';
+      
+      // Apply search filter if search term is provided
+      if (search) {
+        if (docNo.toLowerCase().indexOf(search) === -1 &&
+            supplier.toLowerCase().indexOf(search) === -1 &&
+            narration.toLowerCase().indexOf(search) === -1 &&
+            date.toLowerCase().indexOf(search) === -1) {
+          continue; // Skip this record if no match
+        }
+      }
+      
+      allPurchases.push({
+        docType: purchaseHeaderData[i][0] || '',
+        docNo: docNo,
+        date: date,
+        supplier: supplier,
+        salesman: purchaseHeaderData[i][18] || '',
+        narration: narration,
+        grossAmount: purchaseHeaderData[i][5] || 0,
+        discountPercentage: purchaseHeaderData[i][6] || 0,
+        discountAmount: purchaseHeaderData[i][7] || 0,
+        vat: purchaseHeaderData[i][8] || 0,
+        net: purchaseHeaderData[i][9] || 0,
+        createdBy: purchaseHeaderData[i][10] || '',
+        createdTime: purchaseHeaderData[i][11] || '',
+        address: purchaseHeaderData[i][12] || '',
+        trn: purchaseHeaderData[i][13] || '',
+        vatTreatment: purchaseHeaderData[i][14] || '',
+        rateType: purchaseHeaderData[i][15] || '',
+        refNo: purchaseHeaderData[i][16] || '',
+        refDate: purchaseHeaderData[i][17] ? Utilities.formatDate(new Date(purchaseHeaderData[i][17]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : ''
+      });
+    }
+  }
+  
+  // Sort descending by DocNo (most recent/last document first)
+  allPurchases.sort(function(a, b) {
+    return b.docNo.localeCompare(a.docNo);
+  });
+  
+  var totalRecords = allPurchases.length;
+  var totalPages = Math.ceil(totalRecords / pageSize);
+  
+  // Get only the records for the requested page
+  var startIndex = (page - 1) * pageSize;
+  var endIndex = Math.min(startIndex + pageSize, totalRecords);
+  var purchases = allPurchases.slice(startIndex, endIndex);
+  
+  var result = { 
+    status: "success", 
+    purchases: purchases, 
+    totalRecords: totalRecords,
+    totalPages: totalPages,
+    currentPage: page,
+    pageSize: pageSize
+  };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Get single purchase by DocNo
+function handleGetPurchaseByDocNoGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var docNo = e.parameter.docNo;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get purchase header
+  var purchaseHeaderSheet = ss.getSheetByName("PurchaseHeader");
+  var purchaseHeaderData = purchaseHeaderSheet.getDataRange().getValues();
+  var header = null;
+  
+  for (var i = 1; i < purchaseHeaderData.length; i++) {
+    if (purchaseHeaderData[i][1] == docNo) {
+      header = {
+        docType: purchaseHeaderData[i][0] || '',
+        docNo: purchaseHeaderData[i][1],
+        date: purchaseHeaderData[i][2] ? Utilities.formatDate(new Date(purchaseHeaderData[i][2]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
+        supplier: purchaseHeaderData[i][3] || '',
+        salesman: purchaseHeaderData[i][18] || '',
+        narration: purchaseHeaderData[i][4] || '',
+        grossAmount: purchaseHeaderData[i][5] || 0,
+        discountPercentage: purchaseHeaderData[i][6] || 0,
+        discountAmount: purchaseHeaderData[i][7] || 0,
+        vat: purchaseHeaderData[i][8] || 0,
+        net: purchaseHeaderData[i][9] || 0,
+        createdBy: purchaseHeaderData[i][10] || '',
+        createdTime: purchaseHeaderData[i][11] || '',
+        address: purchaseHeaderData[i][12] || '',
+        trn: purchaseHeaderData[i][13] || '',
+        vatTreatment: purchaseHeaderData[i][14] || '',
+        rateType: purchaseHeaderData[i][15] || '',
+        refNo: purchaseHeaderData[i][16] || '',
+        refDate: purchaseHeaderData[i][17] ? Utilities.formatDate(new Date(purchaseHeaderData[i][17]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : ''
+      };
+      break;
+    }
+  }
+  
+  if (!header) {
+    var errorResult = { status: "error", message: "Purchase not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get purchase details
+  var purchaseDetailsSheet = ss.getSheetByName("PurchaseDetails");
+  var purchaseDetailsData = purchaseDetailsSheet.getDataRange().getValues();
+  var details = [];
+  
+  for (var i = 1; i < purchaseDetailsData.length; i++) {
+    if (purchaseDetailsData[i][1] == docNo) {
+      details.push({
+        docType: purchaseDetailsData[i][0] || '',
+        docNo: purchaseDetailsData[i][1],
+        docSrNo: purchaseDetailsData[i][2] || 0,
+        stockCode: purchaseDetailsData[i][3] || '',
+        stockDescription: purchaseDetailsData[i][4] || '',
+        qty: purchaseDetailsData[i][5] || 0,
+        unit: purchaseDetailsData[i][6] || '',
+        rate: purchaseDetailsData[i][7] || 0,
+        grossAmount: purchaseDetailsData[i][8] || 0,
+        discountAmount: purchaseDetailsData[i][9] || 0,
+        discountPercentage: purchaseDetailsData[i][10] || 0,
+        vatAmount: purchaseDetailsData[i][11] || 0,
+        vatPercentage: purchaseDetailsData[i][12] || 0,
+        netAmount: purchaseDetailsData[i][13] || 0,
+        vatTreatment: purchaseDetailsData[i][14] || '',
+        rateType: purchaseDetailsData[i][15] || ''
+      });
+    }
+  }
+  
+  var result = { status: "success", purchase: { header: header, details: details } };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Create new purchase
+function handleCreatePurchaseGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var purchaseDataJson = e.parameter.purchaseData;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Parse purchase data
+  var purchaseData;
+  try {
+    purchaseData = JSON.parse(purchaseDataJson);
+  } catch (error) {
+    var errorResult = { status: "error", message: "Invalid purchase data format" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!purchaseData.header || !purchaseData.details || purchaseData.details.length === 0) {
+    var errorResult = { status: "error", message: "Header and at least one detail line are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Generate DocNo
+  var purchaseHeaderSheet = ss.getSheetByName("PurchaseHeader");
+  var purchaseHeaderData = purchaseHeaderSheet.getDataRange().getValues();
+  var maxNum = 10000; // Starting number
+  
+  for (var i = 1; i < purchaseHeaderData.length; i++) {
+    if (purchaseHeaderData[i][1]) {
+      var docNo = purchaseHeaderData[i][1].toString();
+      if (docNo.startsWith('PO')) {
+        var num = parseInt(docNo.substring(2));
+        if (num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+  }
+  
+  var newDocNo = 'PO' + (maxNum + 1);
+  
+  // Add header
+  var header = purchaseData.header;
+  var now = new Date();
+  var createdTime = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+  
+  purchaseHeaderSheet.appendRow([
+    'PO', // DocType
+    newDocNo,
+    header.date,
+    header.supplier,
+    header.narration || '',
+    header.grossAmount || 0,
+    header.discountPercentage || 0,
+    header.discountAmount || 0,
+    header.vat || 0,
+    header.net || 0,
+    validation.userName, // CreatedBy
+    createdTime,
+    header.address || '',
+    header.trn || '',
+    header.vatTreatment || '',
+    header.rateType || '',
+    header.refNo || '',
+    header.refDate || '',
+    header.salesman || ''
+  ]);
+  
+  // Add details
+  var purchaseDetailsSheet = ss.getSheetByName("PurchaseDetails");
+  for (var i = 0; i < purchaseData.details.length; i++) {
+    var detail = purchaseData.details[i];
+    purchaseDetailsSheet.appendRow([
+      'PO', // DocType
+      newDocNo,
+      detail.docSrNo || (i + 1),
+      detail.stockCode,
+      detail.stockDescription || '',
+      detail.qty || 0,
+      detail.unit || '',
+      detail.rate || 0,
+      detail.grossAmount || 0,
+      detail.discountAmount || 0,
+      detail.discountPercentage || 0,
+      detail.vatAmount || 0,
+      detail.vatPercentage || 0,
+      detail.netAmount || 0,
+      detail.vatTreatment || '',
+      detail.rateType || ''
+    ]);
+  }
+  
+  var result = { status: "success", message: "Purchase created successfully", docNo: newDocNo };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Update existing purchase
+function handleUpdatePurchaseGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var purchaseDataJson = e.parameter.purchaseData;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Parse purchase data
+  var purchaseData;
+  try {
+    purchaseData = JSON.parse(purchaseDataJson);
+  } catch (error) {
+    var errorResult = { status: "error", message: "Invalid purchase data format" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!purchaseData.header || !purchaseData.header.docNo || !purchaseData.details || purchaseData.details.length === 0) {
+    var errorResult = { status: "error", message: "Header with DocNo and at least one detail line are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var docNo = purchaseData.header.docNo;
+  
+  // Update header
+  var purchaseHeaderSheet = ss.getSheetByName("PurchaseHeader");
+  var purchaseHeaderData = purchaseHeaderSheet.getDataRange().getValues();
+  var headerFound = false;
+  
+  for (var i = 1; i < purchaseHeaderData.length; i++) {
+    if (purchaseHeaderData[i][1] == docNo) {
+      var header = purchaseData.header;
+      purchaseHeaderSheet.getRange(i + 1, 1, 1, 19).setValues([[
+        'PO', // DocType
+        docNo,
+        header.date,
+        header.supplier,
+        header.narration || '',
+        header.grossAmount || 0,
+        header.discountPercentage || 0,
+        header.discountAmount || 0,
+        header.vat || 0,
+        header.net || 0,
+        purchaseHeaderData[i][10], // Keep original CreatedBy
+        purchaseHeaderData[i][11], // Keep original CreatedTime
+        header.address || '',
+        header.trn || '',
+        header.vatTreatment || '',
+        header.rateType || '',
+        header.refNo || '',
+        header.refDate || '',
+        header.salesman || ''
+      ]]);
+      headerFound = true;
+      break;
+    }
+  }
+  
+  if (!headerFound) {
+    var errorResult = { status: "error", message: "Purchase not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Delete existing details
+  var purchaseDetailsSheet = ss.getSheetByName("PurchaseDetails");
+  var purchaseDetailsData = purchaseDetailsSheet.getDataRange().getValues();
+  
+  for (var i = purchaseDetailsData.length - 1; i >= 1; i--) {
+    if (purchaseDetailsData[i][1] == docNo) {
+      purchaseDetailsSheet.deleteRow(i + 1);
+    }
+  }
+  
+  // Add new details
+  for (var i = 0; i < purchaseData.details.length; i++) {
+    var detail = purchaseData.details[i];
+    purchaseDetailsSheet.appendRow([
+      'PO', // DocType
+      docNo,
+      detail.docSrNo || (i + 1),
+      detail.stockCode,
+      detail.stockDescription || '',
+      detail.qty || 0,
+      detail.unit || '',
+      detail.rate || 0,
+      detail.grossAmount || 0,
+      detail.discountAmount || 0,
+      detail.discountPercentage || 0,
+      detail.vatAmount || 0,
+      detail.vatPercentage || 0,
+      detail.netAmount || 0,
+      detail.vatTreatment || '',
+      detail.rateType || ''
+    ]);
+  }
+  
+  var result = { status: "success", message: "Purchase updated successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Delete purchase
+function handleDeletePurchaseGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var docNo = e.parameter.docNo;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Delete header
+  var purchaseHeaderSheet = ss.getSheetByName("PurchaseHeader");
+  var purchaseHeaderData = purchaseHeaderSheet.getDataRange().getValues();
+  var headerFound = false;
+  
+  for (var i = 1; i < purchaseHeaderData.length; i++) {
+    if (purchaseHeaderData[i][1] == docNo) {
+      purchaseHeaderSheet.deleteRow(i + 1);
+      headerFound = true;
+      break;
+    }
+  }
+  
+  if (!headerFound) {
+    var errorResult = { status: "error", message: "Purchase not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Delete details
+  var purchaseDetailsSheet = ss.getSheetByName("PurchaseDetails");
+  var purchaseDetailsData = purchaseDetailsSheet.getDataRange().getValues();
+  
+  for (var i = purchaseDetailsData.length - 1; i >= 1; i--) {
+    if (purchaseDetailsData[i][1] == docNo) {
+      purchaseDetailsSheet.deleteRow(i + 1);
+    }
+  }
+  
+  var result = { status: "success", message: "Purchase deleted successfully" };
   if (callback) {
     return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
       .setMimeType(ContentService.MimeType.JAVASCRIPT);

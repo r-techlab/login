@@ -12,6 +12,7 @@ const STORE_NAME_CUSTOMERS = 'customers';
 const STORE_NAME_STOCKS = 'stocks';
 const STORE_NAME_UNITS = 'units';
 const STORE_NAME_SALESMEN = 'salesmen';
+const STORE_NAME_SUPPLIERS = 'suppliers';
 const STORE_NAME_DASHBOARDS = 'dashboards';
 
 // Initialize IndexedDB database
@@ -65,6 +66,12 @@ function initIndexedDB(callback) {
         if (!db.objectStoreNames.contains(STORE_NAME_DASHBOARDS)) {
             const store = db.createObjectStore(STORE_NAME_DASHBOARDS, { keyPath: 'userId' });
             store.createIndex('userId', 'userId', { unique: true });
+        }
+        
+        // Create object store for suppliers if it doesn't exist
+        if (!db.objectStoreNames.contains(STORE_NAME_SUPPLIERS)) {
+            const store = db.createObjectStore(STORE_NAME_SUPPLIERS, { keyPath: 'code' });
+            store.createIndex('code', 'code', { unique: true });
         }
     };
     
@@ -814,6 +821,106 @@ function clearDashboardsFromDB(userId) {
 }
 
 // ============================================
+// SUPPLIERS CACHING
+// ============================================
+
+// Save suppliers to IndexedDB
+function saveSuppliersToDB(suppliers) {
+    if (!suppliers || suppliers.length === 0) return;
+    
+    initIndexedDB(function(db) {
+        if (!db) return;
+        
+        try {
+            const transaction = db.transaction([STORE_NAME_SUPPLIERS], 'readwrite');
+            const store = transaction.objectStore(STORE_NAME_SUPPLIERS);
+            
+            // Clear existing data first
+            store.clear();
+            
+            // Add each supplier
+            suppliers.forEach(function(supplier) {
+                store.put(supplier);
+            });
+            
+            transaction.oncomplete = function() {
+                db.close();
+            };
+            
+            transaction.onerror = function(event) {
+                console.error('Error saving suppliers to IndexedDB:', event.target.error);
+                db.close();
+            };
+        } catch (error) {
+            console.error('Error in saveSuppliersToDB:', error);
+            db.close();
+        }
+    });
+}
+
+// Get all suppliers from IndexedDB
+function getSuppliersFromDB(callback) {
+    initIndexedDB(function(db) {
+        if (!db) {
+            if (callback) callback(null);
+            return;
+        }
+        
+        try {
+            const transaction = db.transaction([STORE_NAME_SUPPLIERS], 'readonly');
+            const store = transaction.objectStore(STORE_NAME_SUPPLIERS);
+            const request = store.getAll();
+            
+            request.onsuccess = function(event) {
+                const result = event.target.result;
+                db.close();
+                
+                if (result && result.length > 0) {
+                    if (callback) callback(result);
+                } else {
+                    if (callback) callback(null);
+                }
+            };
+            
+            request.onerror = function(event) {
+                console.error('Error reading suppliers from IndexedDB:', event.target.error);
+                db.close();
+                if (callback) callback(null);
+            };
+        } catch (error) {
+            console.error('Error in getSuppliersFromDB:', error);
+            db.close();
+            if (callback) callback(null);
+        }
+    });
+}
+
+// Clear suppliers from IndexedDB
+function clearSuppliersFromDB() {
+    initIndexedDB(function(db) {
+        if (!db) return;
+        
+        try {
+            const transaction = db.transaction([STORE_NAME_SUPPLIERS], 'readwrite');
+            const store = transaction.objectStore(STORE_NAME_SUPPLIERS);
+            store.clear();
+            
+            transaction.oncomplete = function() {
+                db.close();
+            };
+            
+            transaction.onerror = function(event) {
+                console.error('Error clearing suppliers from IndexedDB:', event.target.error);
+                db.close();
+            };
+        } catch (error) {
+            console.error('Error in clearSuppliersFromDB:', error);
+            db.close();
+        }
+    });
+}
+
+// ============================================
 // MASTER DATA REFRESH
 // Clears all cached master data and re-fetches from server
 // ============================================
@@ -830,9 +937,10 @@ function refreshMasterDataFromServer(callback) {
     clearStocksFromDB();
     clearUnitsFromDB();
     clearSalesmenFromDB();
+    clearSuppliersFromDB();
     
     let completed = 0;
-    let total = 4;
+    let total = 5;
     let hasError = false;
     
     function checkComplete() {
@@ -878,6 +986,16 @@ function refreshMasterDataFromServer(callback) {
     apiGetSalesmen(function(response) {
         if (response.status === 'success' && response.salesmen) {
             saveSalesmenToDB(response.salesmen);
+        } else {
+            hasError = true;
+        }
+        checkComplete();
+    });
+    
+    // Re-fetch suppliers
+    apiGetSuppliers(function(response) {
+        if (response.status === 'success' && response.suppliers) {
+            saveSuppliersToDB(response.suppliers);
         } else {
             hasError = true;
         }
