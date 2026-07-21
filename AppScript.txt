@@ -4019,7 +4019,7 @@ function handleCreatePurchaseGet(e) {
   for (var i = 1; i < purchaseHeaderData.length; i++) {
     if (purchaseHeaderData[i][1]) {
       var docNo = purchaseHeaderData[i][1].toString();
-      if (docNo.startsWith('PO')) {
+      if (docNo.startsWith('PI')) {
         var num = parseInt(docNo.substring(2));
         if (num > maxNum) {
           maxNum = num;
@@ -4028,7 +4028,7 @@ function handleCreatePurchaseGet(e) {
     }
   }
   
-  var newDocNo = 'PO' + (maxNum + 1);
+  var newDocNo = 'PI' + (maxNum + 1);
   
   // Add header
   var header = purchaseData.header;
@@ -4036,7 +4036,7 @@ function handleCreatePurchaseGet(e) {
   var createdTime = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
   
   purchaseHeaderSheet.appendRow([
-    'PO', // DocType
+    'PI', // DocType
     newDocNo,
     header.date,
     header.supplier,
@@ -4062,7 +4062,7 @@ function handleCreatePurchaseGet(e) {
   for (var i = 0; i < purchaseData.details.length; i++) {
     var detail = purchaseData.details[i];
     purchaseDetailsSheet.appendRow([
-      'PO', // DocType
+      'PI', // DocType
       newDocNo,
       detail.docSrNo || (i + 1),
       detail.stockCode,
@@ -4144,7 +4144,7 @@ function handleUpdatePurchaseGet(e) {
     if (purchaseHeaderData[i][1] == docNo) {
       var header = purchaseData.header;
       purchaseHeaderSheet.getRange(i + 1, 1, 1, 19).setValues([[
-        'PO', // DocType
+        'PI', // DocType
         docNo,
         header.date,
         header.supplier,
@@ -4192,7 +4192,7 @@ function handleUpdatePurchaseGet(e) {
   for (var i = 0; i < purchaseData.details.length; i++) {
     var detail = purchaseData.details[i];
     purchaseDetailsSheet.appendRow([
-      'PO', // DocType
+      'PI', // DocType
       docNo,
       detail.docSrNo || (i + 1),
       detail.stockCode,
