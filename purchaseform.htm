@@ -409,7 +409,7 @@ tbody tr:hover {
 
     <div id="loadingIndicator" class="loading" style="display: none;">Loading purchase...</div>
 
-    <form id="purchaseForm" onsubmit="savePurchase(event)">
+    <form id="purchaseForm" onsubmit="savePurchase(event)" style="display: none;">
         <!-- Header Section -->
         <div class="form-section" id="headerSection">
             <h3>Purchase Invoice Header</h3>
@@ -612,8 +612,10 @@ protectPageWithMenuAccess(function(isValid) {
         } else {
             // New purchase - set default date
             document.getElementById('date').value = new Date().toISOString().slice(0, 10);
-            // Load master data for new form
-            loadMasterData();
+            // Load master data for new form, then show the form
+            loadMasterData(function() {
+                document.getElementById('purchaseForm').style.display = 'block';
+            });
         }
     }
 });
@@ -1310,6 +1312,9 @@ function populateForm(purchase, isView) {
     
     // Update summary
     recalculateSummary();
+    
+    // Show the form now that data is loaded
+    document.getElementById('purchaseForm').style.display = 'block';
     
     // If view mode, add view-mode class
     if (isView) {
