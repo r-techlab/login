@@ -77,6 +77,14 @@ h1 {
     background: #e67e22;
 }
 
+.btn-secondary {
+    background: #95a5a6;
+}
+
+.btn-secondary:hover {
+    background: #7f8c8d;
+}
+
 .btn:disabled {
     background: #95a5a6;
     cursor: not-allowed;
@@ -310,16 +318,16 @@ tbody tr:hover {
 .view-mode input,
 .view-mode select,
 .view-mode textarea {
-    border: none;
-    background: transparent;
+    border: 1px solid #ddd;
+    background: #e9ecef;
     pointer-events: none;
     color: #333;
 }
 
 .view-mode td input,
 .view-mode td select {
-    border: none;
-    background: transparent;
+    border: 1px solid #ddd;
+    background: #f5f5f5;
     pointer-events: none;
     color: #333;
 }
@@ -328,11 +336,14 @@ tbody tr:hover {
     display: none;
 }
 
-.view-actions {
-    display: flex;
-    gap: 10px;
-    margin-top: 20px;
-    justify-content: center;
+/* Hide calendar icon from date inputs in view mode only */
+.view-mode input[type="date"]::-webkit-calendar-picker-indicator {
+    display: none;
+    -webkit-appearance: none;
+}
+
+.view-mode input[type="date"]::-moz-calendar-picker-indicator {
+    display: none;
 }
 
 .message {
@@ -398,6 +409,11 @@ tbody tr:hover {
     <div class="header">
         <h1 id="pageTitle">📦 Purchase Management - New Purchase</h1>
         <div>
+            <button class="btn" onclick="window.location.href='purchaselist.htm'">📋 Back to List</button>
+            <button class="btn btn-secondary" id="refreshBtn" onclick="refreshMasterData()">🔄 Refresh Data</button>
+            <button class="btn btn-warning" id="viewEditBtn" style="display: none;" onclick="editFromView()">✏️ Edit</button>
+            <button class="btn btn-danger" id="viewDeleteBtn" style="display: none;" onclick="deleteFromView()">🗑️ Delete</button>
+            <button class="btn btn-success" id="viewPrintBtn" style="display: none;" onclick="printFromView()">🖨️ Print</button>
             <button class="btn" onclick="window.location.href='home.html'">🏠 Home</button>
             <button class="btn btn-danger" onclick="logout()">Logout</button>
         </div>
@@ -544,13 +560,6 @@ tbody tr:hover {
             <button type="button" class="btn" onclick="cancelForm()">✖ Cancel</button>
         </div>
 
-        <!-- View Actions -->
-        <div id="viewActions" class="view-actions" style="display: none;">
-            <button class="btn btn-warning" onclick="editFromView()">✏️ Edit</button>
-            <button class="btn btn-danger" id="viewDeleteBtn" onclick="deleteFromView()">🗑️ Delete</button>
-            <button class="btn" onclick="printFromView()">🖨️ Print</button>
-            <button type="button" class="btn" onclick="window.location.href='purchaselist.htm'">📋 Back to List</button>
-        </div>
     </form>
 </div>
 
@@ -593,7 +602,10 @@ protectPageWithMenuAccess(function(isValid) {
             editMode = false;
             document.getElementById('pageTitle').textContent = '📦 Purchase Management - View Purchase';
             document.getElementById('formActions').style.display = 'none';
-            document.getElementById('viewActions').style.display = 'flex';
+            // Show view mode buttons in header
+            document.getElementById('viewEditBtn').style.display = 'inline-block';
+            document.getElementById('viewDeleteBtn').style.display = 'inline-block';
+            document.getElementById('viewPrintBtn').style.display = 'inline-block';
             document.getElementById('headerSection').classList.add('view-mode');
             document.getElementById('detailsTable').classList.add('view-mode');
             // Load master data first, then load purchase
@@ -1262,7 +1274,22 @@ function populateForm(purchase, isView) {
     
     // Set header fields
     document.getElementById('docNo').value = header.docNo || '';
-    document.getElementById('date').value = header.date || '';
+    // In view mode, if date is blank, don't show the date placeholder
+    if (isView && !header.date) {
+        document.getElementById('date').value = '';
+        // Hide the date input and show a text fallback instead
+        document.getElementById('date').style.display = 'none';
+        const dateGroup = document.getElementById('date').closest('.form-group');
+        const dateLabel = dateGroup.querySelector('label');
+        // Add a text element showing "N/A" for blank dates in view mode
+        const naSpan = document.createElement('span');
+        naSpan.id = 'dateFallback';
+        naSpan.style.cssText = 'padding: 8px 10px; background: #e9ecef; border-radius: 5px; color: #999; font-size: 14px;';
+        naSpan.textContent = 'N/A';
+        dateGroup.insertBefore(naSpan, document.getElementById('date').nextSibling);
+    } else {
+        document.getElementById('date').value = header.date || '';
+    }
     document.getElementById('vatTreatment').value = header.vatTreatment || '';
     document.getElementById('rateType').value = header.rateType || '';
     document.getElementById('supplier').value = header.supplier || '';
@@ -1270,7 +1297,19 @@ function populateForm(purchase, isView) {
     document.getElementById('address').value = header.address || '';
     document.getElementById('trn').value = header.trn || '';
     document.getElementById('refNo').value = header.refNo || '';
-    document.getElementById('refDate').value = header.refDate || '';
+    // In view mode, if refDate is blank, don't show the date placeholder
+    if (isView && !header.refDate) {
+        document.getElementById('refDate').value = '';
+        document.getElementById('refDate').style.display = 'none';
+        const refDateGroup = document.getElementById('refDate').closest('.form-group');
+        const naSpan = document.createElement('span');
+        naSpan.id = 'refDateFallback';
+        naSpan.style.cssText = 'padding: 8px 10px; background: #e9ecef; border-radius: 5px; color: #999; font-size: 14px;';
+        naSpan.textContent = 'N/A';
+        refDateGroup.insertBefore(naSpan, document.getElementById('refDate').nextSibling);
+    } else {
+        document.getElementById('refDate').value = header.refDate || '';
+    }
     document.getElementById('narration').value = header.narration || '';
     
     // Look up supplier name from loaded data and display as "code - name"
@@ -1368,6 +1407,45 @@ function printFromView() {
     if (viewDocNo) {
         window.open('purchaseprint.htm?docno=' + encodeURIComponent(viewDocNo), '_blank');
     }
+}
+
+// ============================================
+// REFRESH MASTER DATA
+// ============================================
+
+// Refresh master data from server
+function refreshMasterData() {
+    const refreshBtn = document.getElementById('refreshBtn');
+    refreshBtn.disabled = true;
+    refreshBtn.textContent = '⏳ Refreshing...';
+    
+    refreshMasterDataFromServer(function(result) {
+        // Reload data from IndexedDB (now freshly populated)
+        allSuppliers = [];
+        allSalesmen = [];
+        allStocks = [];
+        
+        getSuppliersFromDB(function(suppliers) {
+            allSuppliers = suppliers || [];
+            
+            getSalesmenFromDB(function(salesmen) {
+                allSalesmen = salesmen || [];
+                
+                getStocksFromDB(function(stocks) {
+                    allStocks = stocks || [];
+                    
+                    refreshBtn.disabled = false;
+                    refreshBtn.textContent = '🔄 Refresh Data';
+                    
+                    if (result.status === 'success') {
+                        showMessage('Master data refreshed successfully from server!', 'success');
+                    } else {
+                        showMessage('Some data may not have refreshed. Check your connection.', 'error');
+                    }
+                });
+            });
+        });
+    });
 }
 
 // ============================================
