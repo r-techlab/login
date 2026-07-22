@@ -3,8 +3,26 @@
 // Centralized API calls with session validation
 // ============================================
 
-const API_URL = "https://script.google.com/macros/s/AKfycbzB-v5NftukpkqerQoQLlO0YnaUcWzmTFVn6uivO7ZJopCnfaNakFnskrS8A-Fy_Pc/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbwUnH8byP2ydrILn_3ok1DGwYQjvlFdZtsHwObZmdrJHDIdvZ5NSCXwUx7az7rK05M/exec";
+
 const API_TIMEOUT = 15000; // 15 seconds
+
+// ============================================
+// DIAGNOSTIC: Test API connection from browser console
+// Usage: testApiConnection('getOpeningStocks')
+// ============================================
+function testApiConnection(action) {
+    const session = getSession();
+    if (!session) {
+        console.error('No active session found. Please login first.');
+        return;
+    }
+    const testUrl = `${API_URL}?action=${encodeURIComponent(action || 'getOpeningStocks')}&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&page=1&pageSize=10&search=&callback=testCallback`;
+    console.log('Testing API URL:', testUrl);
+    console.log('Open this URL in a new tab to see the raw response.');
+    console.log('If you see HTML instead of JSON, the Apps Script has an error.');
+    return testUrl;
+}
 
 // ============================================
 // LOGIN API
@@ -45,6 +63,196 @@ function apiLogin(loginid, password, callback) {
         callback({
             status: "error",
             message: "Connection error. Check your internet or Apps Script deployment."
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// ============================================
+// OPENING STOCK BALANCE MANAGEMENT API
+// ============================================
+
+// Get all opening stocks with pagination and search
+function getOpeningStocks(session, page, pageSize, search, callback) {
+    const callbackName = 'jsonp_getOpeningStocks_' + Date.now();
+    
+    const timeoutId = setTimeout(function() {
+        delete window[callbackName];
+        callback({
+            status: "error",
+            message: "Request timeout"
+        });
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=getOpeningStocks&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&page=${page}&pageSize=${pageSize}&search=${encodeURIComponent(search)}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        console.error('JSONP request failed for getOpeningStocks. URL:', script.src);
+        callback({
+            status: "error",
+            message: "Connection error. The server returned an unexpected response (possibly HTML instead of JSON). Check that the Apps Script is deployed correctly and the SOPHeader sheet exists."
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// Get single opening stock by DocNo
+function getOpeningStockByDocNo(session, docNo, callback) {
+    const callbackName = 'jsonp_getOpeningStockByDocNo_' + Date.now();
+    
+    const timeoutId = setTimeout(function() {
+        delete window[callbackName];
+        callback({
+            status: "error",
+            message: "Request timeout"
+        });
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=getOpeningStockByDocNo&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&docNo=${encodeURIComponent(docNo)}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// Create new opening stock
+function createOpeningStock(session, openingStockData, callback) {
+    const callbackName = 'jsonp_createOpeningStock_' + Date.now();
+    
+    const timeoutId = setTimeout(function() {
+        delete window[callbackName];
+        callback({
+            status: "error",
+            message: "Request timeout"
+        });
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=createOpeningStock&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&openingStockData=${encodeURIComponent(JSON.stringify(openingStockData))}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// Update existing opening stock
+function updateOpeningStock(session, openingStockData, callback) {
+    const callbackName = 'jsonp_updateOpeningStock_' + Date.now();
+    
+    const timeoutId = setTimeout(function() {
+        delete window[callbackName];
+        callback({
+            status: "error",
+            message: "Request timeout"
+        });
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=updateOpeningStock&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&openingStockData=${encodeURIComponent(JSON.stringify(openingStockData))}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// Delete opening stock
+function deleteOpeningStock(session, docNo, callback) {
+    const callbackName = 'jsonp_deleteOpeningStock_' + Date.now();
+    
+    const timeoutId = setTimeout(function() {
+        delete window[callbackName];
+        callback({
+            status: "error",
+            message: "Request timeout"
+        });
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=deleteOpeningStock&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&docNo=${encodeURIComponent(docNo)}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
         });
     };
     document.body.appendChild(script);
@@ -770,6 +978,63 @@ function apiGetSalesReport(filters, callback) {
         '&fromDate=' + encodeURIComponent(filters.fromDate || '') +
         '&toDate=' + encodeURIComponent(filters.toDate || '') +
         '&customer=' + encodeURIComponent(filters.customer || '') +
+        '&salesman=' + encodeURIComponent(filters.salesman || '') +
+        '&reportType=' + encodeURIComponent(filters.reportType || 'headerwise') +
+        '&callback=' + callbackName;
+    
+    const script = document.createElement('script');
+    script.src = API_URL + '?' + params;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// ============================================
+// PURCHASE REPORT API
+// ============================================
+
+// Get purchase report with date range and filters
+function apiGetPurchaseReport(filters, callback) {
+    const callbackName = 'apiGetPurchaseReportCallback_' + Date.now();
+    const session = getSession();
+    
+    const timeoutId = setTimeout(function() {
+        if (window[callbackName]) {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+                document.body.removeChild(script);
+            }
+            callback({
+                status: "error",
+                message: "Request timeout"
+            });
+        }
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    var params = 'action=getPurchaseReport' +
+        '&sessionId=' + encodeURIComponent(session.sessionId) +
+        '&userId=' + encodeURIComponent(session.userId) +
+        '&fromDate=' + encodeURIComponent(filters.fromDate || '') +
+        '&toDate=' + encodeURIComponent(filters.toDate || '') +
+        '&supplier=' + encodeURIComponent(filters.supplier || '') +
         '&salesman=' + encodeURIComponent(filters.salesman || '') +
         '&reportType=' + encodeURIComponent(filters.reportType || 'headerwise') +
         '&callback=' + callbackName;

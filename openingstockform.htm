@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Opening Stock Balance - Form</title>
+<link rel="stylesheet" href="menu.css">
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    margin: 0;
+    padding: 20px;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 1600px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 20px;
+    margin-bottom: 30px;
+}
+
+h1 {
+    color: #333;
+    margin: 0;
+}
+
+.btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    margin-left: 10px;
+}
+
+.btn:hover {
+    background: #2980b9;
+}
+
+.btn-success {
+    background: #27ae60;
+}
+
+.btn-success:hover {
+    background: #229954;
+}
+
+.btn-danger {
+    background: #e74c3c;
+}
+
+.btn-danger:hover {
+    background: #c0392b;
+}
+
+.btn-warning {
+    background: #f39c12;
+}
+
+.btn-warning:hover {
+    background: #e67e22;
+}
+
+.btn-secondary {
+    background: #95a5a6;
+}
+
+.btn-secondary:hover {
+    background: #7f8c8d;
+}
+
+.btn:disabled {
+    background: #95a5a6;
+    cursor: not-allowed;
+}
+
+.btn-icon {
+    padding: 5px 10px;
+    font-size: 14px;
+}
+
+.form-section {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.form-section h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #333;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 8px;
+}
+
+.form-row {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    min-width: 150px;
+}
+
+.form-group label {
+    font-size: 12px;
+    font-weight: bold;
+    color: #555;
+    text-transform: uppercase;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    padding: 8px 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+    font-family: inherit;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+.form-group input[disabled] {
+    background: #e9ecef;
+    cursor: not-allowed;
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 60px;
+}
+
+.form-group .required::after {
+    content: ' *';
+    color: #e74c3c;
+}
+
+/* Searchable dropdown */
+.searchable-container {
+    position: relative;
+}
+
+.searchable-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 0 0 5px 5px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.searchable-dropdown.active {
+    display: block;
+}
+
+.dropdown-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 13px;
+}
+
+.dropdown-item:hover {
+    background: #667eea;
+    color: white;
+}
+
+/* Details table */
+.details-section {
+    margin-bottom: 20px;
+}
+
+.details-section h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #333;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 8px;
+}
+
+.table-container {
+    overflow-x: auto;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+thead {
+    background: #667eea;
+    color: white;
+}
+
+th {
+    padding: 10px 8px;
+    text-align: left;
+    font-weight: bold;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+td {
+    padding: 6px 8px;
+    border-bottom: 1px solid #eee;
+    vertical-align: middle;
+}
+
+td input, td select {
+    width: 100%;
+    padding: 5px 6px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    font-size: 12px;
+    box-sizing: border-box;
+}
+
+td input:focus, td select:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+td input[disabled] {
+    background: #f5f5f5;
+    cursor: not-allowed;
+}
+
+td.amount-cell {
+    min-width: 100px;
+}
+
+td.amount-cell input {
+    text-align: right;
+    font-weight: bold;
+}
+
+tbody tr:hover {
+    background: #f8f9fa;
+}
+
+/* Summary section */
+.summary-section {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 20px;
+}
+
+.summary-table {
+    width: 350px;
+    border-collapse: collapse;
+}
+
+.summary-table td {
+    padding: 8px 12px;
+    font-size: 14px;
+}
+
+.summary-table .summary-label {
+    text-align: right;
+    font-weight: bold;
+    color: #555;
+}
+
+.summary-table .summary-value {
+    text-align: right;
+    font-weight: bold;
+    font-family: 'Courier New', monospace;
+}
+
+.summary-table .summary-total td {
+    font-size: 18px;
+    border-top: 2px solid #333;
+    padding-top: 10px;
+    color: #2c3e50;
+}
+
+/* View mode styles */
+.view-mode input,
+.view-mode select,
+.view-mode textarea {
+    border: 1px solid #ddd;
+    background: #e9ecef;
+    pointer-events: none;
+    color: #333;
+}
+
+.view-mode td input,
+.view-mode td select {
+    border: 1px solid #ddd;
+    background: #f5f5f5;
+    pointer-events: none;
+    color: #333;
+}
+
+.view-mode .btn-icon {
+    display: none;
+}
+
+.view-mode input[type="date"]::-webkit-calendar-picker-indicator {
+    display: none;
+    -webkit-appearance: none;
+}
+
+.message {
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    font-weight: bold;
+}
+
+.message.success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.message.error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.message.warning {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+}
+
+.loading::after {
+    content: '...';
+    animation: dots 1.5s steps(4, end) infinite;
+}
+
+@keyframes dots {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    60%, 100% { content: '...'; }
+}
+
+@media (max-width: 992px) {
+    .form-row {
+        flex-direction: column;
+    }
+    
+    .form-group {
+        min-width: 100%;
+    }
+    
+    .summary-table {
+        width: 100%;
+    }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1 id="pageTitle">📦 Opening Stock Balance - New Entry</h1>
+        <div>
+            <button class="btn" onclick="window.location.href='openingstocklist.htm'">📋 Back to List</button>
+            <button class="btn btn-warning" id="viewEditBtn" style="display: none;" onclick="editFromView()">✏️ Edit</button>
+            <button class="btn btn-danger" id="viewDeleteBtn" style="display: none;" onclick="deleteFromView()">🗑️ Delete</button>
+            <button class="btn btn-success" id="viewPrintBtn" style="display: none;" onclick="printFromView()">🖨️ Print</button>
+            <button class="btn" onclick="window.location.href='home.html'">🏠 Home</button>
+            <button class="btn btn-danger" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div id="breadcrumbContainer" class="breadcrumb-container"></div>
+
+    <div id="messageContainer"></div>
+
+    <div id="loadingIndicator" class="loading" style="display: none;">Loading opening stock...</div>
+
+    <form id="openingStockForm" onsubmit="saveOpeningStock(event)" style="display: none;">
+        <!-- Header Section -->
+        <div class="form-section" id="headerSection">
+            <h3>Opening Stock Header</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Doc No</label>
+                    <input type="text" id="docNo" disabled placeholder="Auto-generated">
+                </div>
+                <div class="form-group">
+                    <label class="required">Date</label>
+                    <input type="date" id="date" required>
+                </div>
+                <div class="form-group">
+                    <label>Amount</label>
+                    <input type="text" id="amount" disabled value="0.00">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group" style="flex: 2;">
+                    <label>Narration</label>
+                    <textarea id="narration" rows="2"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Details Section -->
+        <div class="details-section">
+            <h3>Opening Stock Items</h3>
+            <div class="table-container">
+                <table id="detailsTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 30px;">#</th>
+                            <th style="min-width: 120px;">Stock Code</th>
+                            <th style="min-width: 150px;">Description</th>
+                            <th style="width: 70px;">Qty</th>
+                            <th style="width: 60px;">Unit</th>
+                            <th style="width: 80px;">Rate</th>
+                            <th class="amount-cell">Amount</th>
+                            <th style="width: 40px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="detailsTableBody">
+                    </tbody>
+                </table>
+            </div>
+            <div style="margin-top: 10px;">
+                <button type="button" class="btn btn-success" onclick="addDetailLine()">➕ Add Item</button>
+            </div>
+        </div>
+
+        <!-- Summary Section -->
+        <div class="summary-section">
+            <table class="summary-table">
+                <tr>
+                    <td class="summary-label">Total Qty:</td>
+                    <td class="summary-value" id="summaryQty">0.000</td>
+                </tr>
+                <tr class="summary-total">
+                    <td class="summary-label">Total Amount:</td>
+                    <td class="summary-value" id="summaryAmount">0.00</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Action Buttons -->
+        <div id="formActions" style="text-align: center; margin-top: 20px;">
+            <button type="submit" class="btn btn-success" id="saveButton">💾 Save Opening Stock</button>
+            <button type="button" class="btn" onclick="cancelForm()">✖ Cancel</button>
+        </div>
+
+    </form>
+</div>
+
+<script src="api.js"></script>
+<script src="indexedDB.js"></script>
+<script src="session.js"></script>
+<script src="menu.js"></script>
+<script src="systemConfig.js"></script>
+<script src="themeManager.js"></script>
+<script>
+// ============================================
+// GLOBAL VARIABLES
+// ============================================
+let editMode = false;
+let viewMode = false;
+let editDocNo = null;
+let viewDocNo = null;
+let detailLineCounter = 0;
+let allStocks = [];
+let masterDataLoaded = false;
+
+// Initialize system config with theme
+initPageWithTheme('openingstockform.htm', null);
+
+// Protect this page with menu-based access control
+protectPageWithMenuAccess(function(isValid) {
+    if (isValid) {
+        renderBreadcrumb('breadcrumbContainer');
+        
+        // Check URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        viewDocNo = urlParams.get('view');
+        editDocNo = urlParams.get('docno');
+        
+        if (viewDocNo) {
+            viewMode = true;
+            editMode = false;
+            document.getElementById('pageTitle').textContent = '📦 Opening Stock Balance - View Entry';
+            document.getElementById('formActions').style.display = 'none';
+            document.getElementById('viewEditBtn').style.display = 'inline-block';
+            document.getElementById('viewDeleteBtn').style.display = 'inline-block';
+            document.getElementById('viewPrintBtn').style.display = 'inline-block';
+            document.getElementById('headerSection').classList.add('view-mode');
+            document.getElementById('detailsTable').classList.add('view-mode');
+            loadMasterData(function() {
+                loadOpeningStockForView(viewDocNo);
+            });
+        } else if (editDocNo) {
+            editMode = true;
+            viewMode = false;
+            document.getElementById('pageTitle').textContent = '📦 Opening Stock Balance - Edit Entry';
+            document.getElementById('saveButton').textContent = '💾 Update Opening Stock';
+            loadMasterData(function() {
+                loadOpeningStockForEdit(editDocNo);
+            });
+        } else {
+            // New - set default date
+            document.getElementById('date').value = new Date().toISOString().slice(0, 10);
+            loadMasterData(function() {
+                generateDocNo(function() {
+                    document.getElementById('openingStockForm').style.display = 'block';
+                    addDetailLine();
+                });
+            });
+        }
+    }
+});
+
+// Load master data (stocks)
+function loadMasterData(callback) {
+    loadStocks(function() {
+        masterDataLoaded = true;
+        if (typeof callback === 'function') {
+            callback();
+        }
+    });
+}
+
+// Load stocks from IndexedDB or API
+function loadStocks(callback) {
+    if (typeof getStocksFromDB === 'function') {
+        getStocksFromDB(function(cachedStocks) {
+            if (cachedStocks && cachedStocks.length > 0) {
+                allStocks = cachedStocks;
+                if (typeof callback === 'function') callback();
+            } else {
+                apiGetStocks(function(response) {
+                    if (response.status === 'success') {
+                        allStocks = response.stocks || [];
+                        if (typeof saveStocksToDB === 'function') {
+                            saveStocksToDB(allStocks);
+                        }
+                    }
+                    if (typeof callback === 'function') callback();
+                });
+            }
+        });
+    } else {
+        apiGetStocks(function(response) {
+            if (response.status === 'success') {
+                allStocks = response.stocks || [];
+            }
+            if (typeof callback === 'function') callback();
+        });
+    }
+}
+
+// Generate DocNo
+function generateDocNo(callback) {
+    const session = getSession();
+    if (!session) return;
+    
+    getOpeningStocks(session, 1, 1, '', function(data) {
+        let maxNum = 10000;
+        if (data.status === 'success' && data.totalRecords > 0) {
+            getOpeningStocks(session, 1, data.totalRecords, '', function(allData) {
+                if (allData.status === 'success' && allData.openingStocks) {
+                    for (let i = 0; i < allData.openingStocks.length; i++) {
+                        const docNo = allData.openingStocks[i].docNo;
+                        if (docNo.startsWith('SOP')) {
+                            const num = parseInt(docNo.substring(3));
+                            if (num > maxNum) maxNum = num;
+                        }
+                    }
+                }
+                document.getElementById('docNo').value = 'SOP' + (maxNum + 1);
+                if (typeof callback === 'function') callback();
+            });
+        } else {
+            document.getElementById('docNo').value = 'SOP' + (maxNum + 1);
+            if (typeof callback === 'function') callback();
+        }
+    });
+}
+
+// ============================================
+// DETAIL LINES MANAGEMENT
+// ============================================
+
+// Add detail line
+function addDetailLine(data = null) {
+    detailLineCounter++;
+    const tbody = document.getElementById('detailsTableBody');
+    const row = tbody.insertRow();
+    row.id = 'detailRow' + detailLineCounter;
+    
+    const srNo = tbody.rows.length;
+    
+    row.innerHTML = `
+        <td>${srNo}</td>
+        <td>
+            <input type="text" class="stock-search" data-row="${detailLineCounter}" 
+                   placeholder="Search..." value="${data ? data.stockCode : ''}" required>
+            <input type="hidden" class="stock-code" value="${data ? data.stockCode : ''}">
+        </td>
+        <td><input type="text" class="stock-desc" disabled value="${data ? data.stockDescription : ''}"></td>
+        <td><input type="number" class="qty" step="0.001" min="0" value="${data ? data.qty : ''}" 
+                   onchange="calculateLine(${detailLineCounter})" required></td>
+        <td><input type="text" class="unit" disabled value="${data ? data.unit : ''}"></td>
+        <td><input type="number" class="rate" step="0.001" min="0" value="${data ? data.rate : ''}" 
+                   onchange="calculateLine(${detailLineCounter})" required></td>
+        <td class="amount-cell"><input type="number" class="amount" step="0.001" disabled value="${data ? data.amount : '0.000'}"></td>
+        <td><button type="button" class="btn btn-danger btn-icon" onclick="removeDetailLine(${detailLineCounter})">🗑️</button></td>
+    `;
+    
+    setupStockSearch(detailLineCounter);
+    
+    if (data) {
+        calculateLine(detailLineCounter);
+    }
+}
+
+// Setup stock searchable input
+function setupStockSearch(rowId) {
+    const row = document.getElementById('detailRow' + rowId);
+    const searchInput = row.querySelector('.stock-search');
+    
+    let dropdown = null;
+    
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        
+        if (dropdown) {
+            dropdown.remove();
+            dropdown = null;
+        }
+        
+        if (searchTerm.length < 1) return;
+        
+        const filtered = allStocks.filter(s => 
+            String(s.code).toLowerCase().includes(searchTerm) ||
+            String(s.description).toLowerCase().includes(searchTerm)
+        );
+        
+        if (filtered.length > 0) {
+            dropdown = document.createElement('div');
+            dropdown.className = 'searchable-dropdown active';
+            dropdown.style.position = 'absolute';
+            dropdown.style.zIndex = '1001';
+            
+            dropdown.innerHTML = filtered.map(s => 
+                `<div class="dropdown-item" onclick="selectStock(${rowId}, '${escapeHtml(s.code)}', '${escapeHtml(s.description)}', '${escapeHtml(s.unitCode || '')}')">
+                    <strong>${s.code}</strong> - ${s.description}
+                </div>`
+            ).join('');
+            
+            searchInput.parentElement.appendChild(dropdown);
+        }
+    });
+    
+    searchInput.addEventListener('blur', function() {
+        setTimeout(() => {
+            if (dropdown) {
+                dropdown.remove();
+                dropdown = null;
+            }
+        }, 200);
+    });
+}
+
+// Select stock
+function selectStock(rowId, code, description, unit) {
+    const row = document.getElementById('detailRow' + rowId);
+    row.querySelector('.stock-code').value = code;
+    row.querySelector('.stock-search').value = code;
+    row.querySelector('.stock-desc').value = description;
+    row.querySelector('.unit').value = unit;
+    
+    calculateLine(rowId);
+}
+
+// Remove detail line
+function removeDetailLine(rowId) {
+    const row = document.getElementById('detailRow' + rowId);
+    if (document.getElementById('detailsTableBody').rows.length > 1) {
+        row.remove();
+        renumberRows();
+        calculateSummary();
+    } else {
+        showMessage('At least one item is required.', 'warning');
+    }
+}
+
+// Renumber rows after deletion
+function renumberRows() {
+    const tbody = document.getElementById('detailsTableBody');
+    for (let i = 0; i < tbody.rows.length; i++) {
+        tbody.rows[i].cells[0].textContent = i + 1;
+    }
+}
+
+// Calculate line
+function calculateLine(rowId) {
+    const row = document.getElementById('detailRow' + rowId);
+    const qty = parseFloat(row.querySelector('.qty').value) || 0;
+    const rate = parseFloat(row.querySelector('.rate').value) || 0;
+    const amount = qty * rate;
+    row.querySelector('.amount').value = amount.toFixed(3);
+    calculateSummary();
+}
+
+// Calculate summary
+function calculateSummary() {
+    const tbody = document.getElementById('detailsTableBody');
+    let totalQty = 0;
+    let totalAmount = 0;
+    
+    for (let i = 0; i < tbody.rows.length; i++) {
+        totalQty += parseFloat(tbody.rows[i].querySelector('.qty').value) || 0;
+        totalAmount += parseFloat(tbody.rows[i].querySelector('.amount').value) || 0;
+    }
+    
+    document.getElementById('summaryQty').textContent = totalQty.toFixed(3);
+    document.getElementById('summaryAmount').textContent = totalAmount.toFixed(3);
+    document.getElementById('amount').value = totalAmount.toFixed(3);
+}
+
+// ============================================
+// FORM DATA
+// ============================================
+
+function getFormData() {
+    const header = {
+        docNo: document.getElementById('docNo').value,
+        date: document.getElementById('date').value,
+        amount: parseFloat(document.getElementById('amount').value) || 0,
+        narration: document.getElementById('narration').value
+    };
+    
+    const tbody = document.getElementById('detailsTableBody');
+    const details = [];
+    
+    for (let i = 0; i < tbody.rows.length; i++) {
+        const stockCode = tbody.rows[i].querySelector('.stock-code').value;
+        if (!stockCode) continue;
+        
+        details.push({
+            docSrNo: i + 1,
+            stockCode: stockCode,
+            stockDescription: tbody.rows[i].querySelector('.stock-desc').value,
+            qty: parseFloat(tbody.rows[i].querySelector('.qty').value) || 0,
+            unit: tbody.rows[i].querySelector('.unit').value,
+            rate: parseFloat(tbody.rows[i].querySelector('.rate').value) || 0,
+            amount: parseFloat(tbody.rows[i].querySelector('.amount').value) || 0
+        });
+    }
+    
+    return { header: header, details: details };
+}
+
+function validateForm(data) {
+    if (!data.header.date) {
+        showMessage('Please select a date.', 'error');
+        return false;
+    }
+    
+    if (data.details.length === 0) {
+        showMessage('Please add at least one item with a stock code.', 'error');
+        return false;
+    }
+    
+    for (let i = 0; i < data.details.length; i++) {
+        const d = data.details[i];
+        if (!d.stockCode) {
+            showMessage('Row ' + (i + 1) + ': Stock code is required.', 'error');
+            return false;
+        }
+        if (d.qty <= 0) {
+            showMessage('Row ' + (i + 1) + ': Quantity must be greater than 0.', 'error');
+            return false;
+        }
+        if (d.rate <= 0) {
+            showMessage('Row ' + (i + 1) + ': Rate must be greater than 0.', 'error');
+            return false;
+        }
+    }
+    
+    return true;
+}
+
+// ============================================
+// SAVE / UPDATE
+// ============================================
+
+function saveOpeningStock(event) {
+    event.preventDefault();
+    
+    if (editMode) {
+        updateOpeningStockData();
+        return;
+    }
+    
+    const session = getSession();
+    if (!session) return;
+    
+    const data = getFormData();
+    if (!validateForm(data)) return;
+    
+    document.getElementById('saveButton').disabled = true;
+    document.getElementById('saveButton').textContent = '⏳ Saving...';
+    
+    createOpeningStock(session, data, function(result) {
+        document.getElementById('saveButton').disabled = false;
+        document.getElementById('saveButton').textContent = '💾 Save Opening Stock';
+        
+        if (result.status === 'success') {
+            showMessage('Opening stock ' + result.docNo + ' created successfully!', 'success');
+            document.getElementById('docNo').value = result.docNo;
+            editMode = true;
+            viewMode = false;
+            document.getElementById('pageTitle').textContent = '📦 Opening Stock Balance - Edit Entry';
+            document.getElementById('saveButton').textContent = '💾 Update Opening Stock';
+            document.getElementById('viewEditBtn').style.display = 'none';
+            document.getElementById('viewDeleteBtn').style.display = 'none';
+            document.getElementById('viewPrintBtn').style.display = 'none';
+        } else {
+            showMessage(result.message || 'Failed to save opening stock.', 'error');
+        }
+    });
+}
+
+function updateOpeningStockData() {
+    const session = getSession();
+    if (!session) return;
+    
+    const data = getFormData();
+    if (!validateForm(data)) return;
+    
+    document.getElementById('saveButton').disabled = true;
+    document.getElementById('saveButton').textContent = '⏳ Updating...';
+    
+    updateOpeningStock(session, data, function(result) {
+        document.getElementById('saveButton').disabled = false;
+        document.getElementById('saveButton').textContent = '💾 Update Opening Stock';
+        
+        if (result.status === 'success') {
+            showMessage('Opening stock updated successfully!', 'success');
+        } else {
+            showMessage(result.message || 'Failed to update opening stock.', 'error');
+        }
+    });
+}
+
+// ============================================
+// LOAD FOR VIEW / EDIT
+// ============================================
+
+function loadOpeningStockForView(docNo) {
+    loadOpeningStockData(docNo, function(header, details) {
+        document.getElementById('openingStockForm').style.display = 'block';
+        document.getElementById('headerSection').classList.add('view-mode');
+        document.getElementById('detailsTable').classList.add('view-mode');
+    });
+}
+
+function loadOpeningStockForEdit(docNo) {
+    loadOpeningStockData(docNo, function(header, details) {
+        document.getElementById('openingStockForm').style.display = 'block';
+    });
+}
+
+function loadOpeningStockData(docNo, callback) {
+    const session = getSession();
+    if (!session) return;
+    
+    document.getElementById('loadingIndicator').style.display = 'block';
+    
+    getOpeningStockByDocNo(session, docNo, function(data) {
+        document.getElementById('loadingIndicator').style.display = 'none';
+        
+        if (data.status === 'success' && data.openingStock) {
+            const os = data.openingStock;
+            const header = os.header;
+            const details = os.details;
+            
+            document.getElementById('docNo').value = header.docNo;
+            document.getElementById('date').value = header.date;
+            document.getElementById('amount').value = parseFloat(header.amount || 0).toFixed(3);
+            document.getElementById('narration').value = header.narration || '';
+            
+            if (details && details.length > 0) {
+                details.forEach(function(d) {
+                    addDetailLine(d);
+                });
+            } else {
+                addDetailLine();
+            }
+            
+            calculateSummary();
+            
+            if (typeof callback === 'function') {
+                callback(header, details);
+            }
+        } else {
+            showMessage('Failed to load opening stock: ' + (data.message || 'Unknown error'), 'error');
+        }
+    });
+}
+
+// ============================================
+// VIEW MODE ACTIONS
+// ============================================
+
+function editFromView() {
+    const docNo = document.getElementById('docNo').value;
+    if (docNo) {
+        window.location.href = 'openingstockform.htm?docno=' + encodeURIComponent(docNo);
+    }
+}
+
+function deleteFromView() {
+    const docNo = document.getElementById('docNo').value;
+    if (!docNo) return;
+    
+    if (!confirm('Are you sure you want to delete opening stock "' + docNo + '"?\n\nThis action cannot be undone.')) {
+        return;
+    }
+    
+    const session = getSession();
+    if (!session) return;
+    
+    deleteOpeningStock(session, docNo, function(result) {
+        if (result.status === 'success') {
+            showMessage('Opening stock deleted successfully!', 'success');
+            setTimeout(function() {
+                window.location.href = 'openingstocklist.htm';
+            }, 1500);
+        } else {
+            showMessage(result.message || 'Failed to delete opening stock.', 'error');
+        }
+    });
+}
+
+function printFromView() {
+    const docNo = document.getElementById('docNo').value;
+    if (docNo) {
+        window.open('openingstockprint.htm?docNo=' + encodeURIComponent(docNo), '_blank');
+    }
+}
+
+// ============================================
+// UTILITY FUNCTIONS
+// ============================================
+
+function cancelForm() {
+    if (confirm('Are you sure you want to cancel? Any unsaved changes will be lost.')) {
+        window.location.href = 'openingstocklist.htm';
+    }
+}
+
+function showMessage(message, type) {
+    const container = document.getElementById('messageContainer');
+    container.innerHTML = '<div class="message ' + type + '">' + escapeHtml(message) + '</div>';
+    
+    setTimeout(function() {
+        container.innerHTML = '';
+    }, 5000);
+}
+
+function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function logout() {
+    if (confirm('Are you sure you want to logout?')) {
+        performLogout();
+    }
+}
+</script>
+
+</body>
+</html>

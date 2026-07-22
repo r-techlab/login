@@ -1,9 +1,9 @@
-# Task Progress - Fix Salesman Search in Sales Entry Form
+# Purchase Report Task Progress
 
-- [x] Analyze the issue (timing problem - form shows before salesman search is set up)
-- [x] Add IndexedDB caching for salesmen in indexedDB.js
-- [x] Update salesform.htm to use cached salesmen and fix timing
-- [x] Fix checkDataLoaded() to also wait for salesmen before showing the form
-- [x] Revert checkDataLoaded() change - don't block form on salesmen
-- [x] Make salesman dropdown dynamic - re-render when data becomes available
-- [x] Test the fix
+- [x] Analyze existing sales report structure (salesreport.htm)
+- [x] Analyze purchase data structure (PurchaseHeader/PurchaseDetails sheets)
+- [x] Analyze sales report backend handler (handleGetSalesReportGet)
+- [x] Create purchasereport.htm (frontend page)
+- [x] Add apiGetPurchaseReport function to api.js
+- [x] Add handleGetPurchaseReportGet function to AppScript.txt
+- [x] Add getPurchaseReport action routing in AppScript.txt doGet()

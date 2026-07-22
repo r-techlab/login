@@ -1,4 +1,4 @@
-// ============================================
+﻿// ============================================
 // SECURE SESSION MANAGEMENT SYSTEM
 // Google Apps Script Backend with Server-Side Sessions
 // ============================================
@@ -168,6 +168,8 @@ function doGet(e) {
     return handleUpdatePurchaseGet(e);
   } else if (action === "deletePurchase") {
     return handleDeletePurchaseGet(e);
+  } else if (action === "getPurchaseReport") {
+    return handleGetPurchaseReportGet(e);
   } else if (action === "getLogos") {
     return handleGetLogosGet(e);
   } else if (action === "uploadLogo") {
@@ -188,6 +190,16 @@ function doGet(e) {
     return handleGetSalesmanSalesSummaryGet(e);
   } else if (action === "getCustomerSalesSummary") {
     return handleGetCustomerSalesSummaryGet(e);
+  } else if (action === "getOpeningStocks") {
+    return handleGetOpeningStocksGet(e);
+  } else if (action === "getOpeningStockByDocNo") {
+    return handleGetOpeningStockByDocNoGet(e);
+  } else if (action === "createOpeningStock") {
+    return handleCreateOpeningStockGet(e);
+  } else if (action === "updateOpeningStock") {
+    return handleUpdateOpeningStockGet(e);
+  } else if (action === "deleteOpeningStock") {
+    return handleDeleteOpeningStockGet(e);
   } else {
     var errorResult = { status: "error", message: "Invalid action" };
     var callback = e.parameter.callback;
@@ -224,12 +236,18 @@ function handleLogin(requestData, e) {
   if (!rateLimitResult.allowed) {
     logLoginAttempt(ipAddress, loginid, false, rateLimitResult.message);
     var result = { status: "error", message: rateLimitResult.message };
-    if (callback) {
-      return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
-        .setMimeType(ContentService.MimeType.JAVASCRIPT);
-    }
-    return createJsonResponse(result);
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
   }
+  return createJsonResponse(result);
+}
+
+// ============================================
+// OPENING STOCK BALANCE HANDLERS
+// ============================================
+
+// Get all opening stock records
   
   var loginSheet = ss.getSheetByName("LogIn");
   var loginData = loginSheet.getDataRange().getValues();
@@ -295,6 +313,488 @@ function handleLogin(requestData, e) {
     status: "error", 
     message: "Invalid credentials" 
   });
+}
+function handleGetOpeningStocksGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Read pagination and search parameters
+  var page = parseInt(e.parameter.page) || 1;
+  var pageSize = parseInt(e.parameter.pageSize) || 10;
+  var search = (e.parameter.search || '').toLowerCase();
+  
+  // Get all records from SOPHeader sheet
+  var headerSheet = ss.getSheetByName("SOPHeader");
+  if (!headerSheet) {
+    var emptyResult = { status: "success", openingStocks: [], totalRecords: 0, totalPages: 0, currentPage: page, pageSize: pageSize };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(emptyResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(emptyResult);
+  }
+  var headerData = headerSheet.getDataRange().getValues();
+  var allRecords = [];
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1]) { // Check if DocNo exists
+      var docNo = headerData[i][1].toString();
+      var narration = headerData[i][4] || '';
+      var date = headerData[i][2] ? Utilities.formatDate(new Date(headerData[i][2]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '';
+      
+      // Apply search filter if search term is provided
+      if (search) {
+        if (docNo.toLowerCase().indexOf(search) === -1 &&
+            narration.toLowerCase().indexOf(search) === -1 &&
+            date.toLowerCase().indexOf(search) === -1) {
+          continue; // Skip this record if no match
+        }
+      }
+      
+      allRecords.push({
+        docType: headerData[i][0] || '',
+        docNo: docNo,
+        date: date,
+        amount: headerData[i][3] || 0,
+        narration: narration,
+        createdBy: headerData[i][5] || '',
+        createdTime: headerData[i][6] || ''
+      });
+    }
+  }
+  
+  // Sort descending by DocNo (most recent/last document first)
+  allRecords.sort(function(a, b) {
+    return b.docNo.localeCompare(a.docNo);
+  });
+  
+  var totalRecords = allRecords.length;
+  var totalPages = Math.ceil(totalRecords / pageSize);
+  
+  // Get only the records for the requested page
+  var startIndex = (page - 1) * pageSize;
+  var endIndex = Math.min(startIndex + pageSize, totalRecords);
+  var records = allRecords.slice(startIndex, endIndex);
+  
+  var result = { 
+    status: "success", 
+    openingStocks: records, 
+    totalRecords: totalRecords,
+    totalPages: totalPages,
+    currentPage: page,
+    pageSize: pageSize
+  };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Get single opening stock by DocNo
+function handleGetOpeningStockByDocNoGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var docNo = e.parameter.docNo;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get header
+  var headerSheet = ss.getSheetByName("SOPHeader");
+  if (!headerSheet) {
+    var errorResult = { status: "error", message: "Opening stock record not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  var headerData = headerSheet.getDataRange().getValues();
+  var header = null;
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1] == docNo) {
+      header = {
+        docType: headerData[i][0] || '',
+        docNo: headerData[i][1],
+        date: headerData[i][2] ? Utilities.formatDate(new Date(headerData[i][2]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
+        amount: headerData[i][3] || 0,
+        narration: headerData[i][4] || '',
+        createdBy: headerData[i][5] || '',
+        createdTime: headerData[i][6] || ''
+      };
+      break;
+    }
+  }
+  
+  if (!header) {
+    var errorResult = { status: "error", message: "Opening stock record not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get details
+  var detailsSheet = ss.getSheetByName("SOPDetails");
+  var detailsData = detailsSheet ? detailsSheet.getDataRange().getValues() : [];
+  var details = [];
+  
+  for (var i = 1; i < detailsData.length; i++) {
+    if (detailsData[i][1] == docNo) {
+      details.push({
+        docType: detailsData[i][0] || '',
+        docNo: detailsData[i][1],
+        docSrNo: detailsData[i][2] || 0,
+        stockCode: detailsData[i][3] || '',
+        stockDescription: detailsData[i][4] || '',
+        qty: detailsData[i][5] || 0,
+        unit: detailsData[i][6] || '',
+        rate: detailsData[i][7] || 0,
+        amount: detailsData[i][8] || 0
+      });
+    }
+  }
+  
+  var result = { status: "success", openingStock: { header: header, details: details } };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Create new opening stock
+function handleCreateOpeningStockGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var openingStockDataJson = e.parameter.openingStockData;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Parse data
+  var openingStockData;
+  try {
+    openingStockData = JSON.parse(openingStockDataJson);
+  } catch (error) {
+    var errorResult = { status: "error", message: "Invalid data format" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!openingStockData.header || !openingStockData.details || openingStockData.details.length === 0) {
+    var errorResult = { status: "error", message: "Header and at least one detail line are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Generate DocNo
+  var headerSheet = ss.getSheetByName("SOPHeader");
+  if (!headerSheet) {
+    headerSheet = ss.insertSheet("SOPHeader");
+    headerSheet.appendRow(["DocType", "DocNo", "Date", "Amount", "Narration", "CreatedBy", "CreatedTime"]);
+  }
+  var headerData = headerSheet.getDataRange().getValues();
+  var maxNum = 10000; // Starting number
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1]) {
+      var docNo = headerData[i][1].toString();
+      if (docNo.startsWith('SOP')) {
+        var num = parseInt(docNo.substring(3));
+        if (num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+  }
+  
+  var newDocNo = 'SOP' + (maxNum + 1);
+  
+  // Add header
+  var header = openingStockData.header;
+  var now = new Date();
+  var createdTime = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+  
+  headerSheet.appendRow([
+    'SOP', // DocType
+    newDocNo,
+    header.date,
+    header.amount || 0,
+    header.narration || '',
+    validation.userName, // CreatedBy
+    createdTime
+  ]);
+  
+  // Add details
+  var detailsSheet = ss.getSheetByName("SOPDetails");
+  if (!detailsSheet) {
+    detailsSheet = ss.insertSheet("SOPDetails");
+    detailsSheet.appendRow(["DocType", "DocNo", "DocSrNo", "StockCode", "StockDescription", "Qty", "Unit", "Rate", "Amount"]);
+  }
+  for (var i = 0; i < openingStockData.details.length; i++) {
+    var detail = openingStockData.details[i];
+    detailsSheet.appendRow([
+      'SOP', // DocType
+      newDocNo,
+      detail.docSrNo || (i + 1),
+      detail.stockCode,
+      detail.stockDescription || '',
+      detail.qty || 0,
+      detail.unit || '',
+      detail.rate || 0,
+      detail.amount || 0
+    ]);
+  }
+  
+  var result = { status: "success", message: "Opening stock created successfully", docNo: newDocNo };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Update existing opening stock
+function handleUpdateOpeningStockGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var openingStockDataJson = e.parameter.openingStockData;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Parse data
+  var openingStockData;
+  try {
+    openingStockData = JSON.parse(openingStockDataJson);
+  } catch (error) {
+    var errorResult = { status: "error", message: "Invalid data format" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!openingStockData.header || !openingStockData.header.docNo || !openingStockData.details || openingStockData.details.length === 0) {
+    var errorResult = { status: "error", message: "Header with DocNo and at least one detail line are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var docNo = openingStockData.header.docNo;
+  
+  // Update header
+  var headerSheet = ss.getSheetByName("SOPHeader");
+  if (!headerSheet) {
+    var errorResult = { status: "error", message: "Opening stock record not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  var headerData = headerSheet.getDataRange().getValues();
+  var headerFound = false;
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1] == docNo) {
+      var header = openingStockData.header;
+      headerSheet.getRange(i + 1, 1, 1, 7).setValues([[
+        'SOP', // DocType
+        docNo,
+        header.date,
+        header.amount || 0,
+        header.narration || '',
+        headerData[i][5], // Keep original CreatedBy
+        headerData[i][6]  // Keep original CreatedTime
+      ]]);
+      headerFound = true;
+      break;
+    }
+  }
+  
+  if (!headerFound) {
+    var errorResult = { status: "error", message: "Opening stock record not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Delete existing details
+  var detailsSheet = ss.getSheetByName("SOPDetails");
+  if (detailsSheet) {
+    var detailsData = detailsSheet.getDataRange().getValues();
+    for (var i = detailsData.length - 1; i >= 1; i--) {
+      if (detailsData[i][1] == docNo) {
+        detailsSheet.deleteRow(i + 1);
+      }
+    }
+  } else {
+    detailsSheet = ss.insertSheet("SOPDetails");
+    detailsSheet.appendRow(["DocType", "DocNo", "DocSrNo", "StockCode", "StockDescription", "Qty", "Unit", "Rate", "Amount"]);
+  }
+  
+  // Add new details
+  for (var i = 0; i < openingStockData.details.length; i++) {
+    var detail = openingStockData.details[i];
+    detailsSheet.appendRow([
+      'SOP', // DocType
+      docNo,
+      detail.docSrNo || (i + 1),
+      detail.stockCode,
+      detail.stockDescription || '',
+      detail.qty || 0,
+      detail.unit || '',
+      detail.rate || 0,
+      detail.amount || 0
+    ]);
+  }
+  
+  var result = { status: "success", message: "Opening stock updated successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Delete opening stock
+function handleDeleteOpeningStockGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var docNo = e.parameter.docNo;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Delete header
+  var headerSheet = ss.getSheetByName("SOPHeader");
+  if (!headerSheet) {
+    var errorResult = { status: "error", message: "Opening stock record not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  var headerData = headerSheet.getDataRange().getValues();
+  var headerFound = false;
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1] == docNo) {
+      headerSheet.deleteRow(i + 1);
+      headerFound = true;
+      break;
+    }
+  }
+  
+  if (!headerFound) {
+    var errorResult = { status: "error", message: "Opening stock record not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Delete details
+  var detailsSheet = ss.getSheetByName("SOPDetails");
+  if (detailsSheet) {
+    var detailsData = detailsSheet.getDataRange().getValues();
+    for (var i = detailsData.length - 1; i >= 1; i--) {
+      if (detailsData[i][1] == docNo) {
+        detailsSheet.deleteRow(i + 1);
+      }
+    }
+  }
+  
+  var result = { status: "success", message: "Opening stock deleted successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
 }
 
 // GET version of login (JSONP)
@@ -4893,6 +5393,189 @@ function handleGetSalesReportGet(e) {
 }
 
 // ============================================
+// PURCHASE REPORT HANDLER
+// ============================================
+
+// Get purchase report with date range and filters
+function handleGetPurchaseReportGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Read filter parameters
+  var fromDate = e.parameter.fromDate || '';
+  var toDate = e.parameter.toDate || '';
+  var supplierFilter = (e.parameter.supplier || '').toLowerCase();
+  var salesmanFilter = (e.parameter.salesman || '').toLowerCase();
+  var reportType = (e.parameter.reportType || 'headerwise').toLowerCase();
+  
+  // Build supplier lookup map (code -> description)
+  var supplierSheet = ss.getSheetByName("SupplierMaster");
+  var supplierData = supplierSheet.getDataRange().getValues();
+  var supplierMap = {};
+  for (var c = 1; c < supplierData.length; c++) {
+    if (supplierData[c][0]) {
+      supplierMap[String(supplierData[c][0]).toLowerCase()] = supplierData[c][1] || '';
+    }
+  }
+  
+  // Build salesman lookup map (code -> description)
+  var salesmanSheet = ss.getSheetByName("Salesman");
+  var salesmanData = salesmanSheet.getDataRange().getValues();
+  var salesmanMap = {};
+  for (var s = 1; s < salesmanData.length; s++) {
+    if (salesmanData[s][0]) {
+      salesmanMap[String(salesmanData[s][0]).toLowerCase()] = salesmanData[s][1] || '';
+    }
+  }
+  
+  // Get all purchases from PurchaseHeader sheet
+  var purchaseHeaderSheet = ss.getSheetByName("PurchaseHeader");
+  var purchaseHeaderData = purchaseHeaderSheet.getDataRange().getValues();
+  var allPurchases = [];
+  
+  for (var i = 1; i < purchaseHeaderData.length; i++) {
+    if (purchaseHeaderData[i][1]) { // Check if DocNo exists
+      var docNo = purchaseHeaderData[i][1].toString();
+      var supplier = purchaseHeaderData[i][3] || '';
+      var salesman = String(purchaseHeaderData[i][18] || '');
+      var dateObj = purchaseHeaderData[i][2] ? new Date(purchaseHeaderData[i][2]) : null;
+      var dateStr = dateObj ? Utilities.formatDate(dateObj, Session.getScriptTimeZone(), 'yyyy-MM-dd') : '';
+      
+      // Apply date range filter
+      if (fromDate && dateStr < fromDate) continue;
+      if (toDate && dateStr > toDate) continue;
+      
+      // Apply supplier filter
+      if (supplierFilter && supplier.toLowerCase().indexOf(supplierFilter) === -1) continue;
+      
+      // Apply salesman filter
+      if (salesmanFilter && salesman.toLowerCase().indexOf(salesmanFilter) === -1) continue;
+      
+      // Look up supplier and salesman names
+      var supplierName = supplierMap[supplier.toLowerCase()] || '';
+      var salesmanName = salesmanMap[salesman.toLowerCase()] || '';
+      
+      allPurchases.push({
+        docType: purchaseHeaderData[i][0] || '',
+        docNo: docNo,
+        date: dateStr,
+        supplier: supplier,
+        supplierName: supplierName,
+        salesman: salesman,
+        salesmanName: salesmanName,
+        narration: purchaseHeaderData[i][4] || '',
+        grossAmount: parseFloat(purchaseHeaderData[i][5]) || 0,
+        discountPercentage: parseFloat(purchaseHeaderData[i][6]) || 0,
+        discountAmount: parseFloat(purchaseHeaderData[i][7]) || 0,
+        vat: parseFloat(purchaseHeaderData[i][8]) || 0,
+        net: parseFloat(purchaseHeaderData[i][9]) || 0,
+        vatTreatment: purchaseHeaderData[i][14] || '',
+        rateType: purchaseHeaderData[i][15] || ''
+      });
+    }
+  }
+  
+  // Sort by date descending, then by DocNo descending
+  allPurchases.sort(function(a, b) {
+    if (a.date !== b.date) return b.date.localeCompare(a.date);
+    return b.docNo.localeCompare(a.docNo);
+  });
+  
+  // If reportType is itemwise, fetch item details for each purchase
+  if (reportType === 'itemwise') {
+    var purchaseDetailsSheet = ss.getSheetByName("PurchaseDetails");
+    var purchaseDetailsData = purchaseDetailsSheet.getDataRange().getValues();
+    
+    // Build a map of docNo -> details array
+    var detailsMap = {};
+    for (var d = 1; d < purchaseDetailsData.length; d++) {
+      var detailDocNo = purchaseDetailsData[d][1];
+      if (detailDocNo) {
+        if (!detailsMap[detailDocNo]) {
+          detailsMap[detailDocNo] = [];
+        }
+        detailsMap[detailDocNo].push({
+          docSrNo: purchaseDetailsData[d][2] || 0,
+          stockCode: purchaseDetailsData[d][3] || '',
+          stockDescription: purchaseDetailsData[d][4] || '',
+          qty: parseFloat(purchaseDetailsData[d][5]) || 0,
+          unit: purchaseDetailsData[d][6] || '',
+          rate: parseFloat(purchaseDetailsData[d][7]) || 0,
+          grossAmount: parseFloat(purchaseDetailsData[d][8]) || 0,
+          discountAmount: parseFloat(purchaseDetailsData[d][9]) || 0,
+          discountPercentage: parseFloat(purchaseDetailsData[d][10]) || 0,
+          vatAmount: parseFloat(purchaseDetailsData[d][11]) || 0,
+          vatPercentage: parseFloat(purchaseDetailsData[d][12]) || 0,
+          netAmount: parseFloat(purchaseDetailsData[d][13]) || 0,
+          vatTreatment: purchaseDetailsData[d][14] || '',
+          rateType: purchaseDetailsData[d][15] || ''
+        });
+      }
+    }
+    
+    // Attach details to each purchase
+    for (var pi = 0; pi < allPurchases.length; pi++) {
+      allPurchases[pi].details = detailsMap[allPurchases[pi].docNo] || [];
+    }
+  }
+  
+  // Calculate summary
+  var totalCount = allPurchases.length;
+  var totalGross = 0;
+  var totalDiscount = 0;
+  var totalVat = 0;
+  var totalNet = 0;
+  var totalItemQty = 0;
+  
+  for (var i = 0; i < allPurchases.length; i++) {
+    totalGross += allPurchases[i].grossAmount;
+    totalDiscount += allPurchases[i].discountAmount;
+    totalVat += allPurchases[i].vat;
+    totalNet += allPurchases[i].net;
+    if (reportType === 'itemwise' && allPurchases[i].details) {
+      for (var di = 0; di < allPurchases[i].details.length; di++) {
+        totalItemQty += allPurchases[i].details[di].qty;
+      }
+    }
+  }
+  
+  var result = { 
+    status: "success", 
+    purchases: allPurchases,
+    reportType: reportType,
+    summary: {
+      totalCount: totalCount,
+      totalGross: Math.round(totalGross * 100) / 100,
+      totalDiscount: Math.round(totalDiscount * 100) / 100,
+      totalVat: Math.round(totalVat * 100) / 100,
+      totalNet: Math.round(totalNet * 100) / 100,
+      totalItemQty: Math.round(totalItemQty * 100) / 100
+    }
+  };
+  
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// ============================================
 // CLEANUP FUNCTION (Run periodically)
 // ============================================
 
@@ -5347,114 +6030,3 @@ function handleGetCustomerSalesSummaryGet(e) {
   return createJsonResponse(result);
 }
 // ============================================
-// CUSTOMER SALES SUMMARY HANDLER (DASHBOARD)
-// ============================================
-
-// Get sales summary grouped by customer for the current month
-function handleGetCustomerSalesSummaryGet(e) {
-  var sessionId = e.parameter.sessionId;
-  var userId = e.parameter.userId;
-  var callback = e.parameter.callback;
-  var ipAddress = getClientIP(e);
-  
-  // Validate session
-  var ss = SpreadsheetApp.openById(SHEET_ID);
-  var validation = validateSession(ss, sessionId, userId, ipAddress);
-  
-  if (!validation.valid) {
-    var errorResult = { status: "error", message: "Invalid or expired session" };
-    if (callback) {
-      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
-        .setMimeType(ContentService.MimeType.JAVASCRIPT);
-    }
-    return createJsonResponse(errorResult);
-  }
-  
-  // Calculate current month date range
-  var now = new Date();
-  var year = now.getFullYear();
-  var month = now.getMonth(); // 0-based
-  var firstDay = new Date(year, month, 1);
-  var lastDay = new Date(year, month + 1, 0); // Last day of current month
-  
-  var fromDate = Utilities.formatDate(firstDay, Session.getScriptTimeZone(), 'yyyy-MM-dd');
-  var toDate = Utilities.formatDate(lastDay, Session.getScriptTimeZone(), 'yyyy-MM-dd');
-  
-  // Build customer lookup map (code -> description)
-  var customerSheet = ss.getSheetByName("CustomerMaster");
-  var customerData = customerSheet.getDataRange().getValues();
-  var customerMap = {};
-  for (var c = 1; c < customerData.length; c++) {
-    if (customerData[c][0]) {
-      customerMap[String(customerData[c][0]).toLowerCase()] = customerData[c][1] || '';
-    }
-  }
-  
-  // Get all sales from SalesHeader sheet
-  var salesHeaderSheet = ss.getSheetByName("SalesHeader");
-  var salesHeaderData = salesHeaderSheet.getDataRange().getValues();
-  
-  // Aggregate sales by customer
-  var salesByCustomer = {};
-  
-  for (var i = 1; i < salesHeaderData.length; i++) {
-    if (salesHeaderData[i][1]) { // Check if DocNo exists
-      var dateObj = salesHeaderData[i][2] ? new Date(salesHeaderData[i][2]) : null;
-      var dateStr = dateObj ? Utilities.formatDate(dateObj, Session.getScriptTimeZone(), 'yyyy-MM-dd') : '';
-      
-      // Filter by current month
-      if (dateStr < fromDate || dateStr > toDate) continue;
-      
-      var customerCode = String(salesHeaderData[i][3] || '').toLowerCase();
-      if (!customerCode) continue;
-      
-      var grossAmount = parseFloat(salesHeaderData[i][5]) || 0;
-      var netAmount = parseFloat(salesHeaderData[i][9]) || 0;
-      
-      if (!salesByCustomer[customerCode]) {
-        salesByCustomer[customerCode] = {
-          customerCode: customerCode,
-          customerName: customerMap[customerCode] || customerCode,
-          totalGross: 0,
-          totalNet: 0,
-          invoiceCount: 0
-        };
-      }
-      
-      salesByCustomer[customerCode].totalGross += grossAmount;
-      salesByCustomer[customerCode].totalNet += netAmount;
-      salesByCustomer[customerCode].invoiceCount++;
-    }
-  }
-  
-  // Convert to array and sort by totalGross descending
-  var summary = [];
-  for (var key in salesByCustomer) {
-    if (salesByCustomer.hasOwnProperty(key)) {
-      var item = salesByCustomer[key];
-      item.totalGross = Math.round(item.totalGross * 100) / 100;
-      item.totalNet = Math.round(item.totalNet * 100) / 100;
-      summary.push(item);
-    }
-  }
-  
-  summary.sort(function(a, b) {
-    return b.totalGross - a.totalGross;
-  });
-  
-  var result = { 
-    status: "success", 
-    summary: summary,
-    month: month + 1,
-    year: year,
-    fromDate: fromDate,
-    toDate: toDate
-  };
-  
-  if (callback) {
-    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
-      .setMimeType(ContentService.MimeType.JAVASCRIPT);
-  }
-  return createJsonResponse(result);
-}
-  

@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Purchase Report</title>
+<link rel="stylesheet" href="menu.css">
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    margin: 0;
+    padding: 20px;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 20px;
+    margin-bottom: 30px;
+}
+
+h1 {
+    color: #333;
+    margin: 0;
+}
+
+.btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    margin-left: 10px;
+}
+
+.btn:hover {
+    background: #2980b9;
+}
+
+.btn-success {
+    background: #27ae60;
+}
+
+.btn-success:hover {
+    background: #229954;
+}
+
+.btn-danger {
+    background: #e74c3c;
+}
+
+.btn-danger:hover {
+    background: #c0392b;
+}
+
+.btn-warning {
+    background: #f39c12;
+}
+
+.btn-warning:hover {
+    background: #e67e22;
+}
+
+.btn:disabled {
+    background: #95a5a6;
+    cursor: not-allowed;
+}
+
+.layout-with-sidebar {
+    display: flex;
+    gap: 20px;
+}
+
+.sidebar {
+    width: 280px;
+    flex-shrink: 0;
+}
+
+.company-name-sidebar {
+    font-size: 16px;
+    font-weight: bold;
+    color: white;
+    padding: 12px;
+    margin-bottom: 15px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 8px;
+    text-align: center;
+}
+
+.main-content {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+/* Filter Section */
+.filter-section {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.filter-row {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.filter-group label {
+    font-size: 12px;
+    font-weight: bold;
+    color: #555;
+    text-transform: uppercase;
+}
+
+.filter-group input,
+.filter-group select {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+    min-width: 180px;
+}
+
+.filter-group input:focus,
+.filter-group select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+.filter-actions {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+}
+
+.table-container {
+    overflow-x: auto;
+    overflow-y: auto;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    max-width: 100%;
+}
+
+table {
+    width: auto;
+    border-collapse: collapse;
+    min-width: 600px;
+}
+
+thead {
+    background: #667eea;
+    color: white;
+}
+
+th {
+    padding: 12px 15px;
+    text-align: left;
+    font-weight: bold;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+td {
+    padding: 10px 15px;
+    border-bottom: 1px solid #eee;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.amount {
+    text-align: right;
+    font-weight: bold;
+}
+
+.message {
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    font-weight: bold;
+}
+
+.message.success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.message.error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.message.warning {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+}
+
+.loading::after {
+    content: '...';
+    animation: dots 1.5s steps(4, end) infinite;
+}
+
+@keyframes dots {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    60%, 100% { content: '...'; }
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #999;
+}
+
+.empty-state-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+}
+
+@media (max-width: 992px) {
+    .layout-with-sidebar {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+    }
+    
+    .filter-row {
+        flex-direction: column;
+    }
+    
+    .filter-group input,
+    .filter-group select {
+        min-width: 100%;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>📦 Purchase Report</h1>
+        <div>
+            <button class="btn" onclick="window.location.href='home.html'">🏠 Home</button>
+            <button class="btn btn-danger" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div id="breadcrumbContainer" class="breadcrumb-container"></div>
+
+    <div class="layout-with-sidebar">
+        <div class="sidebar">
+            <div id="companyNameSidebar" class="company-name-sidebar"></div>
+            <h3>Navigation Menu</h3>
+            <div id="menuContainer"></div>
+        </div>
+
+        <div class="main-content">
+            <div id="messageContainer"></div>
+
+            <!-- Filter Section -->
+            <div class="filter-section">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label>From Date</label>
+                        <input type="date" id="fromDate">
+                    </div>
+                    <div class="filter-group">
+                        <label>To Date</label>
+                        <input type="date" id="toDate">
+                    </div>
+                    <div class="filter-group">
+                        <label>Supplier</label>
+                        <select id="supplierFilter">
+                            <option value="">All Suppliers</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Salesman</label>
+                        <select id="salesmanFilter">
+                            <option value="">All Salesmen</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Report Type</label>
+                        <div style="display: flex; gap: 15px; padding-top: 5px;">
+                            <label style="font-weight: normal; font-size: 14px; cursor: pointer;">
+                                <input type="radio" name="reportType" value="headerwise" checked onchange="onReportTypeChange()"> Headerwise
+                            </label>
+                            <label style="font-weight: normal; font-size: 14px; cursor: pointer;">
+                                <input type="radio" name="reportType" value="itemwise" onchange="onReportTypeChange()"> Itemwise
+                            </label>
+                        </div>
+                    </div>
+                    <div class="filter-actions">
+                        <button class="btn btn-success" onclick="loadReport()">🔍 Generate Report</button>
+                        <button class="btn btn-warning" onclick="resetFilters()">↺ Reset</button>
+                        <button class="btn" onclick="exportToCSV()">📥 Export CSV</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Table -->
+            <div class="table-container">
+                <div id="loadingIndicator" class="loading">Loading report data</div>
+                <div id="emptyState" class="empty-state" style="display: none;">
+                    <div class="empty-state-icon">📦</div>
+                    <h3>No Data Found</h3>
+                    <p>Select filters and click "Generate Report" to view purchase data.</p>
+                </div>
+                <table id="reportTable" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th>Doc No</th>
+                            <th>Date</th>
+                            <th>Supplier Code</th>
+                            <th>Supplier Name</th>
+                            <th>Salesman Code</th>
+                            <th>Salesman Name</th>
+                            <th class="amount">Gross Amount</th>
+                            <th class="amount">Discount</th>
+                            <th class="amount">VAT</th>
+                            <th class="amount">Net Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reportTableBody">
+                    </tbody>
+                    <tfoot id="reportTableFooter" style="display: none;">
+                        <tr style="background: #e8f0fe; font-weight: bold; border-top: 2px solid #667eea;">
+                            <td colspan="6" style="text-align: right; padding: 12px 15px; font-size: 14px;">Total (<span id="totalCountSpan">0</span> Invoices):</td>
+                            <td class="amount" style="padding: 12px 15px; font-size: 14px;" id="totalGrossDisplay">0.00</td>
+                            <td class="amount" style="padding: 12px 15px; font-size: 14px;" id="totalDiscountDisplay">0.00</td>
+                            <td class="amount" style="padding: 12px 15px; font-size: 14px;" id="totalVatDisplay">0.00</td>
+                            <td class="amount" style="padding: 12px 15px; font-size: 14px;" id="totalNetDisplay">0.00</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="api.js"></script>
+<script src="indexedDB.js"></script>
+<script src="session.js"></script>
+<script src="menu.js"></script>
+<script src="systemConfig.js"></script>
+<script src="themeManager.js"></script>
+<script>
+// Global variables
+let reportData = [];
+let reportSummary = null;
+
+// Initialize system config with theme
+initPageWithTheme('purchasereport.htm', 'companyNameSidebar');
+
+// Protect this page with menu-based access control
+protectPageWithMenuAccess(function(isValid) {
+    if (isValid) {
+        // User has permission via RoleMenuAccess
+        renderMenu('menuContainer');
+        renderBreadcrumb('breadcrumbContainer');
+        
+        // Load filter dropdowns
+        loadFilterData();
+    }
+});
+
+// Get selected report type
+function getReportType() {
+    var radios = document.getElementsByName('reportType');
+    for (var i = 0; i < radios.length; i++) {
+        if (radios[i].checked) {
+            return radios[i].value;
+        }
+    }
+    return 'headerwise';
+}
+
+// Called when report type radio changes - update table headers
+function onReportTypeChange() {
+    var isItemwise = getReportType() === 'itemwise';
+    var thead = document.querySelector('#reportTable thead tr');
+    var tfoot = document.getElementById('reportTableFooter');
+    
+    if (isItemwise) {
+        // Update headers for itemwise
+        thead.innerHTML = `
+            <th>Doc No</th>
+            <th>Date</th>
+            <th>Supplier Code</th>
+            <th>Supplier Name</th>
+            <th>Salesman Code</th>
+            <th>Salesman Name</th>
+            <th>Stock Code</th>
+            <th>Stock Description</th>
+            <th class="amount">Qty</th>
+            <th>Unit</th>
+            <th class="amount">Rate</th>
+            <th class="amount">Item Gross</th>
+            <th class="amount">Item Discount</th>
+            <th class="amount">Item VAT</th>
+            <th class="amount">Item Net</th>
+        `;
+        // Update footer colspan
+        tfoot.querySelector('td:first-child').colSpan = 6;
+        // Add item qty to footer
+        var footerHtml = 'Total (<span id="totalCountSpan">0</span> Invoices):';
+        tfoot.querySelector('td:first-child').innerHTML = footerHtml;
+        // Ensure footer has all needed cells aligned to correct columns
+        var footerRow = tfoot.querySelector('tr');
+        footerRow.innerHTML = `
+            <td colspan="6" style="text-align: right; padding: 12px 15px; font-size: 14px;">Total (<span id="totalCountSpan">0</span> Invoices):</td>
+            <td></td>
+            <td></td>
+            <td class="amount" style="padding: 12px 15px; font-size: 14px;" id="totalItemQtyDisplay">0.00</td>
+            <td></td>
+            <td></td>
+            <td class="amount" style="padding: 12px 15px; font-size: 14px;" id="totalGrossDisplay">0.00</td>
+            <td class="amount" style="padding: 12px 15px; font-size: 14px;" id="totalDiscountDisplay">0.00</td>
+            <td class="amount" style="padding: 12px 15px; font-size: 14px;" id="totalVatDisplay">0.00</td>
+            <td class="amount" style="padding: 12px 15px; font-size: 14px;" id="totalNetDisplay">0.00</td>
+        `;
+    } else {
+        // Update headers for headerwise
+        thead.innerHTML = `
+            <th>Doc No</th>
+            <th>Date</th>
+            <th>Supplier Code</th>
+            <th>Supplier Name</th>
+            <th>Salesman Code</th>
+            <th>Salesman Name</th>
+            <th class="amount">Gross Amount</th>
+            <th class="amount">Discount</th>
+            <th class="amount">VAT</th>
+            <th class="amount">Net Amount</th>
+        `;
+        // Reset footer
+        var footerRow = tfoot.querySelector('tr');
+        footerRow.innerHTML = `
+            <td colspan="6" style="text-align: right; padding: 12px 15px; font-size: 14px;">Total (<span id="totalCountSpan">0</span> Invoices):</td>
+            <td class="amount" style="padding: 12px 15px; font-size: 14px;" id="totalGrossDisplay">0.00</td>
+            <td class="amount" style="padding: 12px 15px; font-size: 14px;" id="totalDiscountDisplay">0.00</td>
+            <td class="amount" style="padding: 12px 15px; font-size: 14px;" id="totalVatDisplay">0.00</td>
+            <td class="amount" style="padding: 12px 15px; font-size: 14px;" id="totalNetDisplay">0.00</td>
+        `;
+    }
+    
+    // Re-fetch data with new report type if we have data
+    if (reportData.length > 0) {
+        loadReport();
+    }
+}
+
+// Load filter dropdown data (suppliers and salesmen)
+function loadFilterData() {
+    // Load suppliers
+    apiGetSuppliers(function(response) {
+        if (response.status === 'success') {
+            var suppliers = response.suppliers || [];
+            var supplierSelect = document.getElementById('supplierFilter');
+            
+            suppliers.forEach(function(s) {
+                var option = document.createElement('option');
+                option.value = s.code;
+                option.textContent = s.code + ' - ' + s.description;
+                supplierSelect.appendChild(option);
+            });
+        }
+    });
+    
+    // Load salesmen
+    apiGetSalesmen(function(response) {
+        if (response.status === 'success') {
+            var salesmen = response.salesmen || [];
+            var salesmanSelect = document.getElementById('salesmanFilter');
+            
+            salesmen.forEach(function(s) {
+                var option = document.createElement('option');
+                option.value = s.code;
+                option.textContent = s.code + ' - ' + s.description;
+                salesmanSelect.appendChild(option);
+            });
+        }
+    });
+}
+
+// Load report data
+function loadReport() {
+    document.getElementById('loadingIndicator').style.display = 'block';
+    document.getElementById('reportTable').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'none';
+    
+    var filters = {
+        fromDate: document.getElementById('fromDate').value,
+        toDate: document.getElementById('toDate').value,
+        supplier: document.getElementById('supplierFilter').value,
+        salesman: document.getElementById('salesmanFilter').value,
+        reportType: getReportType()
+    };
+    
+    apiGetPurchaseReport(filters, function(response) {
+        document.getElementById('loadingIndicator').style.display = 'none';
+        
+        if (response.status === 'success') {
+            reportData = response.purchases || [];
+            reportSummary = response.summary || null;
+            
+            displayReport(reportData);
+        } else {
+            showMessage('Error loading report: ' + response.message, 'error');
+            document.getElementById('emptyState').style.display = 'block';
+        }
+    });
+}
+
+// Display report in table
+function displayReport(purchases) {
+    const tbody = document.getElementById('reportTableBody');
+    tbody.innerHTML = '';
+    
+    if (purchases.length === 0) {
+        document.getElementById('reportTable').style.display = 'none';
+        document.getElementById('reportTableFooter').style.display = 'none';
+        document.getElementById('emptyState').style.display = 'block';
+        return;
+    }
+    
+    document.getElementById('reportTable').style.display = 'table';
+    document.getElementById('emptyState').style.display = 'none';
+    
+    var isItemwise = getReportType() === 'itemwise';
+    
+    purchases.forEach(function(purchase) {
+        if (isItemwise && purchase.details && purchase.details.length > 0) {
+            // Itemwise: one row per item with header info repeated
+            purchase.details.forEach(function(item) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><strong>${escapeHtml(purchase.docNo)}</strong></td>
+                    <td>${formatDate(purchase.date)}</td>
+                    <td>${escapeHtml(purchase.supplier || '-')}</td>
+                    <td>${escapeHtml(purchase.supplierName || '-')}</td>
+                    <td>${escapeHtml(purchase.salesman || '-')}</td>
+                    <td>${escapeHtml(purchase.salesmanName || '-')}</td>
+                    <td>${escapeHtml(item.stockCode || '-')}</td>
+                    <td>${escapeHtml(item.stockDescription || '-')}</td>
+                    <td class="amount">${formatAmount(item.qty)}</td>
+                    <td>${escapeHtml(item.unit || '-')}</td>
+                    <td class="amount">${formatAmount(item.rate)}</td>
+                    <td class="amount">${formatAmount(item.grossAmount)}</td>
+                    <td class="amount">${formatAmount(item.discountAmount)}</td>
+                    <td class="amount">${formatAmount(item.vatAmount)}</td>
+                    <td class="amount">${formatAmount(item.netAmount)}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        } else {
+            // Headerwise: one row per invoice
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><strong>${escapeHtml(purchase.docNo)}</strong></td>
+                <td>${formatDate(purchase.date)}</td>
+                <td>${escapeHtml(purchase.supplier || '-')}</td>
+                <td>${escapeHtml(purchase.supplierName || '-')}</td>
+                <td>${escapeHtml(purchase.salesman || '-')}</td>
+                <td>${escapeHtml(purchase.salesmanName || '-')}</td>
+                <td class="amount">${formatAmount(purchase.grossAmount)}</td>
+                <td class="amount">${formatAmount(purchase.discountAmount)}</td>
+                <td class="amount">${formatAmount(purchase.vat)}</td>
+                <td class="amount">${formatAmount(purchase.net)}</td>
+            `;
+            tbody.appendChild(row);
+        }
+    });
+    
+    // Show summary footer
+    if (reportSummary) {
+        document.getElementById('totalCountSpan').textContent = reportSummary.totalCount;
+        document.getElementById('totalGrossDisplay').textContent = formatAmount(reportSummary.totalGross);
+        document.getElementById('totalDiscountDisplay').textContent = formatAmount(reportSummary.totalDiscount);
+        document.getElementById('totalVatDisplay').textContent = formatAmount(reportSummary.totalVat);
+        document.getElementById('totalNetDisplay').textContent = formatAmount(reportSummary.totalNet);
+        
+        if (isItemwise && document.getElementById('totalItemQtyDisplay')) {
+            document.getElementById('totalItemQtyDisplay').textContent = formatAmount(reportSummary.totalItemQty || 0);
+        }
+        
+        document.getElementById('reportTableFooter').style.display = '';
+    }
+}
+
+// Reset filters
+function resetFilters() {
+    document.getElementById('fromDate').value = '';
+    document.getElementById('toDate').value = '';
+    document.getElementById('supplierFilter').value = '';
+    document.getElementById('salesmanFilter').value = '';
+    
+    // Hide results
+    document.getElementById('reportTable').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'block';
+    document.getElementById('emptyState').querySelector('p').textContent = 'Select filters and click "Generate Report" to view purchase data.';
+}
+
+// Export to CSV
+function exportToCSV() {
+    if (!reportData || reportData.length === 0) {
+        showMessage('No data to export. Please generate a report first.', 'warning');
+        return;
+    }
+    
+    var isItemwise = getReportType() === 'itemwise';
+    var csv = '';
+    
+    if (isItemwise) {
+        // Itemwise CSV headers
+        csv = 'Doc No,Date,Supplier Code,Supplier Name,Salesman Code,Salesman Name,Stock Code,Stock Description,Qty,Unit,Rate,Item Gross,Item Discount,Item VAT,Item Net\n';
+        
+        reportData.forEach(function(purchase) {
+            if (purchase.details && purchase.details.length > 0) {
+                purchase.details.forEach(function(item) {
+                    csv += '"' + (purchase.docNo || '') + '",';
+                    csv += '"' + (purchase.date || '') + '",';
+                    csv += '"' + (purchase.supplier || '') + '",';
+                    csv += '"' + (purchase.supplierName || '') + '",';
+                    csv += '"' + (purchase.salesman || '') + '",';
+                    csv += '"' + (purchase.salesmanName || '') + '",';
+                    csv += '"' + (item.stockCode || '') + '",';
+                    csv += '"' + (item.stockDescription || '') + '",';
+                    csv += (item.qty || 0) + ',';
+                    csv += '"' + (item.unit || '') + '",';
+                    csv += (item.rate || 0) + ',';
+                    csv += (item.grossAmount || 0) + ',';
+                    csv += (item.discountAmount || 0) + ',';
+                    csv += (item.vatAmount || 0) + ',';
+                    csv += (item.netAmount || 0) + '\n';
+                });
+            } else {
+                // Purchase with no details - still output header info
+                csv += '"' + (purchase.docNo || '') + '",';
+                csv += '"' + (purchase.date || '') + '",';
+                csv += '"' + (purchase.supplier || '') + '",';
+                csv += '"' + (purchase.supplierName || '') + '",';
+                csv += '"' + (purchase.salesman || '') + '",';
+                csv += '"' + (purchase.salesmanName || '') + '",';
+                csv += ',,,,,,,,\n';
+            }
+        });
+    } else {
+        // Headerwise CSV
+        csv = 'Doc No,Date,Supplier Code,Supplier Name,Salesman Code,Salesman Name,Gross Amount,Discount,VAT,Net Amount\n';
+        
+        reportData.forEach(function(purchase) {
+            csv += '"' + (purchase.docNo || '') + '",';
+            csv += '"' + (purchase.date || '') + '",';
+            csv += '"' + (purchase.supplier || '') + '",';
+            csv += '"' + (purchase.supplierName || '') + '",';
+            csv += '"' + (purchase.salesman || '') + '",';
+            csv += '"' + (purchase.salesmanName || '') + '",';
+            csv += (purchase.grossAmount || 0) + ',';
+            csv += (purchase.discountAmount || 0) + ',';
+            csv += (purchase.vat || 0) + ',';
+            csv += (purchase.net || 0) + '\n';
+        });
+    }
+    
+    // Add summary rows
+    if (reportSummary) {
+        csv += '\n';
+        csv += 'SUMMARY\n';
+        csv += 'Total Invoices:,' + reportSummary.totalCount + '\n';
+        csv += 'Total Gross:,' + reportSummary.totalGross + '\n';
+        csv += 'Total Discount:,' + reportSummary.totalDiscount + '\n';
+        csv += 'Total VAT:,' + reportSummary.totalVat + '\n';
+        csv += 'Total Net:,' + reportSummary.totalNet + '\n';
+        if (isItemwise && reportSummary.totalItemQty) {
+            csv += 'Total Item Qty:,' + reportSummary.totalItemQty + '\n';
+        }
+    }
+    
+    // Create download link
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    var link = document.createElement('a');
+    var url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'Purchase_Report_' + new Date().toISOString().slice(0, 10) + '.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showMessage('Report exported successfully!', 'success');
+}
+
+// Format date for display
+function formatDate(dateStr) {
+    if (!dateStr) return '-';
+    try {
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('en-GB');
+    } catch (e) {
+        return dateStr;
+    }
+}
+
+// Format amount for display
+function formatAmount(amount) {
+    if (amount === null || amount === undefined) return '0.00';
+    return parseFloat(amount).toFixed(2);
+}
+
+// Show message
+function showMessage(message, type) {
+    const container = document.getElementById('messageContainer');
+    container.innerHTML = '<div class="message ' + type + '">' + escapeHtml(message) + '</div>';
+    
+    setTimeout(function() {
+        container.innerHTML = '';
+    }, 5000);
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Logout function
+function logout() {
+    if (confirm('Are you sure you want to logout?')) {
+        performLogout();
+    }
+}
+</script>
+
+</body>
+</html>
