@@ -1,9 +1,5 @@
-﻿// ============================================
-// SECURE SESSION MANAGEMENT SYSTEM
-// Google Apps Script Backend with Server-Side Sessions
-// ============================================
+﻿// Configuration
 
-// Configuration
 var SHEET_ID = "1mZlKmBLoLXwYNeIBcqDvE1NZgd1KQ3rXYDh_UfxLApI";
 var SESSION_DURATION = 30 * 60 * 1000; // 30 minutes in milliseconds
 var MAX_LOGIN_ATTEMPTS = 5; // Max attempts per 15 minutes
@@ -198,8 +194,14 @@ function doGet(e) {
     return handleCreateOpeningStockGet(e);
   } else if (action === "updateOpeningStock") {
     return handleUpdateOpeningStockGet(e);
-  } else if (action === "deleteOpeningStock") {
-    return handleDeleteOpeningStockGet(e);
+  } else if (action === "getStockUnits") {
+    return handleGetStockUnitsGet(e);
+  } else if (action === "createStockUnit") {
+    return handleCreateStockUnitGet(e);
+  } else if (action === "updateStockUnit") {
+    return handleUpdateStockUnitGet(e);
+  } else if (action === "deleteStockUnit") {
+    return handleDeleteStockUnitGet(e);
   } else {
     var errorResult = { status: "error", message: "Invalid action" };
     var callback = e.parameter.callback;
@@ -2940,6 +2942,304 @@ function handleDeleteStockGet(e) {
   }
   
   var result = { status: "success", message: "Stock deleted successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// ============================================
+// STOCK UNIT MANAGEMENT HANDLERS
+// ============================================
+
+// Get all stock units for a specific stock code
+function handleGetStockUnitsGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var stockCode = e.parameter.stockCode;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!stockCode) {
+    var errorResult = { status: "error", message: "Stock code is required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get stock units from StockUnit sheet
+  var stockUnitSheet = ss.getSheetByName("StockUnit");
+  if (!stockUnitSheet) {
+    // Create the sheet if it doesn't exist
+    stockUnitSheet = ss.insertSheet("StockUnit");
+    stockUnitSheet.appendRow(["StockCode", "Unit", "FromQty", "ToQty"]);
+  }
+  
+  var stockUnitData = stockUnitSheet.getDataRange().getValues();
+  var stockUnits = [];
+  
+  for (var i = 1; i < stockUnitData.length; i++) {
+    if (stockUnitData[i][0] && stockUnitData[i][0].toString() == stockCode.toString()) {
+      stockUnits.push({
+        stockCode: stockUnitData[i][0].toString(),
+        unit: stockUnitData[i][1].toString(),
+        fromQty: parseFloat(stockUnitData[i][2]) || 0,
+        toQty: parseFloat(stockUnitData[i][3]) || 0
+      });
+    }
+  }
+  
+  var result = { status: "success", stockUnits: stockUnits };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Create new stock unit
+function handleCreateStockUnitGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var stockCode = e.parameter.stockCode;
+  var unit = e.parameter.unit;
+  var fromQty = e.parameter.fromQty;
+  var toQty = e.parameter.toQty;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!stockCode || !unit || !fromQty || !toQty) {
+    var errorResult = { status: "error", message: "StockCode, Unit, FromQty, and ToQty are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate stock code exists
+  var stockSheet = ss.getSheetByName("StockMaster");
+  var stockData = stockSheet.getDataRange().getValues();
+  var stockExists = false;
+  for (var i = 1; i < stockData.length; i++) {
+    if (stockData[i][0] && stockData[i][0].toString() == stockCode.toString()) {
+      stockExists = true;
+      break;
+    }
+  }
+  
+  if (!stockExists) {
+    var errorResult = { status: "error", message: "Stock code does not exist" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get or create StockUnit sheet
+  var stockUnitSheet = ss.getSheetByName("StockUnit");
+  if (!stockUnitSheet) {
+    stockUnitSheet = ss.insertSheet("StockUnit");
+    stockUnitSheet.appendRow(["StockCode", "Unit", "FromQty", "ToQty"]);
+  }
+  
+  // Check for duplicate unit for this stock code
+  var stockUnitData = stockUnitSheet.getDataRange().getValues();
+  for (var i = 1; i < stockUnitData.length; i++) {
+    if (stockUnitData[i][0] && stockUnitData[i][0].toString() == stockCode.toString() &&
+        stockUnitData[i][1] && stockUnitData[i][1].toString() == unit.toString()) {
+      var errorResult = { status: "error", message: "This unit is already defined for this stock item" };
+      if (callback) {
+        return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+          .setMimeType(ContentService.MimeType.JAVASCRIPT);
+      }
+      return createJsonResponse(errorResult);
+    }
+  }
+  
+  // Add new stock unit
+  stockUnitSheet.appendRow([stockCode, unit, parseFloat(fromQty), parseFloat(toQty)]);
+  
+  var result = { status: "success", message: "Stock unit created successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Update existing stock unit
+function handleUpdateStockUnitGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var stockCode = e.parameter.stockCode;
+  var unit = e.parameter.unit;
+  var fromQty = e.parameter.fromQty;
+  var toQty = e.parameter.toQty;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!stockCode || !unit || !fromQty || !toQty) {
+    var errorResult = { status: "error", message: "StockCode, Unit, FromQty, and ToQty are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var stockUnitSheet = ss.getSheetByName("StockUnit");
+  if (!stockUnitSheet) {
+    var errorResult = { status: "error", message: "No stock units found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var stockUnitData = stockUnitSheet.getDataRange().getValues();
+  
+  // Find and update stock unit
+  var found = false;
+  for (var i = 1; i < stockUnitData.length; i++) {
+    if (stockUnitData[i][0] && stockUnitData[i][0].toString() == stockCode.toString() &&
+        stockUnitData[i][1] && stockUnitData[i][1].toString() == unit.toString()) {
+      stockUnitSheet.getRange(i + 1, 3).setValue(parseFloat(fromQty));
+      stockUnitSheet.getRange(i + 1, 4).setValue(parseFloat(toQty));
+      found = true;
+      break;
+    }
+  }
+  
+  if (!found) {
+    var errorResult = { status: "error", message: "Stock unit not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var result = { status: "success", message: "Stock unit updated successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Delete stock unit
+function handleDeleteStockUnitGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var stockCode = e.parameter.stockCode;
+  var unit = e.parameter.unit;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!stockCode || !unit) {
+    var errorResult = { status: "error", message: "StockCode and Unit are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var stockUnitSheet = ss.getSheetByName("StockUnit");
+  if (!stockUnitSheet) {
+    var errorResult = { status: "error", message: "No stock units found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var stockUnitData = stockUnitSheet.getDataRange().getValues();
+  
+  // Find and delete stock unit
+  var found = false;
+  for (var i = 1; i < stockUnitData.length; i++) {
+    if (stockUnitData[i][0] && stockUnitData[i][0].toString() == stockCode.toString() &&
+        stockUnitData[i][1] && stockUnitData[i][1].toString() == unit.toString()) {
+      stockUnitSheet.deleteRow(i + 1);
+      found = true;
+      break;
+    }
+  }
+  
+  if (!found) {
+    var errorResult = { status: "error", message: "Stock unit not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var result = { status: "success", message: "Stock unit deleted successfully" };
   if (callback) {
     return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
       .setMimeType(ContentService.MimeType.JAVASCRIPT);

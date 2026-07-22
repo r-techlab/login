@@ -471,6 +471,65 @@ tbody tr:hover {
     </div>
 </div>
 
+<!-- Stock Units Modal -->
+<div id="stockUnitsModal" class="modal">
+    <div class="modal-content" style="max-width: 700px;">
+        <div class="modal-header">
+            <h2 id="stockUnitsModalTitle">Manage Units for <span id="stockUnitsStockCode"></span></h2>
+            <span class="close" onclick="closeStockUnitsModal()">&times;</span>
+        </div>
+        <div id="stockUnitsMessageContainer"></div>
+        <div style="margin-bottom: 15px;">
+            <p style="color: #666; margin: 0;">Base Unit: <strong id="stockUnitsBaseUnit"></strong></p>
+            <p style="color: #666; font-size: 13px; margin-top: 5px;">
+                Define alternative units and their conversion to the base unit.<br>
+                <strong>FromQty</strong> = Base unit quantity, <strong>ToQty</strong> = Equivalent quantity in the alternative unit.<br>
+                Example: 1 PCS = 10 KG means FromQty=1, ToQty=10 for unit KG.
+            </p>
+        </div>
+        <div style="margin-bottom: 15px;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr>
+                        <th style="padding: 10px; background: #667eea; color: white; text-align: left;">Unit</th>
+                        <th style="padding: 10px; background: #667eea; color: white; text-align: left;">From Qty (Base Unit)</th>
+                        <th style="padding: 10px; background: #667eea; color: white; text-align: left;">To Qty (This Unit)</th>
+                        <th style="padding: 10px; background: #667eea; color: white; text-align: center;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="stockUnitsTableBody">
+                </tbody>
+            </table>
+            <div id="stockUnitsEmpty" style="text-align: center; padding: 30px; color: #999;">
+                No alternative units defined yet.
+            </div>
+        </div>
+        <div style="border-top: 1px solid #eee; padding-top: 20px;">
+            <h3 style="margin: 0 0 15px 0; color: #333;">Add New Unit Conversion</h3>
+            <form id="stockUnitForm" onsubmit="saveStockUnit(event)" style="display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
+                <div class="form-group" style="flex: 1; min-width: 120px; margin-bottom: 0;">
+                    <label for="stockUnitUnit">Unit *</label>
+                    <select id="stockUnitUnit" required>
+                        <option value="">-- Select --</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex: 1; min-width: 100px; margin-bottom: 0;">
+                    <label for="stockUnitFromQty">From Qty *</label>
+                    <input type="number" id="stockUnitFromQty" required step="any" min="0.001" placeholder="e.g., 1">
+                </div>
+                <div class="form-group" style="flex: 1; min-width: 100px; margin-bottom: 0;">
+                    <label for="stockUnitToQty">To Qty *</label>
+                    <input type="number" id="stockUnitToQty" required step="any" min="0.001" placeholder="e.g., 10">
+                </div>
+                <button type="submit" class="btn btn-success" id="saveStockUnitBtn" style="margin-left: 0; white-space: nowrap;">➕ Add Unit</button>
+            </form>
+        </div>
+        <div class="form-actions">
+            <button type="button" class="btn" onclick="closeStockUnitsModal()">Close</button>
+        </div>
+    </div>
+</div>
+
 <script src="api.js"></script>
 <script src="indexedDB.js"></script>
 <script src="session.js"></script>
@@ -580,6 +639,7 @@ function displayStocks(stocks) {
                 <div class="action-buttons">
                     <button class="btn btn-warning btn-small" onclick="openEditStockModal('${escapeHtml(stock.code)}')">✏️ Edit</button>
                     <button class="btn btn-danger btn-small" onclick="deleteStock('${escapeHtml(stock.code)}')">🗑️ Delete</button>
+                    <button class="btn btn-small" style="background:#17a2b8;" onclick="openStockUnitsModal('${escapeHtml(stock.code)}')">📐 Units</button>
                 </div>
             </td>
         `;
@@ -742,11 +802,180 @@ function logout() {
     }
 }
 
-// Close modal when clicking outside
+// ========== Stock Units Management ==========
+let currentStockUnitsStockCode = null;
+let currentStockUnits = [];
+
+// Open stock units modal
+function openStockUnitsModal(stockCode) {
+    const stock = allStocks.find(s => s.code.toString() == stockCode.toString());
+    if (!stock) return;
+    
+    currentStockUnitsStockCode = stockCode;
+    document.getElementById('stockUnitsStockCode').textContent = stockCode;
+    document.getElementById('stockUnitsBaseUnit').textContent = stock.unitCode;
+    document.getElementById('stockUnitsModalTitle').innerHTML = 'Manage Units for <span id="stockUnitsStockCode">' + escapeHtml(stockCode) + '</span>';
+    
+    // Populate the unit dropdown (exclude the base unit)
+    populateStockUnitDropdown(stock.unitCode);
+    
+    // Load existing stock units
+    loadStockUnits(stockCode);
+    
+    // Reset form
+    document.getElementById('stockUnitForm').reset();
+    
+    document.getElementById('stockUnitsModal').style.display = 'block';
+}
+
+// Close stock units modal
+function closeStockUnitsModal() {
+    document.getElementById('stockUnitsModal').style.display = 'none';
+    currentStockUnitsStockCode = null;
+    currentStockUnits = [];
+}
+
+// Populate the unit dropdown for stock units (exclude base unit)
+function populateStockUnitDropdown(baseUnitCode) {
+    const select = document.getElementById('stockUnitUnit');
+    select.innerHTML = '<option value="">-- Select --</option>';
+    
+    allUnits.forEach(unit => {
+        if (unit.unitCode !== baseUnitCode) {
+            const option = document.createElement('option');
+            option.value = unit.unitCode;
+            option.textContent = `${unit.unitCode} - ${unit.unitDescription}`;
+            select.appendChild(option);
+        }
+    });
+}
+
+// Load stock units from API
+function loadStockUnits(stockCode) {
+    apiGetStockUnits(stockCode, function(response) {
+        if (response.status === 'success') {
+            currentStockUnits = response.stockUnits || [];
+            displayStockUnits();
+        } else {
+            showStockUnitsMessage('Error loading units: ' + response.message, 'error');
+        }
+    });
+}
+
+// Display stock units in the table
+function displayStockUnits() {
+    const tbody = document.getElementById('stockUnitsTableBody');
+    tbody.innerHTML = '';
+    
+    if (currentStockUnits.length === 0) {
+        document.getElementById('stockUnitsEmpty').style.display = 'block';
+        return;
+    }
+    
+    document.getElementById('stockUnitsEmpty').style.display = 'none';
+    
+    currentStockUnits.forEach((unit, index) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td><strong>${escapeHtml(unit.unit)}</strong></td>
+            <td>${escapeHtml(unit.fromQty.toString())}</td>
+            <td>${escapeHtml(unit.toQty.toString())}</td>
+            <td style="text-align: center;">
+                <button class="btn btn-danger btn-small" onclick="deleteStockUnit(${index})">🗑️ Remove</button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+// Save a new stock unit
+function saveStockUnit(event) {
+    event.preventDefault();
+    
+    const unit = document.getElementById('stockUnitUnit').value;
+    const fromQty = parseFloat(document.getElementById('stockUnitFromQty').value);
+    const toQty = parseFloat(document.getElementById('stockUnitToQty').value);
+    
+    if (!unit || !fromQty || !toQty) {
+        showStockUnitsMessage('Please fill in all fields', 'error');
+        return;
+    }
+    
+    if (fromQty <= 0 || toQty <= 0) {
+        showStockUnitsMessage('Quantities must be greater than zero', 'error');
+        return;
+    }
+    
+    // Check for duplicate unit
+    const duplicate = currentStockUnits.find(u => u.unit === unit);
+    if (duplicate) {
+        showStockUnitsMessage('This unit is already defined for this stock item', 'error');
+        return;
+    }
+    
+    const saveBtn = document.getElementById('saveStockUnitBtn');
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Adding...';
+    
+    const stockUnitData = {
+        stockCode: currentStockUnitsStockCode,
+        unit: unit,
+        fromQty: fromQty,
+        toQty: toQty
+    };
+    
+    apiCreateStockUnit(stockUnitData, function(response) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = '➕ Add Unit';
+        
+        if (response.status === 'success') {
+            showStockUnitsMessage('Unit conversion added successfully!', 'success');
+            document.getElementById('stockUnitForm').reset();
+            loadStockUnits(currentStockUnitsStockCode);
+        } else {
+            showStockUnitsMessage('Error: ' + response.message, 'error');
+        }
+    });
+}
+
+// Delete a stock unit
+function deleteStockUnit(index) {
+    const unit = currentStockUnits[index];
+    if (!unit) return;
+    
+    if (!confirm(`Remove unit "${unit.unit}" conversion for this stock item?`)) {
+        return;
+    }
+    
+    apiDeleteStockUnit(currentStockUnitsStockCode, unit.unit, function(response) {
+        if (response.status === 'success') {
+            showStockUnitsMessage('Unit conversion removed successfully!', 'success');
+            loadStockUnits(currentStockUnitsStockCode);
+        } else {
+            showStockUnitsMessage('Error: ' + response.message, 'error');
+        }
+    });
+}
+
+// Show message in stock units modal
+function showStockUnitsMessage(message, type) {
+    const container = document.getElementById('stockUnitsMessageContainer');
+    container.innerHTML = `<div class="message ${type}">${escapeHtml(message)}</div>`;
+    
+    setTimeout(() => {
+        container.innerHTML = '';
+    }, 5000);
+}
+
+// Close stock units modal when clicking outside
 window.onclick = function(event) {
-    const modal = document.getElementById('stockModal');
-    if (event.target === modal) {
+    const stockModal = document.getElementById('stockModal');
+    const stockUnitsModal = document.getElementById('stockUnitsModal');
+    if (event.target === stockModal) {
         closeStockModal();
+    }
+    if (event.target === stockUnitsModal) {
+        closeStockUnitsModal();
     }
 }
 </script>
