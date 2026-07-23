@@ -901,7 +901,11 @@ function addDetailLine(data = null) {
         <td><input type="text" class="stock-desc" disabled value="${data ? data.stockDescription : ''}"></td>
         <td><input type="number" class="qty" step="0.01" min="0" value="${data ? data.qty : ''}" 
                    onchange="calculateLine(${detailLineCounter})" required></td>
-        <td><input type="text" class="unit" disabled value="${data ? data.unit : ''}"></td>
+        <td>
+            <select class="unit" disabled>
+                <option value="">Select Unit</option>
+            </select>
+        </td>
         <td><input type="number" class="rate" step="0.01" min="0" value="${data ? data.rate : ''}" 
                    onchange="calculateLine(${detailLineCounter})" required></td>
         <td class="amount-cell"><input type="number" class="gross" step="0.01" disabled value="${data ? data.grossAmount : '0.00'}"></td>
@@ -926,6 +930,8 @@ function addDetailLine(data = null) {
     setupStockSearch(detailLineCounter);
     
     if (data) {
+        // Load units for this stock when editing/viewing existing data
+        loadStockUnits(detailLineCounter, data.stockCode, data.unit);
         calculateLine(detailLineCounter);
     }
 }
@@ -984,7 +990,9 @@ function selectStock(rowId, code, description, unit) {
     row.querySelector('.stock-code').value = code;
     row.querySelector('.stock-search').value = code;
     row.querySelector('.stock-desc').value = description;
-    row.querySelector('.unit').value = unit;
+    
+    // Load available units for this stock
+    loadStockUnits(rowId, code, unit);
     
     // Set default VAT treatment from header
     const headerVatTreatment = document.getElementById('vatTreatment').value;
@@ -993,6 +1001,54 @@ function selectStock(rowId, code, description, unit) {
     }
     
     calculateLine(rowId);
+}
+
+// Load available units for a stock and populate the unit dropdown
+function loadStockUnits(rowId, stockCode, defaultUnit) {
+    const row = document.getElementById('detailRow' + rowId);
+    const unitSelect = row.querySelector('.unit');
+    
+    // Disable and show loading
+    unitSelect.disabled = true;
+    unitSelect.innerHTML = '<option value="">Loading...</option>';
+    
+    // Find the stock's actual base unit from StockMaster (allStocks array has unitCode)
+    const stockMaster = allStocks.find(s => s.code === stockCode);
+    const baseUnit = (stockMaster && stockMaster.unitCode) || defaultUnit || 'PCS';
+    
+    apiGetStockUnits(stockCode, function(response) {
+        unitSelect.innerHTML = '';
+        const addedUnits = [];
+        
+        // Always add the base unit first (from StockMaster)
+        unitSelect.innerHTML += `<option value="${escapeHtml(baseUnit)}">${escapeHtml(baseUnit)} (Base)</option>`;
+        addedUnits.push(baseUnit);
+        
+        // Add other available units from StockUnit sheet (skip duplicates)
+        if (response.status === 'success' && response.stockUnits) {
+            response.stockUnits.forEach(function(u) {
+                if (!addedUnits.includes(u.unit)) {
+                    unitSelect.innerHTML += `<option value="${escapeHtml(u.unit)}">${escapeHtml(u.unit)}</option>`;
+                    addedUnits.push(u.unit);
+                }
+            });
+        }
+        
+        // Set the selected value to the saved document unit (defaultUnit), or fall back to base unit
+        const unitToSelect = defaultUnit || baseUnit;
+        unitSelect.value = unitToSelect;
+        
+        // If the value wasn't found in options, add it
+        if (!unitSelect.value) {
+            unitSelect.innerHTML += `<option value="${escapeHtml(unitToSelect)}">${escapeHtml(unitToSelect)}</option>`;
+            unitSelect.value = unitToSelect;
+        }
+        
+        // Enable the select (unless in view mode)
+        if (!viewMode) {
+            unitSelect.disabled = false;
+        }
+    });
 }
 
 // Remove detail line
