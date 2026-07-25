@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Stock Card</title>
+<link rel="stylesheet" href="menu.css">
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    margin: 0;
+    padding: 20px;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 20px;
+    margin-bottom: 30px;
+}
+
+h1 {
+    color: #333;
+    margin: 0;
+}
+
+.btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    margin-left: 10px;
+}
+
+.btn:hover {
+    background: #2980b9;
+}
+
+.btn-success {
+    background: #27ae60;
+}
+
+.btn-success:hover {
+    background: #229954;
+}
+
+.btn-danger {
+    background: #e74c3c;
+}
+
+.btn-danger:hover {
+    background: #c0392b;
+}
+
+.btn-warning {
+    background: #f39c12;
+}
+
+.btn-warning:hover {
+    background: #e67e22;
+}
+
+.btn-primary {
+    background: #3498db;
+}
+
+.btn-primary:hover {
+    background: #2980b9;
+}
+
+.layout-with-sidebar {
+    display: flex;
+    gap: 20px;
+}
+
+.sidebar {
+    width: 280px;
+    flex-shrink: 0;
+}
+
+.company-name-sidebar {
+    font-size: 16px;
+    font-weight: bold;
+    color: white;
+    padding: 12px;
+    margin-bottom: 15px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 8px;
+    text-align: center;
+}
+
+.main-content {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+/* Filter Section */
+.filter-section {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.filter-row {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.filter-group label {
+    font-size: 12px;
+    font-weight: bold;
+    color: #555;
+    text-transform: uppercase;
+}
+
+.filter-group input,
+.filter-group select {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+    min-width: 180px;
+}
+
+.filter-group input:focus,
+.filter-group select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+.filter-actions {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+}
+
+/* Stock Info Card */
+.stock-info-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 25px;
+    align-items: center;
+}
+
+.stock-info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.stock-info-item .label {
+    font-size: 11px;
+    text-transform: uppercase;
+    opacity: 0.8;
+}
+
+.stock-info-item .value {
+    font-size: 16px;
+    font-weight: bold;
+}
+
+/* Opening Balance Bar */
+.opening-balance-bar {
+    background: #e8f0fe;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+    display: flex;
+    gap: 30px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.opening-balance-bar strong {
+    color: #555;
+}
+
+.table-container {
+    overflow-x: auto;
+    overflow-y: auto;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    max-width: 100%;
+}
+
+table {
+    width: auto;
+    border-collapse: collapse;
+    min-width: 1200px;
+}
+
+thead {
+    background: #667eea;
+    color: white;
+}
+
+th {
+    padding: 12px 15px;
+    text-align: left;
+    font-weight: bold;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+td {
+    padding: 10px 15px;
+    border-bottom: 1px solid #eee;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.amount {
+    text-align: right;
+    font-weight: bold;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.in-qty {
+    color: #27ae60;
+    font-weight: bold;
+}
+
+.out-qty {
+    color: #e74c3c;
+    font-weight: bold;
+}
+
+.doc-type-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: bold;
+    color: white;
+}
+
+.doc-type-SOP {
+    background: #27ae60;
+}
+
+.doc-type-PI {
+    background: #3498db;
+}
+
+.doc-type-SI {
+    background: #e74c3c;
+}
+
+.message {
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    font-weight: bold;
+}
+
+.message.success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.message.error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.message.warning {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.message.info {
+    background: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+}
+
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+}
+
+.loading::after {
+    content: '...';
+    animation: dots 1.5s steps(4, end) infinite;
+}
+
+@keyframes dots {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    60%, 100% { content: '...'; }
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #999;
+}
+
+.empty-state-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+}
+
+/* Summary Footer */
+.summary-bar {
+    background: #e8f0fe;
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 15px;
+    display: flex;
+    gap: 30px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.summary-bar strong {
+    color: #555;
+}
+
+.total-row {
+    background: #e8f0fe !important;
+    font-weight: bold;
+    border-top: 2px solid #667eea;
+}
+
+.total-row td {
+    padding: 12px 15px;
+    font-size: 14px;
+}
+
+@media (max-width: 992px) {
+    .layout-with-sidebar {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+    }
+    
+    .filter-row {
+        flex-direction: column;
+    }
+    
+    .filter-group input,
+    .filter-group select {
+        min-width: 100%;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>📋 Stock Card</h1>
+        <div>
+            <button class="btn" onclick="window.location.href='home.html'">🏠 Home</button>
+            <button class="btn btn-danger" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div id="breadcrumbContainer" class="breadcrumb-container"></div>
+
+    <div class="layout-with-sidebar">
+        <div class="sidebar">
+            <div id="companyNameSidebar" class="company-name-sidebar"></div>
+            <h3>Navigation Menu</h3>
+            <div id="menuContainer"></div>
+        </div>
+
+        <div class="main-content">
+            <div id="messageContainer"></div>
+
+            <!-- Filter Section -->
+            <div class="filter-section">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label>Stock Code / Description</label>
+                        <select id="stockCodeSelect" style="min-width: 250px;">
+                            <option value="">-- Select Stock Item --</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>From Date</label>
+                        <input type="date" id="fromDate">
+                    </div>
+                    <div class="filter-group">
+                        <label>To Date</label>
+                        <input type="date" id="toDate">
+                    </div>
+                    <div class="filter-actions">
+                        <button class="btn btn-success" onclick="loadStockCard()">🔍 Load Card</button>
+                        <button class="btn btn-warning" onclick="resetFilters()">↺ Reset</button>
+                        <button class="btn" onclick="exportToCSV()">📥 Export CSV</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stock Info Card -->
+            <div id="stockInfoCard" class="stock-info-card" style="display: none;">
+                <div class="stock-info-item">
+                    <span class="label">Stock Code</span>
+                    <span class="value" id="infoStockCode">-</span>
+                </div>
+                <div class="stock-info-item">
+                    <span class="label">Description</span>
+                    <span class="value" id="infoStockDesc">-</span>
+                </div>
+                <div class="stock-info-item">
+                    <span class="label">Base Unit</span>
+                    <span class="value" id="infoBaseUnit">-</span>
+                </div>
+            </div>
+
+            <!-- Opening Balance & Summary -->
+            <div id="openingBalanceBar" class="opening-balance-bar" style="display: none;">
+                <div><strong>Opening Balance:</strong> <span id="openingQtySpan">0.00</span> pcs | Value: <span id="openingCostValueSpan">0.00</span></div>
+            </div>
+
+            <!-- Data Table -->
+            <div class="table-container">
+                <div id="loadingIndicator" class="loading">Loading stock card data</div>
+                <div id="emptyState" class="empty-state" style="display: none;">
+                    <div class="empty-state-icon">📦</div>
+                    <h3>No Transactions Found</h3>
+                    <p>Select a stock item and click "Load Card" to view its movement ledger.</p>
+                </div>
+                <table id="cardTable" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Date</th>
+                            <th>Doc Type</th>
+                            <th>Doc No</th>
+                            <th>Party</th>
+                            <th class="amount">In Qty</th>
+                            <th class="amount">Out Qty</th>
+                            <th>Unit</th>
+                            <th class="amount">Rate</th>
+                            <th class="amount">Amount</th>
+                            <th class="amount">Cost Rate</th>
+                            <th class="amount">Balance Qty</th>
+                            <th class="amount">Balance Value</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cardTableBody">
+                    </tbody>
+                    <tfoot id="cardTableFooter" style="display: none;">
+                        <tr class="total-row">
+                            <td colspan="5" style="text-align: right;">Totals:</td>
+                            <td class="amount" id="footerTotalInQty">0.00</td>
+                            <td class="amount" id="footerTotalOutQty">0.00</td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td class="amount" id="footerClosingQty">0.00</td>
+                            <td class="amount" id="footerClosingCostValue">0.00</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <!-- Summary Bar -->
+            <div id="summaryBar" class="summary-bar" style="display: none;">
+                <div><strong>Total In:</strong> <span id="summaryInQty">0.00</span></div>
+                <div><strong>Total Out:</strong> <span id="summaryOutQty">0.00</span></div>
+                <div><strong>Net Change:</strong> <span id="summaryNetChange">0.00</span></div>
+                <div><strong>Closing Balance:</strong> <span id="summaryClosingQty">0.00</span> | Value: <span id="summaryClosingCostValue">0.00</span></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="api.js"></script>
+<script src="indexedDB.js"></script>
+<script src="session.js"></script>
+<script src="menu.js"></script>
+<script src="systemConfig.js"></script>
+<script src="themeManager.js"></script>
+<script>
+// Global variables
+let stockCardData = null;
+let allStocks = [];
+
+// Initialize system config with theme
+initPageWithTheme('stockcard.htm', 'companyNameSidebar');
+
+// Protect this page with menu-based access control
+protectPageWithMenuAccess(function(isValid) {
+    if (isValid) {
+        // User has permission via RoleMenuAccess
+        renderMenu('menuContainer');
+        renderBreadcrumb('breadcrumbContainer');
+        
+        // Load stock dropdown
+        loadStockList();
+    }
+});
+
+// Load stock list into dropdown
+function loadStockList() {
+    const select = document.getElementById('stockCodeSelect');
+    select.innerHTML = '<option value="">-- Select Stock Item --</option>';
+    
+    apiGetStocks(function(response) {
+        if (response.status === 'success') {
+            allStocks = response.stocks || [];
+            allStocks.sort(function(a, b) {
+                return String(a.code).localeCompare(String(b.code));
+            });
+            
+            allStocks.forEach(function(stock) {
+                const option = document.createElement('option');
+                option.value = stock.code;
+                option.textContent = stock.code + ' - ' + stock.description + ' (' + (stock.unitCode || '') + ')';
+                select.appendChild(option);
+            });
+        } else {
+            showMessage('Error loading stock list: ' + response.message, 'error');
+        }
+    });
+}
+
+// Load stock card data
+function loadStockCard() {
+    const stockCode = document.getElementById('stockCodeSelect').value;
+    const fromDate = document.getElementById('fromDate').value;
+    const toDate = document.getElementById('toDate').value;
+    
+    if (!stockCode) {
+        showMessage('Please select a stock item to view its card.', 'warning');
+        return;
+    }
+    
+    // Show loading
+    document.getElementById('loadingIndicator').style.display = 'block';
+    document.getElementById('cardTable').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('stockInfoCard').style.display = 'none';
+    document.getElementById('openingBalanceBar').style.display = 'none';
+    document.getElementById('summaryBar').style.display = 'none';
+    document.getElementById('cardTableFooter').style.display = 'none';
+    
+    apiGetStockCard(stockCode, fromDate, toDate, function(response) {
+        document.getElementById('loadingIndicator').style.display = 'none';
+        
+        if (response.status === 'success') {
+            stockCardData = response;
+            displayStockCard(response);
+        } else {
+            showMessage('Error loading stock card: ' + response.message, 'error');
+            document.getElementById('emptyState').style.display = 'block';
+        }
+    });
+}
+
+// Display stock card data
+function displayStockCard(data) {
+    // Stock Info Card
+    document.getElementById('stockInfoCard').style.display = 'flex';
+    document.getElementById('infoStockCode').textContent = data.stockInfo.code;
+    document.getElementById('infoStockDesc').textContent = data.stockInfo.description || '-';
+    document.getElementById('infoBaseUnit').textContent = data.stockInfo.baseUnit || '-';
+    
+    // Opening Balance
+    document.getElementById('openingBalanceBar').style.display = 'flex';
+    document.getElementById('openingQtySpan').textContent = formatQty(data.openingBalance.qty);
+    document.getElementById('openingCostValueSpan').textContent = formatAmount(data.openingBalance.costValue);
+    
+    const tbody = document.getElementById('cardTableBody');
+    tbody.innerHTML = '';
+    
+    if (!data.transactions || data.transactions.length === 0) {
+        document.getElementById('cardTable').style.display = 'none';
+        document.getElementById('cardTableFooter').style.display = 'none';
+        document.getElementById('summaryBar').style.display = 'none';
+        document.getElementById('emptyState').style.display = 'block';
+        document.getElementById('emptyState').querySelector('h3').textContent = 'No Transactions Found';
+        document.getElementById('emptyState').querySelector('p').textContent = 'No stock movements found for the selected period.';
+        return;
+    }
+    
+    document.getElementById('cardTable').style.display = 'table';
+    document.getElementById('emptyState').style.display = 'none';
+    
+    // Add opening balance row
+    var openingRow = document.createElement('tr');
+    openingRow.style.background = '#e8f0fe';
+    openingRow.style.fontWeight = 'bold';
+    openingRow.innerHTML = `
+        <td colspan="5" style="padding: 10px 15px; font-style: italic;">Opening Balance</td>
+        <td class="amount"></td>
+        <td class="amount"></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td class="amount">${formatQty(data.openingBalance.qty)}</td>
+        <td class="amount">${formatAmount(data.openingBalance.costValue)}</td>
+    `;
+    tbody.appendChild(openingRow);
+    
+    // Add transaction rows
+    data.transactions.forEach(function(trans, index) {
+        const row = document.createElement('tr');
+        
+        var docTypeClass = 'doc-type-SOP';
+        if (trans.docType === 'PI') docTypeClass = 'doc-type-PI';
+        else if (trans.docType === 'SI') docTypeClass = 'doc-type-SI';
+        
+        var partyDisplay = '';
+        if (trans.partyDesc) {
+            partyDisplay = escapeHtml(trans.partyDesc);
+        } else if (trans.partyCode) {
+            partyDisplay = escapeHtml(trans.partyCode);
+        } else {
+            partyDisplay = '-';
+        }
+        
+        row.innerHTML = `
+            <td class="text-center">${index + 1}</td>
+            <td>${escapeHtml(trans.date)}</td>
+            <td><span class="doc-type-badge ${docTypeClass}">${escapeHtml(trans.docType)}</span></td>
+            <td><strong>${escapeHtml(trans.docNo)}</strong></td>
+            <td>${partyDisplay}</td>
+            <td class="amount in-qty">${trans.inQty > 0 ? formatQty(trans.inQty) : '-'}</td>
+            <td class="amount out-qty">${trans.outQty > 0 ? formatQty(trans.outQty) : '-'}</td>
+            <td>${escapeHtml(trans.baseUnit || '-')}</td>
+            <td class="amount">${formatAmount(trans.rate)}</td>
+            <td class="amount">${formatAmount(trans.amount)}</td>
+            <td class="amount">${formatAmount(trans.costRate)}</td>
+            <td class="amount">${formatQty(trans.runningQty)}</td>
+            <td class="amount">${formatAmount(trans.runningCostValue)}</td>
+        `;
+        tbody.appendChild(row);
+    });
+    
+    // Show footer
+    document.getElementById('cardTableFooter').style.display = '';
+    document.getElementById('footerTotalInQty').textContent = formatQty(data.summary.totalInQty);
+    document.getElementById('footerTotalOutQty').textContent = formatQty(data.summary.totalOutQty);
+    document.getElementById('footerClosingQty').textContent = formatQty(data.summary.closingQty);
+    document.getElementById('footerClosingCostValue').textContent = formatAmount(data.summary.closingCostValue);
+    
+    // Show summary bar
+    document.getElementById('summaryBar').style.display = 'flex';
+    document.getElementById('summaryInQty').textContent = formatQty(data.summary.totalInQty);
+    document.getElementById('summaryOutQty').textContent = formatQty(data.summary.totalOutQty);
+    var netChange = data.summary.totalInQty - data.summary.totalOutQty;
+    document.getElementById('summaryNetChange').textContent = formatQty(netChange);
+    document.getElementById('summaryClosingQty').textContent = formatQty(data.summary.closingQty);
+    document.getElementById('summaryClosingCostValue').textContent = formatAmount(data.summary.closingCostValue);
+}
+
+// Reset filters
+function resetFilters() {
+    document.getElementById('stockCodeSelect').value = '';
+    document.getElementById('fromDate').value = '';
+    document.getElementById('toDate').value = '';
+    document.getElementById('cardTable').style.display = 'none';
+    document.getElementById('cardTableFooter').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'block';
+    document.getElementById('stockInfoCard').style.display = 'none';
+    document.getElementById('openingBalanceBar').style.display = 'none';
+    document.getElementById('summaryBar').style.display = 'none';
+    document.getElementById('emptyState').querySelector('h3').textContent = 'Select a Stock Item';
+    document.getElementById('emptyState').querySelector('p').textContent = 'Select a stock item from the dropdown above and click "Load Card" to view its movement ledger.';
+}
+
+// Export to CSV
+function exportToCSV() {
+    if (!stockCardData || !stockCardData.transactions || stockCardData.transactions.length === 0) {
+        showMessage('No data to export. Please load a stock card first.', 'warning');
+        return;
+    }
+    
+    var csv = 'Stock Card Report\n';
+    csv += 'Stock Code:,' + stockCardData.stockInfo.code + '\n';
+    csv += 'Description:,' + (stockCardData.stockInfo.description || '') + '\n';
+    csv += 'Base Unit:,' + (stockCardData.stockInfo.baseUnit || '') + '\n';
+    csv += 'Opening Balance:,' + stockCardData.openingBalance.qty + '\n\n';
+    
+    csv += '#,Date,DocType,DocNo,Party,In Qty,Out Qty,Unit,Rate,Amount,CostRate,Balance Qty,Balance Value\n';
+    
+    stockCardData.transactions.forEach(function(trans, index) {
+        csv += (index + 1) + ',';
+        csv += '"' + (trans.date || '') + '",';
+        csv += '"' + (trans.docType || '') + '",';
+        csv += '"' + (trans.docNo || '') + '",';
+        csv += '"' + (trans.partyDesc || trans.partyCode || '') + '",';
+        csv += (trans.inQty || 0) + ',';
+        csv += (trans.outQty || 0) + ',';
+        csv += '"' + (trans.baseUnit || '') + '",';
+        csv += (trans.rate || 0) + ',';
+        csv += (trans.amount || 0) + ',';
+        csv += (trans.costRate || 0) + ',';
+        csv += (trans.runningQty || 0) + ',';
+        csv += (trans.runningCostValue || 0) + '\n';
+    });
+    
+    csv += '\n';
+    csv += 'SUMMARY\n';
+    csv += 'Total In Qty:,' + stockCardData.summary.totalInQty + '\n';
+    csv += 'Total Out Qty:,' + stockCardData.summary.totalOutQty + '\n';
+    csv += 'Closing Qty:,' + stockCardData.summary.closingQty + '\n';
+    csv += 'Closing Cost Value:,' + stockCardData.summary.closingCostValue + '\n';
+    
+    // Create download link
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    var link = document.createElement('a');
+    var url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'Stock_Card_' + stockCardData.stockInfo.code + '_' + new Date().toISOString().slice(0, 10) + '.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showMessage('Report exported successfully!', 'success');
+}
+
+// Format qty for display
+function formatQty(qty) {
+    if (qty === null || qty === undefined) return '0.00';
+    return parseFloat(qty).toFixed(2);
+}
+
+// Format amount for display
+function formatAmount(amount) {
+    if (amount === null || amount === undefined) return '0.00';
+    return parseFloat(amount).toFixed(2);
+}
+
+// Show message
+function showMessage(message, type) {
+    const container = document.getElementById('messageContainer');
+    container.innerHTML = '<div class="message ' + type + '">' + escapeHtml(message) + '</div>';
+    
+    setTimeout(function() {
+        container.innerHTML = '';
+    }, 5000);
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Logout function
+function logout() {
+    if (confirm('Are you sure you want to logout?')) {
+        performLogout();
+    }
+}
+</script>
+
+</body>
+</html>

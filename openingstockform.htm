@@ -408,6 +408,8 @@ tbody tr:hover {
             <button class="btn btn-warning" id="viewEditBtn" style="display: none;" onclick="editFromView()">✏️ Edit</button>
             <button class="btn btn-danger" id="viewDeleteBtn" style="display: none;" onclick="deleteFromView()">🗑️ Delete</button>
             <button class="btn btn-success" id="viewPrintBtn" style="display: none;" onclick="printFromView()">🖨️ Print</button>
+            <button class="btn btn-success" id="viewPostBtn" style="display: none;" onclick="postFromView()">📤 Post</button>
+            <button class="btn btn-warning" id="viewCancelPostBtn" style="display: none;" onclick="cancelPostFromView()">↩️ Cancel Post</button>
             <button class="btn" onclick="window.location.href='home.html'">🏠 Home</button>
             <button class="btn btn-danger" onclick="logout()">Logout</button>
         </div>
@@ -959,6 +961,20 @@ function loadOpeningStockForView(docNo) {
         document.getElementById('openingStockForm').style.display = 'block';
         document.getElementById('headerSection').classList.add('view-mode');
         document.getElementById('detailsTable').classList.add('view-mode');
+        
+        // Show Post/CancelPost buttons based on posted status
+        var postedBy = header.postedBy || '';
+        if (postedBy) {
+            document.getElementById('viewPostBtn').style.display = 'none';
+            document.getElementById('viewCancelPostBtn').style.display = 'inline-block';
+            document.getElementById('viewEditBtn').style.display = 'none';
+            document.getElementById('viewDeleteBtn').style.display = 'none';
+        } else {
+            document.getElementById('viewPostBtn').style.display = 'inline-block';
+            document.getElementById('viewCancelPostBtn').style.display = 'none';
+            document.getElementById('viewEditBtn').style.display = 'inline-block';
+            document.getElementById('viewDeleteBtn').style.display = 'inline-block';
+        }
     });
 }
 
@@ -1045,6 +1061,44 @@ function printFromView() {
     if (docNo) {
         window.open('openingstockprint.htm?docNo=' + encodeURIComponent(docNo), '_blank');
     }
+}
+
+function postFromView() {
+    const docNo = document.getElementById('docNo').value;
+    if (!docNo) return;
+    
+    if (!confirm('Are you sure you want to post opening stock "' + docNo + '" to stock transaction?\n\nThis will create stock transaction entries.')) {
+        return;
+    }
+    
+    apiPostSOPToStockTransaction(docNo, function(response) {
+        if (response.status === 'success') {
+            showMessage('Opening stock posted successfully!', 'success');
+            document.getElementById('viewPostBtn').style.display = 'none';
+            document.getElementById('viewCancelPostBtn').style.display = 'inline-block';
+        } else {
+            showMessage('Error: ' + response.message, 'error');
+        }
+    });
+}
+
+function cancelPostFromView() {
+    const docNo = document.getElementById('docNo').value;
+    if (!docNo) return;
+    
+    if (!confirm('Are you sure you want to cancel the post of opening stock "' + docNo + '"?\n\nThis will remove the stock transaction entries.')) {
+        return;
+    }
+    
+    apiCancelSOPStockTransactionPost(docNo, function(response) {
+        if (response.status === 'success') {
+            showMessage('Opening stock post cancelled successfully!', 'success');
+            document.getElementById('viewPostBtn').style.display = 'inline-block';
+            document.getElementById('viewCancelPostBtn').style.display = 'none';
+        } else {
+            showMessage('Error: ' + response.message, 'error');
+        }
+    });
 }
 
 // ============================================

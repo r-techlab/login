@@ -436,8 +436,10 @@ tbody tr:hover {
                             <th>Narration</th>
                             <th class="amount">Gross Amount</th>
                             <th class="amount">Net Amount</th>
+                            <th>Posted</th>
                             <th>Actions</th>
                         </tr>
+
                     </thead>
                     <tbody id="purchasesTableBody">
                     </tbody>
@@ -532,6 +534,7 @@ function displayPurchases(purchases) {
     
     purchases.forEach(function(purchase) {
         const row = document.createElement('tr');
+        const isPosted = purchase.postedBy && purchase.postedBy !== '';
         
         row.innerHTML = `
             <td><strong>${escapeHtml(purchase.docNo)}</strong></td>
@@ -540,17 +543,23 @@ function displayPurchases(purchases) {
             <td>${escapeHtml(purchase.narration || '-')}</td>
             <td class="amount">${formatAmount(purchase.grossAmount)}</td>
             <td class="amount">${formatAmount(purchase.net)}</td>
+            <td>${isPosted ? '<span style="color: #27ae60; font-weight: bold;">✓ Posted</span>' : '<span style="color: #e74c3c;">Not Posted</span>'}</td>
             <td>
                 <div class="action-buttons">
                     <button class="btn btn-small" onclick="viewPurchase('${escapeHtml(purchase.docNo)}')">👁️ View</button>
-                    <button class="btn btn-warning btn-small" onclick="editPurchase('${escapeHtml(purchase.docNo)}')">✏️ Edit</button>
-                    <button class="btn btn-danger btn-small" onclick="deletePurchase('${escapeHtml(purchase.docNo)}')">🗑️ Delete</button>
+                    <button class="btn btn-warning btn-small" onclick="editPurchase('${escapeHtml(purchase.docNo)}')" ${isPosted ? 'disabled' : ''}>✏️ Edit</button>
+                    <button class="btn btn-danger btn-small" onclick="deletePurchase('${escapeHtml(purchase.docNo)}')" ${isPosted ? 'disabled' : ''}>🗑️ Delete</button>
+                    ${isPosted 
+                        ? `<button class="btn btn-warning btn-small" onclick="cancelPostPurchase('${escapeHtml(purchase.docNo)}')">↩ CancelPost</button>`
+                        : `<button class="btn btn-success btn-small" onclick="postPurchase('${escapeHtml(purchase.docNo)}')">📤 Post</button>`
+                    }
                 </div>
             </td>
         `;
         
         tbody.appendChild(row);
     });
+
     
     updatePaginationControls();
 }
@@ -715,12 +724,49 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+function postPurchase(docNo) {
+    let confirmMsg = 'Are you sure you want to post purchase "' + docNo + '" to stock?';
+    confirmMsg += '\n\nThis will update stock quantities and values.';
+    
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+    
+    apiPostPIToStockTransaction(docNo, function(response) {
+        if (response.status === 'success') {
+            showMessage('Purchase posted to stock successfully!', 'success');
+            loadPurchases();
+        } else {
+            showMessage('Error: ' + response.message, 'error');
+        }
+    });
+}
+
+function cancelPostPurchase(docNo) {
+    let confirmMsg = 'Are you sure you want to cancel the post for purchase "' + docNo + '"?';
+    confirmMsg += '\n\nThis will reverse the stock transaction.';
+    
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+    
+    apiCancelPIStockTransactionPost(docNo, function(response) {
+        if (response.status === 'success') {
+            showMessage('Purchase post cancelled successfully!', 'success');
+            loadPurchases();
+        } else {
+            showMessage('Error: ' + response.message, 'error');
+        }
+    });
+}
+
 function logout() {
     if (confirm('Are you sure you want to logout?')) {
         performLogout();
     }
 }
 </script>
+
 
 </body>
 </html>

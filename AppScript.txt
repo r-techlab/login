@@ -194,6 +194,26 @@ function doGet(e) {
     return handleCreateOpeningStockGet(e);
   } else if (action === "updateOpeningStock") {
     return handleUpdateOpeningStockGet(e);
+  } else if (action === "deleteOpeningStock") {
+    return handleDeleteOpeningStockGet(e);
+  } else if (action === "postSOPToStockTransaction") {
+    return handlePostSOPToStockTransactionGet(e);
+  } else if (action === "cancelSOPStockTransactionPost") {
+    return handleCancelSOPStockTransactionPostGet(e);
+  } else if (action === "postPIToStockTransaction") {
+    return handlePostPIToStockTransactionGet(e);
+  } else if (action === "cancelPIStockTransactionPost") {
+    return handleCancelPIStockTransactionPostGet(e);
+  } else if (action === "postSIToStockTransaction") {
+    return handlePostSIToStockTransactionGet(e);
+  } else if (action === "cancelSIStockTransactionPost") {
+    return handleCancelSIStockTransactionPostGet(e);
+  } else if (action === "getStockTransaction") {
+    return handleGetStockTransactionGet(e);
+  } else if (action === "getStockBalance") {
+    return handleGetStockBalanceGet(e);
+  } else if (action === "getStockCard") {
+    return handleGetStockCardGet(e);
   } else if (action === "getStockUnits") {
     return handleGetStockUnitsGet(e);
   } else if (action === "createStockUnit") {
@@ -375,7 +395,9 @@ function handleGetOpeningStocksGet(e) {
         amount: headerData[i][3] || 0,
         narration: narration,
         createdBy: headerData[i][5] || '',
-        createdTime: headerData[i][6] || ''
+        createdTime: headerData[i][6] || '',
+        postedBy: headerData[i][7] || '',
+        postedTime: headerData[i][8] || ''
       });
     }
   }
@@ -451,7 +473,9 @@ function handleGetOpeningStockByDocNoGet(e) {
         amount: headerData[i][3] || 0,
         narration: headerData[i][4] || '',
         createdBy: headerData[i][5] || '',
-        createdTime: headerData[i][6] || ''
+        createdTime: headerData[i][6] || '',
+        postedBy: headerData[i][7] || '',
+        postedTime: headerData[i][8] || ''
       };
       break;
     }
@@ -543,7 +567,7 @@ function handleCreateOpeningStockGet(e) {
   var headerSheet = ss.getSheetByName("SOPHeader");
   if (!headerSheet) {
     headerSheet = ss.insertSheet("SOPHeader");
-    headerSheet.appendRow(["DocType", "DocNo", "Date", "Amount", "Narration", "CreatedBy", "CreatedTime"]);
+  headerSheet.appendRow(["DocType", "DocNo", "Date", "Amount", "Narration", "CreatedBy", "CreatedTime", "PostedBy", "PostedTime"]);
   }
   var headerData = headerSheet.getDataRange().getValues();
   var maxNum = 10000; // Starting number
@@ -4122,7 +4146,9 @@ function handleGetSalesGet(e) {
         vatTreatment: salesHeaderData[i][14] || '',
         rateType: salesHeaderData[i][15] || '',
         refNo: salesHeaderData[i][16] || '',
-        refDate: salesHeaderData[i][17] ? Utilities.formatDate(new Date(salesHeaderData[i][17]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : ''
+        refDate: salesHeaderData[i][17] ? Utilities.formatDate(new Date(salesHeaderData[i][17]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
+        postedBy: salesHeaderData[i][19] || '',
+        postedTime: salesHeaderData[i][20] || ''
       });
     }
   }
@@ -4202,7 +4228,9 @@ function handleGetSaleByDocNoGet(e) {
         vatTreatment: salesHeaderData[i][14] || '',
         rateType: salesHeaderData[i][15] || '',
         refNo: salesHeaderData[i][16] || '',
-        refDate: salesHeaderData[i][17] ? Utilities.formatDate(new Date(salesHeaderData[i][17]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : ''
+        refDate: salesHeaderData[i][17] ? Utilities.formatDate(new Date(salesHeaderData[i][17]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
+        postedBy: salesHeaderData[i][19] || '',
+        postedTime: salesHeaderData[i][20] || ''
       };
       break;
     }
@@ -4636,8 +4664,11 @@ function handleGetPurchasesGet(e) {
         vatTreatment: purchaseHeaderData[i][14] || '',
         rateType: purchaseHeaderData[i][15] || '',
         refNo: purchaseHeaderData[i][16] || '',
-        refDate: purchaseHeaderData[i][17] ? Utilities.formatDate(new Date(purchaseHeaderData[i][17]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : ''
+        refDate: purchaseHeaderData[i][17] ? Utilities.formatDate(new Date(purchaseHeaderData[i][17]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
+        postedBy: purchaseHeaderData[i][19] || '',
+        postedTime: purchaseHeaderData[i][20] || ''
       });
+
     }
   }
   
@@ -4716,8 +4747,11 @@ function handleGetPurchaseByDocNoGet(e) {
         vatTreatment: purchaseHeaderData[i][14] || '',
         rateType: purchaseHeaderData[i][15] || '',
         refNo: purchaseHeaderData[i][16] || '',
-        refDate: purchaseHeaderData[i][17] ? Utilities.formatDate(new Date(purchaseHeaderData[i][17]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : ''
+        refDate: purchaseHeaderData[i][17] ? Utilities.formatDate(new Date(purchaseHeaderData[i][17]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
+        postedBy: purchaseHeaderData[i][19] || '',
+        postedTime: purchaseHeaderData[i][20] || ''
       };
+
       break;
     }
   }
@@ -6219,8 +6253,1417 @@ function handleGetSalesmanSalesSummaryGet(e) {
   return createJsonResponse(result);
 }
 // ============================================
+// STOCK TRANSACTION POSTING HANDLERS
+// ============================================
+
+// Ensure StockTransaction sheet exists with proper headers
+function ensureStockTransactionSheet(ss) {
+  var sheet = ss.getSheetByName("StockTransaction");
+  if (!sheet) {
+    sheet = ss.insertSheet("StockTransaction");
+    sheet.appendRow(["DocType", "DocNo", "DocSrNo", "Date", "PartyType", "PartyCode", "PartyDesc", "StockCode", "StockDesc", "Qty", "BaseUnit", "Rate", "Amount", "CostRate", "CostValue"]);
+  }
+  return sheet;
+}
+
+// Get stock transaction records
+function handleGetStockTransactionGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var stockTransactionSheet = ss.getSheetByName("StockTransaction");
+  if (!stockTransactionSheet) {
+    var emptyResult = { status: "success", transactions: [] };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(emptyResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(emptyResult);
+  }
+  
+  var data = stockTransactionSheet.getDataRange().getValues();
+  var transactions = [];
+  
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][1]) { // Check if DocNo exists
+      transactions.push({
+        docType: data[i][0] || '',
+        docNo: data[i][1] || '',
+        docSrNo: data[i][2] || 0,
+        date: data[i][3] ? Utilities.formatDate(new Date(data[i][3]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
+        partyType: data[i][4] || '',
+        partyCode: data[i][5] || '',
+        partyDesc: data[i][6] || '',
+        stockCode: data[i][7] || '',
+        stockDesc: data[i][8] || '',
+        qty: parseFloat(data[i][9]) || 0,
+        baseUnit: data[i][10] || '',
+        rate: parseFloat(data[i][11]) || 0,
+        amount: parseFloat(data[i][12]) || 0,
+        costRate: parseFloat(data[i][13]) || 0,
+        costValue: parseFloat(data[i][14]) || 0
+      });
+    }
+  }
+  
+  var result = { status: "success", transactions: transactions };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Get stock unit conversion factor
+function getStockUnitConversion(ss, stockCode, fromUnit, toUnit) {
+  // If same unit, no conversion needed
+  if (fromUnit === toUnit) {
+    return { factor: 1, fromQty: 1, toQty: 1 };
+  }
+  
+  var stockUnitSheet = ss.getSheetByName("StockUnit");
+  if (!stockUnitSheet) {
+    return { factor: 1, fromQty: 1, toQty: 1 };
+  }
+  
+  var data = stockUnitSheet.getDataRange().getValues();
+  
+  // Look for conversion from fromUnit to toUnit
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] && data[i][0].toString() == stockCode.toString()) {
+      if (data[i][1] && data[i][1].toString() == fromUnit.toString()) {
+        var fromQty = parseFloat(data[i][2]) || 1;
+        var toQty = parseFloat(data[i][3]) || 1;
+        return { factor: fromQty / toQty, fromQty: fromQty, toQty: toQty };
+      }
+    }
+  }
+  
+  // No conversion found, assume 1:1
+  return { factor: 1, fromQty: 1, toQty: 1 };
+}
+
+// ============================================
+// STOCK BALANCE HANDLER
+// ============================================
+
+// Get stock balance (aggregated by StockCode from StockTransaction)
+function handleGetStockBalanceGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  var search = (e.parameter.search || '').toLowerCase();
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var stockTransactionSheet = ss.getSheetByName("StockTransaction");
+  if (!stockTransactionSheet) {
+    var emptyResult = { status: "success", stockBalances: [], summary: { totalStocks: 0, totalQty: 0, totalCostValue: 0 } };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(emptyResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(emptyResult);
+  }
+  
+  var data = stockTransactionSheet.getDataRange().getValues();
+  
+  // Aggregate balances by StockCode
+  var balanceMap = {};
+  
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][7]) { // Check if StockCode exists
+      var stockCode = data[i][7].toString();
+      var stockDesc = data[i][8] || '';
+      var baseUnit = data[i][10] || '';
+      var qty = parseFloat(data[i][9]) || 0;
+      var costRate = parseFloat(data[i][13]) || 0;
+      var costValue = parseFloat(data[i][14]) || 0;
+      
+      // For outbound transactions (negative qty), CostValue represents COGS that left inventory
+      // so we must subtract it from total cost to get remaining inventory value
+      if (qty < 0) {
+        // Sales/outbound: CostValue represents cost of goods sold - subtract from inventory
+        costValue = -Math.abs(costValue);
+      } else {
+        // Inbound: CostValue adds to inventory
+        costValue = Math.abs(costValue);
+      }
+      
+      if (!balanceMap[stockCode]) {
+        balanceMap[stockCode] = {
+          stockCode: stockCode,
+          stockDesc: stockDesc,
+          balanceQty: 0,
+          baseUnit: baseUnit,
+          totalCostValue: 0,
+          inboundQty: 0,
+          inboundCostValue: 0,
+          outboundQty: 0,
+          outboundCostValue: 0
+        };
+      } else {
+        // Update description/unit if later entries have more info
+        if (stockDesc && !balanceMap[stockCode].stockDesc) {
+          balanceMap[stockCode].stockDesc = stockDesc;
+        }
+        if (baseUnit && !balanceMap[stockCode].baseUnit) {
+          balanceMap[stockCode].baseUnit = baseUnit;
+        }
+      }
+      
+      balanceMap[stockCode].balanceQty += qty;
+      balanceMap[stockCode].totalCostValue += costValue;
+      
+      if (qty > 0) {
+        balanceMap[stockCode].inboundQty += qty;
+        balanceMap[stockCode].inboundCostValue += costValue;
+      } else {
+        balanceMap[stockCode].outboundQty += Math.abs(qty);
+        balanceMap[stockCode].outboundCostValue += Math.abs(costValue);
+      }
+    }
+  }
+  
+  // Convert to array
+  var stockBalances = [];
+  for (var key in balanceMap) {
+    if (balanceMap.hasOwnProperty(key)) {
+      var item = balanceMap[key];
+      // Apply search filter
+      if (search) {
+        if (item.stockCode.toLowerCase().indexOf(search) === -1 &&
+            item.stockDesc.toLowerCase().indexOf(search) === -1) {
+          continue;
+        }
+      }
+      // Calculate average cost rate (only for items with non-zero balance)
+      item.avgCostRate = item.balanceQty !== 0 ? Math.round((item.totalCostValue / item.balanceQty) * 100) / 100 : 0;
+      item.balanceQty = Math.round(item.balanceQty * 100) / 100;
+      item.totalCostValue = Math.round(item.totalCostValue * 100) / 100;
+      stockBalances.push(item);
+    }
+  }
+  
+  // Sort by StockCode ascending
+  stockBalances.sort(function(a, b) {
+    return a.stockCode.localeCompare(b.stockCode);
+  });
+  
+  // Calculate summary
+  var totalStocks = stockBalances.length;
+  var totalQty = 0;
+  var totalCostValue = 0;
+  
+  for (var i = 0; i < stockBalances.length; i++) {
+    totalQty += stockBalances[i].balanceQty;
+    totalCostValue += stockBalances[i].totalCostValue;
+  }
+  
+  totalQty = Math.round(totalQty * 100) / 100;
+  totalCostValue = Math.round(totalCostValue * 100) / 100;
+  
+  var result = { 
+    status: "success", 
+    stockBalances: stockBalances,
+    summary: {
+      totalStocks: totalStocks,
+      totalQty: totalQty,
+      totalCostValue: totalCostValue
+    }
+  };
+  
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// ============================================
+// STOCK CARD HANDLER
+// ============================================
+
+// Get stock card (movement ledger for a specific stock item)
+function handleGetStockCardGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  var stockCode = (e.parameter.stockCode || '').toString();
+  var fromDate = e.parameter.fromDate || '';
+  var toDate = e.parameter.toDate || '';
+
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+
+  // Validate input
+  if (!stockCode) {
+    var errorResult = { status: "error", message: "Stock code is required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+
+  // Get stock master info
+  var stockMasterSheet = ss.getSheetByName("StockMaster");
+  var stockInfo = null;
+  if (stockMasterSheet) {
+    var stockData = stockMasterSheet.getDataRange().getValues();
+    for (var i = 1; i < stockData.length; i++) {
+      if (stockData[i][0] && stockData[i][0].toString().toUpperCase() == stockCode.toUpperCase()) {
+        stockInfo = {
+          code: stockData[i][0].toString(),
+          description: stockData[i][1] || '',
+          baseUnit: stockData[i][2] || ''
+        };
+        break;
+      }
+    }
+  }
+
+  if (!stockInfo) {
+    // If not found in StockMaster, still allow viewing transactions using a minimal info object
+    stockInfo = {
+      code: stockCode,
+      description: '',
+      baseUnit: 'PCS'
+    };
+  }
+
+  // Get transactions
+  var stockTransactionSheet = ss.getSheetByName("StockTransaction");
+  if (!stockTransactionSheet) {
+    var emptyResult = {
+      status: "success",
+      stockInfo: stockInfo,
+      transactions: [],
+      openingBalance: { qty: 0, costValue: 0 },
+      summary: { totalInQty: 0, totalOutQty: 0, closingQty: 0, closingCostValue: 0 }
+    };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(emptyResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(emptyResult);
+  }
+
+  var data = stockTransactionSheet.getDataRange().getValues();
+  var allTransactions = [];
+
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][7] && data[i][7].toString().toUpperCase() == stockCode.toUpperCase()) {
+      var transDate = data[i][3] ? Utilities.formatDate(new Date(data[i][3]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '';
+      
+      allTransactions.push({
+        docType: data[i][0] || '',
+        docNo: data[i][1] || '',
+        docSrNo: data[i][2] || 0,
+        date: transDate,
+        partyType: data[i][4] || '',
+        partyCode: data[i][5] || '',
+        partyDesc: data[i][6] || '',
+        stockCode: data[i][7] || '',
+        stockDesc: data[i][8] || '',
+        qty: parseFloat(data[i][9]) || 0,
+        baseUnit: data[i][10] || '',
+        rate: parseFloat(data[i][11]) || 0,
+        amount: parseFloat(data[i][12]) || 0,
+        costRate: parseFloat(data[i][13]) || 0,
+        costValue: parseFloat(data[i][14]) || 0
+      });
+    }
+  }
+
+  // Sort by date ascending, then by DocNo ascending
+  allTransactions.sort(function(a, b) {
+    if (a.date !== b.date) return a.date.localeCompare(b.date);
+    return a.docNo.localeCompare(b.docNo);
+  });
+
+  // Calculate opening balance (transactions before fromDate)
+  var openingQty = 0;
+  var openingCostValue = 0;
+  var selectedTransactions = [];
+  var totalInQty = 0;
+  var totalOutQty = 0;
+
+  for (var t = 0; t < allTransactions.length; t++) {
+    var trans = allTransactions[t];
+    
+    if (fromDate && trans.date < fromDate) {
+      // This transaction is before the fromDate, add to opening balance
+      openingQty += trans.qty;
+      openingCostValue += (trans.qty > 0 ? Math.abs(trans.costValue) : -Math.abs(trans.costValue));
+    } else if (toDate && trans.date > toDate) {
+      // This transaction is after the toDate, skip
+      continue;
+    } else {
+      // This transaction is within the date range
+      selectedTransactions.push(trans);
+      if (trans.qty > 0) {
+        totalInQty += trans.qty;
+      } else {
+        totalOutQty += Math.abs(trans.qty);
+      }
+    }
+  }
+
+  // Calculate running balance and add to each transaction
+  var runningQty = openingQty;
+  var runningCostValue = openingCostValue;
+  
+  // Update stockInfo description if it was empty but we found it in transactions
+  if (!stockInfo.description && selectedTransactions.length > 0) {
+    stockInfo.description = selectedTransactions[0].stockDesc || '';
+  }
+
+  for (var t = 0; t < selectedTransactions.length; t++) {
+    runningQty += selectedTransactions[t].qty;
+    if (selectedTransactions[t].qty > 0) {
+      runningCostValue += Math.abs(selectedTransactions[t].costValue);
+    } else {
+      runningCostValue -= Math.abs(selectedTransactions[t].costValue);
+    }
+    selectedTransactions[t].runningQty = Math.round(runningQty * 100) / 100;
+    selectedTransactions[t].runningCostValue = Math.round(runningCostValue * 100) / 100;
+
+    // Separate in/out qty for display
+    if (selectedTransactions[t].qty > 0) {
+      selectedTransactions[t].inQty = Math.round(selectedTransactions[t].qty * 100) / 100;
+      selectedTransactions[t].outQty = 0;
+    } else {
+      selectedTransactions[t].inQty = 0;
+      selectedTransactions[t].outQty = Math.round(Math.abs(selectedTransactions[t].qty) * 100) / 100;
+    }
+  }
+
+  var closingQty = Math.round(runningQty * 100) / 100;
+  var closingCostValue = Math.round(runningCostValue * 100) / 100;
+
+  var result = {
+    status: "success",
+    stockInfo: stockInfo,
+    transactions: selectedTransactions,
+    openingBalance: {
+      qty: Math.round(openingQty * 100) / 100,
+      costValue: Math.round(openingCostValue * 100) / 100
+    },
+    summary: {
+      totalInQty: Math.round(totalInQty * 100) / 100,
+      totalOutQty: Math.round(totalOutQty * 100) / 100,
+      closingQty: closingQty,
+      closingCostValue: closingCostValue
+    }
+  };
+
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Calculate Moving Average Cost for a stock as of a given date
+function calculateMovingAverageCost(ss, stockCode, asOfDate) {
+  var stockTransactionSheet = ss.getSheetByName("StockTransaction");
+  if (!stockTransactionSheet) {
+    return 0;
+  }
+  
+  var data = stockTransactionSheet.getDataRange().getValues();
+  var totalQty = 0;
+  var totalCostValue = 0;
+  
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][7] && data[i][7].toString() == stockCode.toString()) {
+      var transDate = data[i][3] ? new Date(data[i][3]) : null;
+      var transDateStr = transDate ? Utilities.formatDate(transDate, Session.getScriptTimeZone(), 'yyyy-MM-dd') : '';
+      
+      // Only include transactions on or before the asOfDate
+      if (transDateStr <= asOfDate) {
+        var qty = parseFloat(data[i][9]) || 0;
+        var costValue = parseFloat(data[i][14]) || 0;
+        totalQty += qty;
+        totalCostValue += costValue;
+      }
+    }
+  }
+  
+  if (totalQty === 0) return 0;
+  return totalCostValue / totalQty;
+}
+
+// Post SOP to StockTransaction
+function handlePostSOPToStockTransactionGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var docNo = e.parameter.docNo;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!docNo) {
+    var errorResult = { status: "error", message: "DocNo is required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Check if already posted
+  var headerSheet = ss.getSheetByName("SOPHeader");
+  if (!headerSheet) {
+    var errorResult = { status: "error", message: "SOPHeader sheet not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var headerData = headerSheet.getDataRange().getValues();
+  var headerRow = -1;
+  var headerDate = '';
+  var postedBy = '';
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1] == docNo) {
+      headerRow = i;
+      headerDate = headerData[i][2] ? Utilities.formatDate(new Date(headerData[i][2]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '';
+      postedBy = headerData[i][7] || '';
+      break;
+    }
+  }
+  
+  if (headerRow === -1) {
+    var errorResult = { status: "error", message: "SOP document not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  if (postedBy) {
+    var errorResult = { status: "error", message: "Document is already posted by " + postedBy };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get SOP details
+  var detailsSheet = ss.getSheetByName("SOPDetails");
+  if (!detailsSheet) {
+    var errorResult = { status: "error", message: "SOPDetails sheet not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var detailsData = detailsSheet.getDataRange().getValues();
+  var sopDetails = [];
+  
+  for (var i = 1; i < detailsData.length; i++) {
+    if (detailsData[i][1] == docNo) {
+      sopDetails.push({
+        docSrNo: detailsData[i][2] || 0,
+        stockCode: detailsData[i][3] || '',
+        stockDescription: detailsData[i][4] || '',
+        qty: parseFloat(detailsData[i][5]) || 0,
+        unit: detailsData[i][6] || '',
+        rate: parseFloat(detailsData[i][7]) || 0,
+        amount: parseFloat(detailsData[i][8]) || 0
+      });
+    }
+  }
+  
+  if (sopDetails.length === 0) {
+    var errorResult = { status: "error", message: "No details found for this document" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get StockMaster to find base units
+  var stockSheet = ss.getSheetByName("StockMaster");
+  var stockData = stockSheet ? stockSheet.getDataRange().getValues() : [];
+  var stockMap = {};
+  for (var i = 1; i < stockData.length; i++) {
+    if (stockData[i][0]) {
+      stockMap[stockData[i][0].toString()] = {
+        description: stockData[i][1] || '',
+        baseUnit: stockData[i][2] || ''
+      };
+    }
+  }
+  
+  // Ensure StockTransaction sheet exists
+  var stockTransactionSheet = ensureStockTransactionSheet(ss);
+  
+  // Post each detail line to StockTransaction
+  var now = new Date();
+  var postedTime = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+  
+  for (var d = 0; d < sopDetails.length; d++) {
+    var detail = sopDetails[d];
+    var stockCode = detail.stockCode;
+    var stockDesc = detail.stockDescription;
+    var docUnit = detail.unit;
+    var docQty = detail.qty;
+    var docRate = detail.rate;
+    var docAmount = detail.amount;
+    
+    // Get base unit from StockMaster
+    var stockInfo = stockMap[stockCode.toString()];
+    var baseUnit = (stockInfo && stockInfo.baseUnit) || docUnit || 'PCS';
+    
+    // Convert to base unit if needed
+    var baseQty = docQty;
+    var baseRate = docRate;
+    var baseAmount = docAmount;
+    
+    if (docUnit && docUnit !== baseUnit) {
+      var conversion = getStockUnitConversion(ss, stockCode, docUnit, baseUnit);
+      baseQty = docQty * conversion.factor;
+      baseRate = docRate / conversion.factor;
+      baseAmount = baseQty * baseRate;
+    }
+    
+    // For SOP, CostRate = Rate (opening stock cost equals the rate)
+    var costRate = baseRate;
+    var costValue = baseQty * costRate;
+    
+    // Add to StockTransaction sheet
+    stockTransactionSheet.appendRow([
+      'SOP',       // DocType
+      docNo,       // DocNo
+      detail.docSrNo, // DocSrNo
+      headerDate,  // Date
+      '',          // PartyType (empty for SOP)
+      '',          // PartyCode (empty for SOP)
+      '',          // PartyDesc (empty for SOP)
+      stockCode,   // StockCode
+      stockDesc,   // StockDesc
+      baseQty,     // Qty (in base unit)
+      baseUnit,    // BaseUnit
+      baseRate,    // Rate (in base unit)
+      baseAmount,  // Amount
+      costRate,    // CostRate
+      costValue    // CostValue
+    ]);
+  }
+  
+  // Update SOPHeader with PostedBy and PostedTime
+  headerSheet.getRange(headerRow + 1, 8).setValue(validation.userName);
+  headerSheet.getRange(headerRow + 1, 9).setValue(postedTime);
+  
+  var result = { status: "success", message: "SOP posted to stock transaction successfully", postedBy: validation.userName, postedTime: postedTime };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Cancel SOP stock transaction post
+function handleCancelSOPStockTransactionPostGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var docNo = e.parameter.docNo;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!docNo) {
+    var errorResult = { status: "error", message: "DocNo is required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Check if posted
+  var headerSheet = ss.getSheetByName("SOPHeader");
+  if (!headerSheet) {
+    var errorResult = { status: "error", message: "SOPHeader sheet not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var headerData = headerSheet.getDataRange().getValues();
+  var headerRow = -1;
+  var postedBy = '';
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1] == docNo) {
+      headerRow = i;
+      postedBy = headerData[i][7] || '';
+      break;
+    }
+  }
+  
+  if (headerRow === -1) {
+    var errorResult = { status: "error", message: "SOP document not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  if (!postedBy) {
+    var errorResult = { status: "error", message: "Document is not posted" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Delete from StockTransaction sheet
+  var stockTransactionSheet = ss.getSheetByName("StockTransaction");
+  if (stockTransactionSheet) {
+    var transData = stockTransactionSheet.getDataRange().getValues();
+    for (var i = transData.length - 1; i >= 1; i--) {
+      if (transData[i][0] == 'SOP' && transData[i][1] == docNo) {
+        stockTransactionSheet.deleteRow(i + 1);
+      }
+    }
+  }
+  
+  // Clear PostedBy and PostedTime in SOPHeader
+  headerSheet.getRange(headerRow + 1, 8).setValue('');
+  headerSheet.getRange(headerRow + 1, 9).setValue('');
+  
+  var result = { status: "success", message: "SOP stock transaction post cancelled successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// ============================================
+// PURCHASE INVOICE STOCK TRANSACTION POSTING
+// ============================================
+
+// Post PI to StockTransaction
+function handlePostPIToStockTransactionGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var docNo = e.parameter.docNo;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!docNo) {
+    var errorResult = { status: "error", message: "DocNo is required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Check if already posted
+  var headerSheet = ss.getSheetByName("PurchaseHeader");
+  if (!headerSheet) {
+    var errorResult = { status: "error", message: "PurchaseHeader sheet not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var headerData = headerSheet.getDataRange().getValues();
+  var headerRow = -1;
+  var headerDate = '';
+  var postedBy = '';
+  var supplierCode = '';
+  var supplierDesc = '';
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1] == docNo) {
+      headerRow = i;
+      headerDate = headerData[i][2] ? Utilities.formatDate(new Date(headerData[i][2]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '';
+      postedBy = headerData[i][19] || ''; // PostedBy at index 19 (column 20)
+      supplierCode = headerData[i][3] || '';
+      supplierDesc = headerData[i][4] || '';
+      break;
+    }
+  }
+
+  
+  if (headerRow === -1) {
+    var errorResult = { status: "error", message: "Purchase document not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  if (postedBy) {
+    var errorResult = { status: "error", message: "Document is already posted by " + postedBy };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get PI details
+  var detailsSheet = ss.getSheetByName("PurchaseDetails");
+  if (!detailsSheet) {
+    var errorResult = { status: "error", message: "PurchaseDetails sheet not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var detailsData = detailsSheet.getDataRange().getValues();
+  var piDetails = [];
+  
+  for (var i = 1; i < detailsData.length; i++) {
+    if (detailsData[i][1] == docNo) {
+      piDetails.push({
+        docSrNo: detailsData[i][2] || 0,
+        stockCode: detailsData[i][3] || '',
+        stockDescription: detailsData[i][4] || '',
+        qty: parseFloat(detailsData[i][5]) || 0,
+        unit: detailsData[i][6] || '',
+        rate: parseFloat(detailsData[i][7]) || 0,
+        amount: parseFloat(detailsData[i][8]) || 0
+      });
+    }
+  }
+  
+  if (piDetails.length === 0) {
+    var errorResult = { status: "error", message: "No details found for this document" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get StockMaster to find base units
+  var stockSheet = ss.getSheetByName("StockMaster");
+  var stockData = stockSheet ? stockSheet.getDataRange().getValues() : [];
+  var stockMap = {};
+  for (var i = 1; i < stockData.length; i++) {
+    if (stockData[i][0]) {
+      stockMap[stockData[i][0].toString()] = {
+        description: stockData[i][1] || '',
+        baseUnit: stockData[i][2] || ''
+      };
+    }
+  }
+  
+  // Ensure StockTransaction sheet exists
+  var stockTransactionSheet = ensureStockTransactionSheet(ss);
+  
+  // Post each detail line to StockTransaction
+  var now = new Date();
+  var postedTime = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+  
+  for (var d = 0; d < piDetails.length; d++) {
+    var detail = piDetails[d];
+    var stockCode = detail.stockCode;
+    var stockDesc = detail.stockDescription;
+    var docUnit = detail.unit;
+    var docQty = detail.qty;
+    var docRate = detail.rate;
+    var docAmount = detail.amount;
+    
+    // Get base unit from StockMaster
+    var stockInfo = stockMap[stockCode.toString()];
+    var baseUnit = (stockInfo && stockInfo.baseUnit) || docUnit || 'PCS';
+    
+    // Convert to base unit if needed
+    var baseQty = docQty;
+    var baseRate = docRate;
+    var baseAmount = docAmount;
+    
+    if (docUnit && docUnit !== baseUnit) {
+      var conversion = getStockUnitConversion(ss, stockCode, docUnit, baseUnit);
+      baseQty = docQty * conversion.factor;
+      baseRate = docRate / conversion.factor;
+      baseAmount = baseQty * baseRate;
+    }
+    
+    // Calculate Moving Average Cost including this purchase
+    // First, calculate the total cost value of this line
+    var lineCostValue = baseQty * baseRate;
+    
+    // Get current moving average cost before this transaction
+    var currentAvgCost = calculateMovingAverageCost(ss, stockCode, headerDate);
+    
+    // Calculate new moving average cost including this purchase
+    // Get existing total qty and cost value for this stock
+    var transData = stockTransactionSheet.getDataRange().getValues();
+    var existingQty = 0;
+    var existingCostValue = 0;
+    for (var t = 1; t < transData.length; t++) {
+      if (transData[t][7] && transData[t][7].toString() == stockCode.toString()) {
+        var transDate = transData[t][3] ? new Date(transData[t][3]) : null;
+        var transDateStr = transDate ? Utilities.formatDate(transDate, Session.getScriptTimeZone(), 'yyyy-MM-dd') : '';
+        if (transDateStr <= headerDate) {
+          existingQty += parseFloat(transData[t][9]) || 0;
+          existingCostValue += parseFloat(transData[t][14]) || 0;
+        }
+      }
+    }
+    
+    // New moving average cost = (existing cost value + new line cost value) / (existing qty + new qty)
+    var totalQty = existingQty + baseQty;
+    var totalCostValue = existingCostValue + lineCostValue;
+    var costRate = totalQty > 0 ? totalCostValue / totalQty : baseRate;
+    var costValue = baseQty * costRate;
+    
+    // Add to StockTransaction sheet
+    stockTransactionSheet.appendRow([
+      'PI',        // DocType
+      docNo,       // DocNo
+      detail.docSrNo, // DocSrNo
+      headerDate,  // Date
+      'AP',        // PartyType (Accounts Payable for Purchase)
+      supplierCode, // PartyCode (Supplier code)
+      supplierDesc, // PartyDesc (Supplier name)
+      stockCode,   // StockCode
+      stockDesc,   // StockDesc
+      baseQty,     // Qty (in base unit)
+      baseUnit,    // BaseUnit
+      baseRate,    // Rate (in base unit)
+      baseAmount,  // Amount
+      costRate,    // CostRate (Moving Average Cost)
+      costValue    // CostValue
+    ]);
+  }
+  
+  // Update PurchaseHeader with PostedBy and PostedTime
+  // PurchaseHeader has 19 columns (indices 0-18), PostedBy at column 20 (index 19), PostedTime at column 21 (index 20)
+  headerSheet.getRange(headerRow + 1, 20).setValue(validation.userName);
+  headerSheet.getRange(headerRow + 1, 21).setValue(postedTime);
+  
+  var result = { status: "success", message: "Purchase invoice posted to stock transaction successfully", postedBy: validation.userName, postedTime: postedTime };
+
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Cancel PI stock transaction post
+function handleCancelPIStockTransactionPostGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var docNo = e.parameter.docNo;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!docNo) {
+    var errorResult = { status: "error", message: "DocNo is required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Check if posted
+  var headerSheet = ss.getSheetByName("PurchaseHeader");
+  if (!headerSheet) {
+    var errorResult = { status: "error", message: "PurchaseHeader sheet not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var headerData = headerSheet.getDataRange().getValues();
+  var headerRow = -1;
+  var postedBy = '';
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1] == docNo) {
+      headerRow = i;
+      postedBy = headerData[i][19] || ''; // PostedBy at index 19 (column 20)
+      break;
+    }
+  }
+  
+  if (headerRow === -1) {
+    var errorResult = { status: "error", message: "Purchase document not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  if (!postedBy) {
+    var errorResult = { status: "error", message: "Document is not posted" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+
+  
+  // Delete from StockTransaction sheet
+  var stockTransactionSheet = ss.getSheetByName("StockTransaction");
+  if (stockTransactionSheet) {
+    var transData = stockTransactionSheet.getDataRange().getValues();
+    for (var i = transData.length - 1; i >= 1; i--) {
+      if (transData[i][0] == 'PI' && transData[i][1] == docNo) {
+        stockTransactionSheet.deleteRow(i + 1);
+      }
+    }
+  }
+  
+  // Clear PostedBy and PostedTime in PurchaseHeader
+  // PurchaseHeader has 19 columns (indices 0-18), PostedBy at column 20 (index 19), PostedTime at column 21 (index 20)
+  headerSheet.getRange(headerRow + 1, 20).setValue('');
+  headerSheet.getRange(headerRow + 1, 21).setValue('');
+  
+  var result = { status: "success", message: "Purchase invoice stock transaction post cancelled successfully" };
+
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// ============================================
+// SALES INVOICE STOCK TRANSACTION POSTING
+// ============================================
+
+// Post SI to StockTransaction
+function handlePostSIToStockTransactionGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var docNo = e.parameter.docNo;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!docNo) {
+    var errorResult = { status: "error", message: "DocNo is required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Check if already posted
+  var headerSheet = ss.getSheetByName("SalesHeader");
+  if (!headerSheet) {
+    var errorResult = { status: "error", message: "SalesHeader sheet not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var headerData = headerSheet.getDataRange().getValues();
+  var headerRow = -1;
+  var headerDate = '';
+  var postedBy = '';
+  var customerCode = '';
+  var customerDesc = '';
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1] == docNo) {
+      headerRow = i;
+      headerDate = headerData[i][2] ? Utilities.formatDate(new Date(headerData[i][2]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '';
+      postedBy = headerData[i][19] || ''; // PostedBy at index 19 (column 20)
+      customerCode = headerData[i][3] || '';
+      customerDesc = headerData[i][4] || ''; // narration may also serve, but we look up customer desc
+      break;
+    }
+  }
+
+  if (headerRow === -1) {
+    var errorResult = { status: "error", message: "Sales document not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  if (postedBy) {
+    var errorResult = { status: "error", message: "Document is already posted by " + postedBy };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Look up customer description from CustomerMaster
+  var customerSheet = ss.getSheetByName("CustomerMaster");
+  if (customerSheet && customerCode) {
+    var customerData = customerSheet.getDataRange().getValues();
+    for (var c = 1; c < customerData.length; c++) {
+      if (customerData[c][0] && customerData[c][0].toString() == customerCode.toString()) {
+        customerDesc = customerData[c][1] || '';
+        break;
+      }
+    }
+  }
+  
+  // Get SI details
+  var detailsSheet = ss.getSheetByName("SalesDetails");
+  if (!detailsSheet) {
+    var errorResult = { status: "error", message: "SalesDetails sheet not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var detailsData = detailsSheet.getDataRange().getValues();
+  var siDetails = [];
+  
+  for (var i = 1; i < detailsData.length; i++) {
+    if (detailsData[i][1] == docNo) {
+      siDetails.push({
+        docSrNo: detailsData[i][2] || 0,
+        stockCode: detailsData[i][3] || '',
+        stockDescription: detailsData[i][4] || '',
+        qty: parseFloat(detailsData[i][5]) || 0,
+        unit: detailsData[i][6] || '',
+        rate: parseFloat(detailsData[i][7]) || 0,
+        amount: parseFloat(detailsData[i][8]) || 0
+      });
+    }
+  }
+  
+  if (siDetails.length === 0) {
+    var errorResult = { status: "error", message: "No details found for this document" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get StockMaster to find base units
+  var stockSheet = ss.getSheetByName("StockMaster");
+  var stockData = stockSheet ? stockSheet.getDataRange().getValues() : [];
+  var stockMap = {};
+  for (var i = 1; i < stockData.length; i++) {
+    if (stockData[i][0]) {
+      stockMap[stockData[i][0].toString()] = {
+        description: stockData[i][1] || '',
+        baseUnit: stockData[i][2] || ''
+      };
+    }
+  }
+  
+  // Ensure StockTransaction sheet exists
+  var stockTransactionSheet = ensureStockTransactionSheet(ss);
+  
+  // Post each detail line to StockTransaction
+  var now = new Date();
+  var postedTime = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+  
+  for (var d = 0; d < siDetails.length; d++) {
+    var detail = siDetails[d];
+    var stockCode = detail.stockCode;
+    var stockDesc = detail.stockDescription;
+    var docUnit = detail.unit;
+    var docQty = detail.qty;
+    var docRate = detail.rate;
+    var docAmount = detail.amount;
+    
+    // Get base unit from StockMaster
+    var stockInfo = stockMap[stockCode.toString()];
+    var baseUnit = (stockInfo && stockInfo.baseUnit) || docUnit || 'PCS';
+    
+    // Convert to base unit if needed
+    var baseQty = docQty;
+    var baseRate = docRate;
+    var baseAmount = docAmount;
+    
+    if (docUnit && docUnit !== baseUnit) {
+      var conversion = getStockUnitConversion(ss, stockCode, docUnit, baseUnit);
+      baseQty = docQty * conversion.factor;
+      baseRate = docRate / conversion.factor;
+      baseAmount = baseQty * baseRate;
+    }
+    
+    // For SI (Sales), qty is negative (outflow)
+    baseQty = -Math.abs(baseQty);
+    
+    // CostRate = Moving Average Cost (calculated before this SI since sales don't affect cost)
+    var costRate = calculateMovingAverageCost(ss, stockCode, headerDate);
+    var costValue = Math.abs(baseQty) * costRate;
+    
+    // Add to StockTransaction sheet
+    stockTransactionSheet.appendRow([
+      'SI',        // DocType
+      docNo,       // DocNo
+      detail.docSrNo, // DocSrNo
+      headerDate,  // Date
+      'AR',        // PartyType (Accounts Receivable for Sales)
+      customerCode, // PartyCode (Customer code)
+      customerDesc, // PartyDesc (Customer name)
+      stockCode,   // StockCode
+      stockDesc,   // StockDesc
+      baseQty,     // Qty (in base unit, negative for sales)
+      baseUnit,    // BaseUnit
+      baseRate,    // Rate (in base unit)
+      baseAmount,  // Amount
+      costRate,    // CostRate (Moving Average Cost)
+      costValue    // CostValue
+    ]);
+  }
+  
+  // Update SalesHeader with PostedBy and PostedTime
+  // SalesHeader has 19 columns (indices 0-18), PostedBy at column 20 (index 19), PostedTime at column 21 (index 20)
+  headerSheet.getRange(headerRow + 1, 20).setValue(validation.userName);
+  headerSheet.getRange(headerRow + 1, 21).setValue(postedTime);
+  
+  var result = { status: "success", message: "Sales invoice posted to stock transaction successfully", postedBy: validation.userName, postedTime: postedTime };
+
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Cancel SI stock transaction post
+function handleCancelSIStockTransactionPostGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var docNo = e.parameter.docNo;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!docNo) {
+    var errorResult = { status: "error", message: "DocNo is required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Check if posted
+  var headerSheet = ss.getSheetByName("SalesHeader");
+  if (!headerSheet) {
+    var errorResult = { status: "error", message: "SalesHeader sheet not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var headerData = headerSheet.getDataRange().getValues();
+  var headerRow = -1;
+  var postedBy = '';
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1] == docNo) {
+      headerRow = i;
+      postedBy = headerData[i][19] || ''; // PostedBy at index 19 (column 20)
+      break;
+    }
+  }
+  
+  if (headerRow === -1) {
+    var errorResult = { status: "error", message: "Sales document not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  if (!postedBy) {
+    var errorResult = { status: "error", message: "Document is not posted" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+
+  // Delete from StockTransaction sheet
+  var stockTransactionSheet = ss.getSheetByName("StockTransaction");
+  if (stockTransactionSheet) {
+    var transData = stockTransactionSheet.getDataRange().getValues();
+    for (var i = transData.length - 1; i >= 1; i--) {
+      if (transData[i][0] == 'SI' && transData[i][1] == docNo) {
+        stockTransactionSheet.deleteRow(i + 1);
+      }
+    }
+  }
+  
+  // Clear PostedBy and PostedTime in SalesHeader
+  // SalesHeader has 19 columns (indices 0-18), PostedBy at column 20 (index 19), PostedTime at column 21 (index 20)
+  headerSheet.getRange(headerRow + 1, 20).setValue('');
+  headerSheet.getRange(headerRow + 1, 21).setValue('');
+  
+  var result = { status: "success", message: "Sales invoice stock transaction post cancelled successfully" };
+
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// ============================================
 // CUSTOMER SALES SUMMARY HANDLER (DASHBOARD)
 // ============================================
+
 
 // Get sales summary grouped by customer for the current month
 function handleGetCustomerSalesSummaryGet(e) {

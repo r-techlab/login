@@ -437,6 +437,7 @@ tbody tr:hover {
                             <th>Narration</th>
                             <th class="amount">Gross Amount</th>
                             <th class="amount">Net Amount</th>
+                            <th>Posted</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -539,6 +540,7 @@ function displaySales(sales) {
     // Display the server-returned records
     sales.forEach(sale => {
         const row = document.createElement('tr');
+        const isPosted = sale.postedBy && sale.postedBy !== '';
         
         row.innerHTML = `
             <td><strong>${escapeHtml(sale.docNo)}</strong></td>
@@ -547,11 +549,16 @@ function displaySales(sales) {
             <td>${escapeHtml(sale.narration || '-')}</td>
             <td class="amount">${formatAmount(sale.grossAmount)}</td>
             <td class="amount">${formatAmount(sale.net)}</td>
+            <td>${isPosted ? '<span style="color: #27ae60; font-weight: bold;">✓ Posted</span>' : '<span style="color: #e74c3c;">Not Posted</span>'}</td>
             <td>
                 <div class="action-buttons">
                     <button class="btn btn-small" onclick="viewSale('${escapeHtml(sale.docNo)}')">👁️ View</button>
-                    <button class="btn btn-warning btn-small" onclick="editSale('${escapeHtml(sale.docNo)}')">✏️ Edit</button>
-                    <button class="btn btn-danger btn-small" onclick="deleteSale('${escapeHtml(sale.docNo)}')">🗑️ Delete</button>
+                    <button class="btn btn-warning btn-small" onclick="editSale('${escapeHtml(sale.docNo)}')" ${isPosted ? 'disabled' : ''}>✏️ Edit</button>
+                    <button class="btn btn-danger btn-small" onclick="deleteSale('${escapeHtml(sale.docNo)}')" ${isPosted ? 'disabled' : ''}>🗑️ Delete</button>
+                    ${isPosted 
+                        ? `<button class="btn btn-warning btn-small" onclick="cancelPostSale('${escapeHtml(sale.docNo)}')">↩ CancelPost</button>`
+                        : `<button class="btn btn-success btn-small" onclick="postSale('${escapeHtml(sale.docNo)}')">📤 Post</button>`
+                    }
                 </div>
             </td>
         `;
@@ -747,6 +754,44 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// Post sale to stock transaction
+function postSale(docNo) {
+    let confirmMsg = 'Are you sure you want to post sale "' + docNo + '" to stock?';
+    confirmMsg += '\n\nThis will update stock quantities with negative (outflow) values.';
+    
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+    
+    apiPostSIToStockTransaction(docNo, function(response) {
+        if (response.status === 'success') {
+            showMessage('Sale posted to stock successfully!', 'success');
+            loadSales();
+        } else {
+            showMessage('Error: ' + response.message, 'error');
+        }
+    });
+}
+
+// Cancel sale stock transaction post
+function cancelPostSale(docNo) {
+    let confirmMsg = 'Are you sure you want to cancel the post for sale "' + docNo + '"?';
+    confirmMsg += '\n\nThis will reverse the stock transaction.';
+    
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+    
+    apiCancelSIStockTransactionPost(docNo, function(response) {
+        if (response.status === 'success') {
+            showMessage('Sale post cancelled successfully!', 'success');
+            loadSales();
+        } else {
+            showMessage('Error: ' + response.message, 'error');
+        }
+    });
 }
 
 // Logout function

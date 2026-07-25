@@ -430,10 +430,12 @@ tbody tr:hover {
                 <table id="openingStocksTable" style="display: none;">
                     <thead>
                         <tr>
-                            <th>Doc No</th>
+            <th>Doc No</th>
                             <th>Date</th>
                             <th>Narration</th>
                             <th class="amount">Amount</th>
+                            <th>Posted By</th>
+                            <th>Posted Time</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -537,16 +539,36 @@ function displayOpeningStocks(openingStocks) {
     openingStocks.forEach(function(os) {
         const row = document.createElement('tr');
         
+        var postedBy = os.postedBy || '';
+        var postedTime = os.postedTime || '';
+        var isPosted = postedBy ? true : false;
+        
+        var postBtnHtml = '';
+        var editBtnHtml = '';
+        var deleteBtnHtml = '';
+        if (isPosted) {
+            postBtnHtml = '<button class="btn btn-warning btn-small" onclick="cancelPostOpeningStock(\'' + escapeHtml(os.docNo) + '\')">↩️ Cancel Post</button>';
+            editBtnHtml = '<button class="btn btn-warning btn-small" disabled style="opacity:0.5;cursor:not-allowed;" title="Cannot edit - document is posted">✏️ Edit</button>';
+            deleteBtnHtml = '<button class="btn btn-danger btn-small" disabled style="opacity:0.5;cursor:not-allowed;" title="Cannot delete - document is posted">🗑️ Delete</button>';
+        } else {
+            postBtnHtml = '<button class="btn btn-success btn-small" onclick="postOpeningStock(\'' + escapeHtml(os.docNo) + '\')">📤 Post</button>';
+            editBtnHtml = '<button class="btn btn-warning btn-small" onclick="editOpeningStock(\'' + escapeHtml(os.docNo) + '\')">✏️ Edit</button>';
+            deleteBtnHtml = '<button class="btn btn-danger btn-small" onclick="deleteOpeningStockData(\'' + escapeHtml(os.docNo) + '\')">🗑️ Delete</button>';
+        }
+        
         row.innerHTML = `
             <td><strong>${escapeHtml(os.docNo)}</strong></td>
             <td>${formatDate(os.date)}</td>
             <td>${escapeHtml(os.narration || '-')}</td>
             <td class="amount">${formatAmount(os.amount)}</td>
+            <td>${escapeHtml(postedBy) || '-'}</td>
+            <td>${escapeHtml(postedTime) || '-'}</td>
             <td>
                 <div class="action-buttons">
                     <button class="btn btn-small" onclick="viewOpeningStock('${escapeHtml(os.docNo)}')">👁️ View</button>
-                    <button class="btn btn-warning btn-small" onclick="editOpeningStock('${escapeHtml(os.docNo)}')">✏️ Edit</button>
-                    <button class="btn btn-danger btn-small" onclick="deleteOpeningStockData('${escapeHtml(os.docNo)}')">🗑️ Delete</button>
+                    ${editBtnHtml}
+                    ${deleteBtnHtml}
+                    ${postBtnHtml}
                 </div>
             </td>
         `;
@@ -718,6 +740,42 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+function postOpeningStock(docNo) {
+    var confirmMsg = 'Are you sure you want to post opening stock "' + docNo + '" to stock transaction?';
+    confirmMsg += '\n\nThis will create stock transaction entries.';
+    
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+    
+    apiPostSOPToStockTransaction(docNo, function(response) {
+        if (response.status === 'success') {
+            showMessage('Opening stock posted successfully!', 'success');
+            loadOpeningStocks();
+        } else {
+            showMessage('Error: ' + response.message, 'error');
+        }
+    });
+}
+
+function cancelPostOpeningStock(docNo) {
+    var confirmMsg = 'Are you sure you want to cancel the post of opening stock "' + docNo + '"?';
+    confirmMsg += '\n\nThis will remove the stock transaction entries.';
+    
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+    
+    apiCancelSOPStockTransactionPost(docNo, function(response) {
+        if (response.status === 'success') {
+            showMessage('Opening stock post cancelled successfully!', 'success');
+            loadOpeningStocks();
+        } else {
+            showMessage('Error: ' + response.message, 'error');
+        }
+    });
 }
 
 function logout() {

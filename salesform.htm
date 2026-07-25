@@ -351,6 +351,8 @@ h2 {
         <div>
             <button class="btn" onclick="window.location.href='saleslist.htm'">📋 Back to List</button>
             <button class="btn btn-secondary" id="refreshBtn" onclick="refreshMasterData()">🔄 Refresh Data</button>
+            <button class="btn btn-success" id="viewPostBtn" style="display: none;" onclick="postFromView()">📤 Post</button>
+            <button class="btn btn-warning" id="viewCancelPostBtn" style="display: none;" onclick="cancelPostFromView()">↩ CancelPost</button>
             <button class="btn btn-warning" id="viewEditBtn" style="display: none;" onclick="editFromView()">✏️ Edit</button>
             <button class="btn btn-danger" id="viewDeleteBtn" style="display: none;" onclick="deleteFromView()">🗑️ Delete</button>
             <button class="btn btn-success" id="viewPrintBtn" style="display: none;" onclick="printFromView()">🖨️ Print</button>
@@ -889,9 +891,21 @@ function loadSaleData() {
             
             document.getElementById('salesForm').style.display = 'block';
             
-            // If view mode, disable all editable fields
+            // If view mode, disable all editable fields and set posted status buttons
             if (viewMode) {
                 disableFormForView();
+                const isPosted = sale.header.postedBy && sale.header.postedBy !== '';
+                if (isPosted) {
+                    // Document is posted: show CancelPost, hide Post/Edit/Delete
+                    document.getElementById('viewCancelPostBtn').style.display = 'inline-block';
+                    document.getElementById('viewPostBtn').style.display = 'none';
+                    document.getElementById('viewEditBtn').style.display = 'none';
+                    document.getElementById('viewDeleteBtn').style.display = 'none';
+                } else {
+                    // Document not posted: show Post, Edit, Delete
+                    document.getElementById('viewPostBtn').style.display = 'inline-block';
+                    document.getElementById('viewCancelPostBtn').style.display = 'none';
+                }
             }
         } else {
             showMessage('Error loading sale: ' + response.message, 'error');
@@ -1453,6 +1467,62 @@ function deleteFromView() {
             setTimeout(() => {
                 window.location.href = 'saleslist.htm';
             }, 1500);
+        } else {
+            showMessage('Error: ' + response.message, 'error');
+        }
+    });
+}
+
+// Post from view mode
+function postFromView() {
+    if (!viewDocNo) return;
+    
+    let confirmMsg = 'Are you sure you want to post sale "' + viewDocNo + '" to stock?';
+    confirmMsg += '\n\nThis will update stock quantities with negative (outflow) values.';
+    
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+    
+    document.getElementById('viewPostBtn').disabled = true;
+    
+    apiPostSIToStockTransaction(viewDocNo, function(response) {
+        document.getElementById('viewPostBtn').disabled = false;
+        
+        if (response.status === 'success') {
+            showMessage('Sale posted to stock successfully!', 'success');
+            // Reload to update posted status buttons
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
+        } else {
+            showMessage('Error: ' + response.message, 'error');
+        }
+    });
+}
+
+// Cancel post from view mode
+function cancelPostFromView() {
+    if (!viewDocNo) return;
+    
+    let confirmMsg = 'Are you sure you want to cancel the post for sale "' + viewDocNo + '"?';
+    confirmMsg += '\n\nThis will reverse the stock transaction.';
+    
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+    
+    document.getElementById('viewCancelPostBtn').disabled = true;
+    
+    apiCancelSIStockTransactionPost(viewDocNo, function(response) {
+        document.getElementById('viewCancelPostBtn').disabled = false;
+        
+        if (response.status === 'success') {
+            showMessage('Sale post cancelled successfully!', 'success');
+            // Reload to update posted status buttons
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
         } else {
             showMessage('Error: ' + response.message, 'error');
         }

@@ -414,6 +414,9 @@ tbody tr:hover {
             <button class="btn btn-warning" id="viewEditBtn" style="display: none;" onclick="editFromView()">✏️ Edit</button>
             <button class="btn btn-danger" id="viewDeleteBtn" style="display: none;" onclick="deleteFromView()">🗑️ Delete</button>
             <button class="btn btn-success" id="viewPrintBtn" style="display: none;" onclick="printFromView()">🖨️ Print</button>
+            <button class="btn btn-success" id="viewPostBtn" style="display: none;" onclick="postFromView()">📤 Post</button>
+            <button class="btn btn-warning" id="viewCancelPostBtn" style="display: none;" onclick="cancelPostFromView()">↩ CancelPost</button>
+
             <button class="btn" onclick="window.location.href='home.html'">🏠 Home</button>
             <button class="btn btn-danger" onclick="logout()">Logout</button>
         </div>
@@ -427,7 +430,7 @@ tbody tr:hover {
 
     <form id="purchaseForm" onsubmit="savePurchase(event)" style="display: none;">
         <!-- Header Section -->
-        <div class="form-section" id="headerSection">
+            <div class="form-section" id="headerSection">
             <h3>Purchase Invoice Header</h3>
             <div class="form-row">
                 <div class="form-group">
@@ -455,7 +458,12 @@ tbody tr:hover {
                         <option value="Include">Include (VAT included)</option>
                     </select>
                 </div>
+                <div class="form-group" id="postedStatusGroup" style="display: none;">
+                    <label>Post Status</label>
+                    <div id="postedStatus" style="padding: 8px 10px; border-radius: 5px; font-size: 14px; font-weight: bold;"></div>
+                </div>
             </div>
+
             <div class="form-row">
                 <div class="form-group" style="flex: 2;">
                     <label class="required">Supplier</label>
@@ -1316,12 +1324,22 @@ function loadPurchaseForEdit(docNo) {
         document.getElementById('loadingIndicator').style.display = 'none';
         
         if (response.status === 'success') {
+            const header = response.purchase.header;
+            // Check if document is already posted - prevent editing
+            if (header.postedBy && header.postedBy !== '') {
+                showMessage('Cannot edit a posted purchase. Please cancel the post first.', 'error');
+                setTimeout(function() {
+                    window.location.href = 'purchaseform.htm?view=' + encodeURIComponent(docNo);
+                }, 2000);
+                return;
+            }
             populateForm(response.purchase, false);
         } else {
             showMessage('Error loading purchase: ' + response.message, 'error');
         }
     });
 }
+
 
 // Populate form with purchase data
 function populateForm(purchase, isView) {
@@ -1408,6 +1426,18 @@ function populateForm(purchase, isView) {
     // Update summary
     recalculateSummary();
     
+    // Show posted status if available
+    const isPosted = header.postedBy && header.postedBy !== '';
+    if (isPosted) {
+        document.getElementById('postedStatusGroup').style.display = 'block';
+        const postedStatus = document.getElementById('postedStatus');
+        postedStatus.textContent = '✓ Posted by ' + header.postedBy + ' on ' + (header.postedTime || '');
+        postedStatus.style.color = '#27ae60';
+        postedStatus.style.background = '#d4edda';
+        postedStatus.style.padding = '8px 10px';
+        postedStatus.style.borderRadius = '5px';
+    }
+    
     // Show the form now that data is loaded
     document.getElementById('purchaseForm').style.display = 'block';
     
@@ -1415,8 +1445,20 @@ function populateForm(purchase, isView) {
     if (isView) {
         document.getElementById('headerSection').classList.add('view-mode');
         document.getElementById('detailsTable').classList.add('view-mode');
+        
+        // Show/hide post/cancel post buttons based on posted status
+        if (isPosted) {
+            document.getElementById('viewEditBtn').style.display = 'none';
+            document.getElementById('viewDeleteBtn').style.display = 'none';
+            document.getElementById('viewPostBtn').style.display = 'none';
+            document.getElementById('viewCancelPostBtn').style.display = 'inline-block';
+        } else {
+            document.getElementById('viewPostBtn').style.display = 'inline-block';
+            document.getElementById('viewCancelPostBtn').style.display = 'none';
+        }
     }
 }
+
 
 // ============================================
 // VIEW MODE ACTIONS
@@ -1433,7 +1475,15 @@ function editFromView() {
 function deleteFromView() {
     if (!viewDocNo) return;
     
+    // Check if posted - prevent deletion
+    const postedStatus = document.getElementById('postedStatus');
+    if (postedStatus && postedStatus.textContent && postedStatus.textContent.includes('Posted')) {
+        showMessage('Cannot delete a posted purchase. Please cancel the post first.', 'error');
+        return;
+    }
+    
     const confirmMsg = 'Are you sure you want to delete purchase "' + viewDocNo + '"?';
+
     
     if (!confirm(confirmMsg)) {
         return;
@@ -1465,8 +1515,71 @@ function printFromView() {
     }
 }
 
+// Post from view mode
+function postFromView() {
+    if (!viewDocNo) return;
+    
+    let confirmMsg = 'Are you sure you want to post purchase "' + viewDocNo + '" to stock?';
+    confirmMsg += '\n\nThis will update stock quantities and values.';
+    
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+    
+    const postBtn = document.getElementById('viewPostBtn');
+    postBtn.disabled = true;
+    postBtn.textContent = 'Posting...';
+    
+    apiPostPIToStockTransaction(viewDocNo, function(response) {
+        postBtn.disabled = false;
+        postBtn.textContent = '📤 Post';
+        
+        if (response.status === 'success') {
+            showMessage('Purchase posted to stock successfully!', 'success');
+            // Reload the page to reflect posted status
+            setTimeout(function() {
+                window.location.href = 'purchaseform.htm?view=' + encodeURIComponent(viewDocNo);
+            }, 1500);
+        } else {
+            showMessage('Error: ' + response.message, 'error');
+        }
+    });
+}
+
+// Cancel post from view mode
+function cancelPostFromView() {
+    if (!viewDocNo) return;
+    
+    let confirmMsg = 'Are you sure you want to cancel the post for purchase "' + viewDocNo + '"?';
+    confirmMsg += '\n\nThis will reverse the stock transaction.';
+    
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+    
+    const cancelBtn = document.getElementById('viewCancelPostBtn');
+    cancelBtn.disabled = true;
+    cancelBtn.textContent = 'Cancelling...';
+    
+    apiCancelPIStockTransactionPost(viewDocNo, function(response) {
+        cancelBtn.disabled = false;
+        cancelBtn.textContent = '↩ CancelPost';
+        
+        if (response.status === 'success') {
+            showMessage('Purchase post cancelled successfully!', 'success');
+            // Reload the page to reflect unposted status
+            setTimeout(function() {
+                window.location.href = 'purchaseform.htm?view=' + encodeURIComponent(viewDocNo);
+            }, 1500);
+        } else {
+            showMessage('Error: ' + response.message, 'error');
+        }
+    });
+}
+
 // ============================================
 // REFRESH MASTER DATA
+
 // ============================================
 
 // Refresh master data from server
