@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Stock Adjustment Report</title>
+<link rel="stylesheet" href="menu.css">
+<style>
+body { font-family: Arial, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); margin: 0; padding: 20px; min-height: 100vh; }
+.container { max-width: 1400px; margin: 0 auto; background: white; border-radius: 15px; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+.header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #667eea; padding-bottom: 20px; margin-bottom: 30px; }
+h1 { color: #333; margin: 0; }
+h2 { color: #333; margin: 0 0 15px 0; font-size: 18px; border-bottom: 1px solid #ddd; padding-bottom: 8px; }
+.btn { background: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 14px; font-weight: bold; margin-left: 10px; }
+.btn:hover { background: #2980b9; }
+.btn-success { background: #27ae60; }
+.btn-success:hover { background: #229954; }
+.btn-danger { background: #e74c3c; }
+.btn-danger:hover { background: #c0392b; }
+.btn-warning { background: #f39c12; }
+.btn-warning:hover { background: #e67e22; }
+.btn:disabled { background: #95a5a6; cursor: not-allowed; }
+.btn-small { padding: 5px 10px; font-size: 12px; }
+.layout-with-sidebar { display: flex; gap: 20px; }
+.sidebar { width: 280px; flex-shrink: 0; }
+.company-name-sidebar { font-size: 16px; font-weight: bold; color: white; padding: 12px; margin-bottom: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; text-align: center; }
+.main-content { flex: 1; }
+.filter-section { background: #f8f9fa; border-radius: 8px; padding: 20px; margin-bottom: 20px; display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end; }
+.filter-group { display: flex; flex-direction: column; gap: 4px; }
+.filter-group label { font-size: 12px; font-weight: bold; color: #555; text-transform: uppercase; }
+.filter-group input, .filter-group select { padding: 8px 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; }
+.filter-group input:focus, .filter-group select:focus { outline: none; border-color: #667eea; }
+.table-container { overflow-x: auto; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead { background: #667eea; color: white; }
+th { padding: 10px 8px; text-align: left; font-weight: bold; white-space: nowrap; }
+td { padding: 8px; border-bottom: 1px solid #eee; vertical-align: middle; }
+tbody tr:hover { background: #f8f9fa; }
+.amount { text-align: right; font-weight: bold; }
+.message { padding: 15px; border-radius: 5px; margin-bottom: 20px; font-weight: bold; }
+.message.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+.message.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+.loading { text-align: center; padding: 40px; color: #666; }
+.loading::after { content: '...'; animation: dots 1.5s steps(4, end) infinite; }
+@keyframes dots { 0%, 20% { content: '.'; } 40% { content: '..'; } 60%, 100% { content: '...'; } }
+.summary-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 20px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 30px; flex-wrap: wrap; }
+.summary-item { text-align: center; }
+.summary-item h3 { margin: 0; font-size: 24px; }
+.summary-item p { margin: 2px 0 0 0; font-size: 12px; opacity: 0.9; }
+.empty-state { text-align: center; padding: 60px 20px; color: #999; }
+@media (max-width: 992px) { .layout-with-sidebar { flex-direction: column; } .sidebar { width: 100%; } .filter-section { flex-direction: column; } }
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>📊 Stock Adjustment Report</h1>
+        <div>
+            <button class="btn btn-success" onclick="window.print()">🖨️ Print</button>
+            <button class="btn" onclick="window.location.href='home.html'">🏠 Home</button>
+            <button class="btn btn-danger" onclick="logout()">Logout</button>
+        </div>
+    </div>
+    <div id="breadcrumbContainer" class="breadcrumb-container"></div>
+    <div class="layout-with-sidebar">
+        <div class="sidebar">
+            <div id="companyNameSidebar" class="company-name-sidebar"></div>
+            <h3>Navigation Menu</h3>
+            <div id="menuContainer"></div>
+        </div>
+        <div class="main-content">
+            <div id="messageContainer"></div>
+            <div class="filter-section">
+                <div class="filter-group">
+                    <label>From Date</label>
+                    <input type="date" id="fromDate">
+                </div>
+                <div class="filter-group">
+                    <label>To Date</label>
+                    <input type="date" id="toDate">
+                </div>
+                <div class="filter-group">
+                    <label>Report Type</label>
+                    <select id="reportType">
+                        <option value="headerwise">Header Wise</option>
+                        <option value="itemwise">Item Wise</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>&nbsp;</label>
+                    <button class="btn btn-success" onclick="loadReport()">🔍 Generate Report</button>
+                </div>
+            </div>
+            <div id="summaryCard" class="summary-card" style="display: none;"></div>
+            <div class="table-container">
+                <div id="loadingIndicator" class="loading">Loading report...</div>
+                <div id="emptyState" class="empty-state" style="display: none;">
+                    <h3>No records found for the selected criteria</h3>
+                </div>
+                <div id="reportContent" style="display: none;">
+                    <table>
+                        <thead>
+                            <tr id="reportTableHeader">
+                                <th>Doc No</th>
+                                <th>Date</th>
+                                <th>Narration</th>
+                                <th class="amount">Amount</th>
+                                <th>Created By</th>
+                                <th>Posted</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reportTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="api.js"></script>
+<script src="indexedDB.js"></script>
+<script src="session.js"></script>
+<script src="menu.js"></script>
+<script src="systemConfig.js"></script>
+<script src="themeManager.js"></script>
+<script>
+initPageWithTheme('stockadjustmentreport.htm', 'companyNameSidebar');
+protectPageWithMenuAccess(function(isValid) {
+    if (isValid) {
+        renderMenu('menuContainer');
+        renderBreadcrumb('breadcrumbContainer');
+        var today = new Date();
+        document.getElementById('toDate').value = today.toISOString().slice(0,10);
+        var firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        document.getElementById('fromDate').value = firstDay.toISOString().slice(0,10);
+        loadReport();
+    }
+});
+
+function loadReport() {
+    var filters = {
+        fromDate: document.getElementById('fromDate').value,
+        toDate: document.getElementById('toDate').value,
+        reportType: document.getElementById('reportType').value
+    };
+    
+    document.getElementById('loadingIndicator').style.display = 'block';
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('reportContent').style.display = 'none';
+    document.getElementById('summaryCard').style.display = 'none';
+    
+    apiGetStockAdjustmentReport(filters, function(data) {
+        document.getElementById('loadingIndicator').style.display = 'none';
+        
+        if (data.status === 'success') {
+            var records = data.stockAdjustments || [];
+            var summary = data.summary || {};
+            
+            if (records.length === 0) {
+                document.getElementById('emptyState').style.display = 'block';
+                return;
+            }
+            
+            document.getElementById('reportContent').style.display = 'block';
+            displaySummary(summary, data.reportType);
+            displayRecords(records, data.reportType);
+        } else {
+            showMessage('Error: ' + (data.message || 'Unknown error'), 'error');
+        }
+    });
+}
+
+function displaySummary(summary, reportType) {
+    var card = document.getElementById('summaryCard');
+    var html = '<div class="summary-item"><h3>' + (summary.totalCount || 0) + '</h3><p>Total Records</p></div>';
+    html += '<div class="summary-item"><h3>' + formatAmt(summary.totalAmount || 0) + '</h3><p>Total Amount</p></div>';
+    if (reportType === 'itemwise') {
+        html += '<div class="summary-item"><h3>' + formatAmt(summary.totalQty || 0) + '</h3><p>Total Qty</p></div>';
+    }
+    card.innerHTML = html;
+    card.style.display = 'flex';
+}
+
+function displayRecords(records, reportType) {
+    var tbody = document.getElementById('reportTableBody');
+    tbody.innerHTML = '';
+    
+    records.forEach(function(r) {
+        if (reportType === 'itemwise' && r.details && r.details.length > 0) {
+            r.details.forEach(function(d) {
+                var tr = document.createElement('tr');
+                tr.innerHTML = '<td>' + escapeHtml(r.docNo) + '</td><td>' + r.date + '</td><td>' + escapeHtml(d.stockCode + ' - ' + d.stockDescription) + '</td><td class="amount">' + (parseFloat(d.qty) || 0).toFixed(3) + '</td><td class="amount">' + formatAmt(d.amount) + '</td><td>' + escapeHtml(r.narration || '') + '</td>';
+                tbody.appendChild(tr);
+            });
+        } else {
+            var tr = document.createElement('tr');
+            tr.innerHTML = '<td><strong>' + escapeHtml(r.docNo) + '</strong></td><td>' + r.date + '</td><td>' + escapeHtml(r.narration || '-') + '</td><td class="amount">' + formatAmt(r.amount) + '</td><td>' + escapeHtml(r.createdBy || '') + '</td><td>' + (r.postedBy ? 'Yes' : 'No') + '</td>';
+            tbody.appendChild(tr);
+        }
+    });
+}
+
+function formatAmt(v) { return (parseFloat(v) || 0).toFixed(3); }
+function showMessage(msg, type) {
+    var c = document.getElementById('messageContainer');
+    c.innerHTML = '<div class="message ' + type + '">' + escapeHtml(msg) + '</div>';
+    setTimeout(function() { c.innerHTML = ''; }, 5000);
+}
+function escapeHtml(t) { if (!t) return ''; var d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+function logout() { if (confirm('Logout?')) performLogout(); }
+</script>
+</body>
+</html>

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Print Stock Adjustment</title>
+    <script src="session.js"></script>
+    <script src="api.js"></script>
+    <style>
+        @media print { body { margin: 0; padding: 15px; } .no-print { display: none !important; } .print-header { display: block !important; } }
+        @media screen { body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; background: #f5f5f5; } .print-container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); } }
+        .print-header { text-align: center; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #333; }
+        .print-header h1 { margin: 0; font-size: 24px; color: #333; }
+        .print-header .company-name { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
+        .print-header .doc-title { font-size: 20px; margin-top: 5px; }
+        .header-info { display: flex; justify-content: space-between; margin-bottom: 15px; padding: 10px; background: #f9f9f9; border-radius: 4px; }
+        .header-info div { flex: 1; }
+        .header-info label { font-weight: bold; color: #555; }
+        .header-info span { display: block; margin-top: 2px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        table th, table td { padding: 8px 10px; text-align: left; border: 1px solid #333; font-size: 13px; }
+        table th { background: #333; color: white; font-weight: bold; }
+        table tr:nth-child(even) { background: #f9f9f9; }
+        .total-row { font-weight: bold; background: #e9ecef !important; }
+        .total-row td { padding: 10px; }
+        .narration-section { margin-top: 15px; padding: 10px; background: #f9f9f9; border-radius: 4px; }
+        .narration-section label { font-weight: bold; color: #555; }
+        .footer { margin-top: 30px; display: flex; justify-content: space-between; padding-top: 10px; border-top: 1px solid #333; }
+        .footer div { text-align: center; flex: 1; }
+        .footer .sign-line { margin-top: 30px; border-top: 1px solid #333; padding-top: 5px; font-size: 12px; }
+        .no-print { text-align: center; margin-bottom: 15px; }
+        .no-print button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; margin: 0 5px; }
+        .no-print button:hover { background: #0056b3; }
+        .no-print button.close-btn { background: #6c757d; }
+        .no-print button.close-btn:hover { background: #5a6268; }
+        .loading { text-align: center; padding: 40px; font-size: 16px; color: #666; }
+        .loading::after { content: '...'; animation: dots 1.5s steps(4, end) infinite; }
+        @keyframes dots { 0%, 20% { content: ''; } 40% { content: '.'; } 60% { content: '..'; } 80%, 100% { content: '...'; } }
+        .error-msg { text-align: center; padding: 40px; color: #dc3545; font-size: 16px; }
+        .amount-in-words { margin-top: 10px; font-style: italic; color: #555; }
+        .print-date { text-align: right; font-size: 11px; color: #999; margin-top: 5px; }
+    </style>
+</head>
+<body>
+    <div class="no-print">
+        <button onclick="window.print()">Print</button>
+        <button class="close-btn" onclick="window.close()">Close</button>
+    </div>
+    
+    <div class="print-container" id="printContainer">
+        <div class="loading" id="loadingMsg">Loading stock adjustment details</div>
+        <div id="printContent" style="display:none">
+            <div class="print-header">
+                <div class="company-name" id="companyName">Company Name</div>
+                <div class="doc-title">Stock Adjustment</div>
+            </div>
+            
+            <div class="header-info">
+                <div>
+                    <label>Doc No:</label>
+                    <span id="printDocNo"></span>
+                </div>
+                <div>
+                    <label>Date:</label>
+                    <span id="printDate"></span>
+                </div>
+                <div>
+                    <label>Amount:</label>
+                    <span id="printAmount"></span>
+                </div>
+            </div>
+            
+            <div class="narration-section">
+                <label>Narration:</label>
+                <span id="printNarration"></span>
+            </div>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:50px">Sr No</th>
+                        <th style="width:120px">Stock Code</th>
+                        <th>Stock Description</th>
+                        <th style="width:80px;text-align:right">Qty</th>
+                        <th style="width:60px">Unit</th>
+                        <th style="width:90px;text-align:right">Rate</th>
+                        <th style="width:100px;text-align:right">Amount</th>
+                    </tr>
+                </thead>
+                <tbody id="printDetailsBody">
+                </tbody>
+                <tfoot>
+                    <tr class="total-row">
+                        <td colspan="3" style="text-align:right">Total:</td>
+                        <td id="printTotalQty" style="text-align:right">0</td>
+                        <td></td>
+                        <td></td>
+                        <td id="printTotalAmount" style="text-align:right">0.00</td>
+                    </tr>
+                </tfoot>
+            </table>
+            
+            <div class="amount-in-words" id="amountInWords"></div>
+            
+            <div class="footer">
+                <div><div class="sign-line">Prepared By</div></div>
+                <div><div class="sign-line">Checked By</div></div>
+                <div><div class="sign-line">Approved By</div></div>
+            </div>
+            
+            <div class="print-date" id="printTimestamp"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const docNo = urlParams.get('docNo');
+            if (docNo) {
+                loadStockAdjustment(docNo);
+            } else {
+                document.getElementById('loadingMsg').style.display = 'none';
+                document.getElementById('printContent').innerHTML = '<div class="error-msg">No document number provided</div>';
+                document.getElementById('printContent').style.display = 'block';
+            }
+        });
+
+        function loadStockAdjustment(docNo) {
+            const session = getSession();
+            if (!session) {
+                document.getElementById('loadingMsg').textContent = 'Session expired. Please login again.';
+                return;
+            }
+            
+            getStockAdjustmentByDocNo(session, docNo, function(data) {
+                document.getElementById('loadingMsg').style.display = 'none';
+                
+                if (data.status === 'success' && data.stockAdjustment) {
+                    const sa = data.stockAdjustment;
+                    const header = sa.header;
+                    const details = sa.details;
+                    
+                    document.getElementById('printDocNo').textContent = header.docNo;
+                    document.getElementById('printDate').textContent = header.date;
+                    document.getElementById('printAmount').textContent = parseFloat(header.amount || 0).toFixed(3);
+                    document.getElementById('printNarration').textContent = header.narration || '-';
+                    
+                    const session2 = getSession();
+                    if (session2) {
+                        apiGetSystemParameters(function(paramData) {
+                            if (paramData.status === 'success' && paramData.parameters) {
+                                const companyParam = paramData.parameters.find(p => p.code === 'COMPANY_NAME');
+                                if (companyParam) {
+                                    document.getElementById('companyName').textContent = companyParam.value;
+                                }
+                            }
+                        });
+                    }
+                    
+                    const tbody = document.getElementById('printDetailsBody');
+                    tbody.innerHTML = '';
+                    
+                    let totalQty = 0;
+                    let totalAmount = 0;
+                    
+                    if (details && details.length > 0) {
+                        details.forEach(function(d) {
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td style="text-align:center">${d.docSrNo}</td>
+                                <td>${d.stockCode}</td>
+                                <td>${d.stockDescription || ''}</td>
+                                <td style="text-align:right">${parseFloat(d.qty || 0).toFixed(3)}</td>
+                                <td style="text-align:center">${d.unit || ''}</td>
+                                <td style="text-align:right">${parseFloat(d.rate || 0).toFixed(3)}</td>
+                                <td style="text-align:right">${parseFloat(d.amount || 0).toFixed(3)}</td>
+                            `;
+                            tbody.appendChild(tr);
+                            totalQty += parseFloat(d.qty || 0);
+                            totalAmount += parseFloat(d.amount || 0);
+                        });
+                    }
+                    
+                    document.getElementById('printTotalQty').textContent = totalQty.toFixed(3);
+                    document.getElementById('printTotalAmount').textContent = totalAmount.toFixed(3);
+                    document.getElementById('amountInWords').textContent = 'Amount: ' + numberToWords(totalAmount);
+                    
+                    const now = new Date();
+                    document.getElementById('printTimestamp').textContent = 'Printed on: ' + now.toLocaleString();
+                    
+                    document.getElementById('printContent').style.display = 'block';
+                    setTimeout(function() { window.print(); }, 500);
+                } else {
+                    document.getElementById('printContent').innerHTML = '<div class="error-msg">Failed to load stock adjustment: ' + (data.message || 'Unknown error') + '</div>';
+                    document.getElementById('printContent').style.display = 'block';
+                }
+            });
+        }
+
+        function numberToWords(num) {
+            num = Math.round(num * 100) / 100;
+            if (num === 0) return 'Zero';
+            const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
+                         'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 
+                         'Seventeen', 'Eighteen', 'Nineteen'];
+            const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+            function convertLessThanThousand(n) {
+                if (n === 0) return '';
+                if (n < 20) return ones[n];
+                if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 ? ' ' + ones[n % 10] : '');
+                return ones[Math.floor(n / 100)] + ' Hundred' + (n % 100 ? ' ' + convertLessThanThousand(n % 100) : '');
+            }
+            const integerPart = Math.floor(num);
+            const decimalPart = Math.round((num - integerPart) * 100);
+            let result = '';
+            let ip = integerPart;
+            if (ip >= 10000000) { result += convertLessThanThousand(Math.floor(ip / 10000000)) + ' Crore '; ip %= 10000000; }
+            if (ip >= 100000) { result += convertLessThanThousand(Math.floor(ip / 100000)) + ' Lakh '; ip %= 100000; }
+            if (ip >= 1000) { result += convertLessThanThousand(Math.floor(ip / 1000)) + ' Thousand '; ip %= 1000; }
+            result += convertLessThanThousand(ip);
+            if (decimalPart > 0) { result += ' and ' + decimalPart + '/100'; }
+            return result.trim() + ' Only';
+        }
+    </script>
+</body>
+</html>

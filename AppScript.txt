@@ -166,6 +166,10 @@ function doGet(e) {
     return handleDeletePurchaseGet(e);
   } else if (action === "getPurchaseReport") {
     return handleGetPurchaseReportGet(e);
+  } else if (action === "getStockAdjustmentReport") {
+    return handleGetStockAdjustmentReportGet(e);
+  } else if (action === "getOpeningStockReport") {
+    return handleGetOpeningStockReportGet(e);
   } else if (action === "getLogos") {
     return handleGetLogosGet(e);
   } else if (action === "uploadLogo") {
@@ -208,6 +212,20 @@ function doGet(e) {
     return handlePostSIToStockTransactionGet(e);
   } else if (action === "cancelSIStockTransactionPost") {
     return handleCancelSIStockTransactionPostGet(e);
+  } else if (action === "getStockAdjustments") {
+    return handleGetStockAdjustmentsGet(e);
+  } else if (action === "getStockAdjustmentByDocNo") {
+    return handleGetStockAdjustmentByDocNoGet(e);
+  } else if (action === "createStockAdjustment") {
+    return handleCreateStockAdjustmentGet(e);
+  } else if (action === "updateStockAdjustment") {
+    return handleUpdateStockAdjustmentGet(e);
+  } else if (action === "deleteStockAdjustment") {
+    return handleDeleteStockAdjustmentGet(e);
+  } else if (action === "postADJToStockTransaction") {
+    return handlePostADJToStockTransactionGet(e);
+  } else if (action === "cancelADJStockTransactionPost") {
+    return handleCancelADJStockTransactionPostGet(e);
   } else if (action === "getStockTransaction") {
     return handleGetStockTransactionGet(e);
   } else if (action === "getStockBalance") {
@@ -5910,6 +5928,280 @@ function handleGetPurchaseReportGet(e) {
 }
 
 // ============================================
+// OPENING STOCK REPORT HANDLER
+// ============================================
+
+// Get opening stock report with date range and filters
+function handleGetOpeningStockReportGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Read filter parameters
+  var fromDate = e.parameter.fromDate || '';
+  var toDate = e.parameter.toDate || '';
+  var reportType = (e.parameter.reportType || 'headerwise').toLowerCase();
+  
+  // Get all opening stock records from SOPHeader sheet
+  var headerSheet = ss.getSheetByName("SOPHeader");
+  if (!headerSheet) {
+    var emptyResult = { status: "success", openingStocks: [], summary: { totalCount: 0, totalQty: 0, totalAmount: 0 } };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(emptyResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(emptyResult);
+  }
+  var headerData = headerSheet.getDataRange().getValues();
+  var allRecords = [];
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1]) { // Check if DocNo exists
+      var docNo = headerData[i][1].toString();
+      var dateObj = headerData[i][2] ? new Date(headerData[i][2]) : null;
+      var dateStr = dateObj ? Utilities.formatDate(dateObj, Session.getScriptTimeZone(), 'yyyy-MM-dd') : '';
+      
+      // Apply date range filter
+      if (fromDate && dateStr < fromDate) continue;
+      if (toDate && dateStr > toDate) continue;
+      
+      allRecords.push({
+        docType: headerData[i][0] || '',
+        docNo: docNo,
+        date: dateStr,
+        amount: parseFloat(headerData[i][3]) || 0,
+        narration: headerData[i][4] || '',
+        createdBy: headerData[i][5] || '',
+        createdTime: headerData[i][6] || '',
+        postedBy: headerData[i][7] || '',
+        postedTime: headerData[i][8] || ''
+      });
+    }
+  }
+  
+  // Sort by date descending, then by DocNo descending
+  allRecords.sort(function(a, b) {
+    if (a.date !== b.date) return b.date.localeCompare(a.date);
+    return b.docNo.localeCompare(a.docNo);
+  });
+  
+  // If reportType is itemwise, fetch item details for each opening stock
+  if (reportType === 'itemwise') {
+    var detailsSheet = ss.getSheetByName("SOPDetails");
+    if (detailsSheet) {
+      var detailsData = detailsSheet.getDataRange().getValues();
+      
+      // Build a map of docNo -> details array
+      var detailsMap = {};
+      for (var d = 1; d < detailsData.length; d++) {
+        var detailDocNo = detailsData[d][1];
+        if (detailDocNo) {
+          if (!detailsMap[detailDocNo]) {
+            detailsMap[detailDocNo] = [];
+          }
+          detailsMap[detailDocNo].push({
+            docSrNo: detailsData[d][2] || 0,
+            stockCode: detailsData[d][3] || '',
+            stockDescription: detailsData[d][4] || '',
+            qty: parseFloat(detailsData[d][5]) || 0,
+            unit: detailsData[d][6] || '',
+            rate: parseFloat(detailsData[d][7]) || 0,
+            amount: parseFloat(detailsData[d][8]) || 0
+          });
+        }
+      }
+      
+      // Attach details to each record
+      for (var pi = 0; pi < allRecords.length; pi++) {
+        allRecords[pi].details = detailsMap[allRecords[pi].docNo] || [];
+      }
+    }
+  }
+  
+  // Calculate summary
+  var totalCount = allRecords.length;
+  var totalAmount = 0;
+  var totalQty = 0;
+  
+  for (var i = 0; i < allRecords.length; i++) {
+    totalAmount += allRecords[i].amount;
+    if (reportType === 'itemwise' && allRecords[i].details) {
+      for (var di = 0; di < allRecords[i].details.length; di++) {
+        totalQty += allRecords[i].details[di].qty;
+      }
+    }
+  }
+  
+  var result = { 
+    status: "success", 
+    openingStocks: allRecords,
+    reportType: reportType,
+    summary: {
+      totalCount: totalCount,
+      totalAmount: Math.round(totalAmount * 100) / 100,
+      totalQty: Math.round(totalQty * 100) / 100
+    }
+  };
+  
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// ============================================
+// STOCK ADJUSTMENT REPORT HANDLER
+// ============================================
+
+// Get stock adjustment report with date range and filters
+function handleGetStockAdjustmentReportGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Read filter parameters
+  var fromDate = e.parameter.fromDate || '';
+  var toDate = e.parameter.toDate || '';
+  var reportType = (e.parameter.reportType || 'headerwise').toLowerCase();
+  
+  // Get all stock adjustment records from ADJHeader sheet
+  var headerSheet = ss.getSheetByName("ADJHeader");
+  if (!headerSheet) {
+    var emptyResult = { status: "success", stockAdjustments: [], summary: { totalCount: 0, totalQty: 0, totalAmount: 0 } };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(emptyResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(emptyResult);
+  }
+  var headerData = headerSheet.getDataRange().getValues();
+  var allRecords = [];
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1]) { // Check if DocNo exists
+      var docNo = headerData[i][1].toString();
+      var dateObj = headerData[i][2] ? new Date(headerData[i][2]) : null;
+      var dateStr = dateObj ? Utilities.formatDate(dateObj, Session.getScriptTimeZone(), 'yyyy-MM-dd') : '';
+      
+      // Apply date range filter
+      if (fromDate && dateStr < fromDate) continue;
+      if (toDate && dateStr > toDate) continue;
+      
+      allRecords.push({
+        docType: headerData[i][0] || '',
+        docNo: docNo,
+        date: dateStr,
+        amount: parseFloat(headerData[i][3]) || 0,
+        narration: headerData[i][4] || '',
+        createdBy: headerData[i][5] || '',
+        createdTime: headerData[i][6] || '',
+        postedBy: headerData[i][7] || '',
+        postedTime: headerData[i][8] || ''
+      });
+    }
+  }
+  
+  // Sort by date descending, then by DocNo descending
+  allRecords.sort(function(a, b) {
+    if (a.date !== b.date) return b.date.localeCompare(a.date);
+    return b.docNo.localeCompare(a.docNo);
+  });
+  
+  // If reportType is itemwise, fetch item details for each stock adjustment
+  if (reportType === 'itemwise') {
+    var detailsSheet = ss.getSheetByName("ADJDetails");
+    if (detailsSheet) {
+      var detailsData = detailsSheet.getDataRange().getValues();
+      
+      // Build a map of docNo -> details array
+      var detailsMap = {};
+      for (var d = 1; d < detailsData.length; d++) {
+        var detailDocNo = detailsData[d][1];
+        if (detailDocNo) {
+          if (!detailsMap[detailDocNo]) {
+            detailsMap[detailDocNo] = [];
+          }
+          detailsMap[detailDocNo].push({
+            docSrNo: detailsData[d][2] || 0,
+            stockCode: detailsData[d][3] || '',
+            stockDescription: detailsData[d][4] || '',
+            qty: parseFloat(detailsData[d][5]) || 0,
+            unit: detailsData[d][6] || '',
+            rate: parseFloat(detailsData[d][7]) || 0,
+            amount: parseFloat(detailsData[d][8]) || 0
+          });
+        }
+      }
+      
+      // Attach details to each record
+      for (var pi = 0; pi < allRecords.length; pi++) {
+        allRecords[pi].details = detailsMap[allRecords[pi].docNo] || [];
+      }
+    }
+  }
+  
+  // Calculate summary
+  var totalCount = allRecords.length;
+  var totalAmount = 0;
+  var totalQty = 0;
+  
+  for (var i = 0; i < allRecords.length; i++) {
+    totalAmount += allRecords[i].amount;
+    if (reportType === 'itemwise' && allRecords[i].details) {
+      for (var di = 0; di < allRecords[i].details.length; di++) {
+        totalQty += allRecords[i].details[di].qty;
+      }
+    }
+  }
+  
+  var result = { 
+    status: "success", 
+    stockAdjustments: allRecords,
+    reportType: reportType,
+    summary: {
+      totalCount: totalCount,
+      totalAmount: Math.round(totalAmount * 100) / 100,
+      totalQty: Math.round(totalQty * 100) / 100
+    }
+  };
+  
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// ============================================
 // CLEANUP FUNCTION (Run periodically)
 // ============================================
 
@@ -7653,6 +7945,784 @@ function handleCancelSIStockTransactionPostGet(e) {
   
   var result = { status: "success", message: "Sales invoice stock transaction post cancelled successfully" };
 
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// ============================================
+// STOCK ADJUSTMENT HANDLERS
+// ============================================
+
+// Get all stock adjustment records
+function handleGetStockAdjustmentsGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Read pagination and search parameters
+  var page = parseInt(e.parameter.page) || 1;
+  var pageSize = parseInt(e.parameter.pageSize) || 10;
+  var search = (e.parameter.search || '').toLowerCase();
+  
+  // Get all records from ADJHeader sheet
+  var headerSheet = ss.getSheetByName("ADJHeader");
+  if (!headerSheet) {
+    var emptyResult = { status: "success", stockAdjustments: [], totalRecords: 0, totalPages: 0, currentPage: page, pageSize: pageSize };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(emptyResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(emptyResult);
+  }
+  var headerData = headerSheet.getDataRange().getValues();
+  var allRecords = [];
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1]) { // Check if DocNo exists
+      var docNo = headerData[i][1].toString();
+      var narration = headerData[i][4] || '';
+      var date = headerData[i][2] ? Utilities.formatDate(new Date(headerData[i][2]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '';
+      
+      // Apply search filter if search term is provided
+      if (search) {
+        if (docNo.toLowerCase().indexOf(search) === -1 &&
+            narration.toLowerCase().indexOf(search) === -1 &&
+            date.toLowerCase().indexOf(search) === -1) {
+          continue;
+        }
+      }
+      
+      allRecords.push({
+        docType: headerData[i][0] || '',
+        docNo: docNo,
+        date: date,
+        amount: headerData[i][3] || 0,
+        narration: narration,
+        createdBy: headerData[i][5] || '',
+        createdTime: headerData[i][6] || '',
+        postedBy: headerData[i][7] || '',
+        postedTime: headerData[i][8] || ''
+      });
+    }
+  }
+  
+  // Sort descending by DocNo
+  allRecords.sort(function(a, b) {
+    return b.docNo.localeCompare(a.docNo);
+  });
+  
+  var totalRecords = allRecords.length;
+  var totalPages = Math.ceil(totalRecords / pageSize);
+  
+  var startIndex = (page - 1) * pageSize;
+  var endIndex = Math.min(startIndex + pageSize, totalRecords);
+  var records = allRecords.slice(startIndex, endIndex);
+  
+  var result = { 
+    status: "success", 
+    stockAdjustments: records, 
+    totalRecords: totalRecords,
+    totalPages: totalPages,
+    currentPage: page,
+    pageSize: pageSize
+  };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Get single stock adjustment by DocNo
+function handleGetStockAdjustmentByDocNoGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var docNo = e.parameter.docNo;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get header
+  var headerSheet = ss.getSheetByName("ADJHeader");
+  if (!headerSheet) {
+    var errorResult = { status: "error", message: "Stock adjustment record not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  var headerData = headerSheet.getDataRange().getValues();
+  var header = null;
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1] == docNo) {
+      header = {
+        docType: headerData[i][0] || '',
+        docNo: headerData[i][1],
+        date: headerData[i][2] ? Utilities.formatDate(new Date(headerData[i][2]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
+        amount: headerData[i][3] || 0,
+        narration: headerData[i][4] || '',
+        createdBy: headerData[i][5] || '',
+        createdTime: headerData[i][6] || '',
+        postedBy: headerData[i][7] || '',
+        postedTime: headerData[i][8] || ''
+      };
+      break;
+    }
+  }
+  
+  if (!header) {
+    var errorResult = { status: "error", message: "Stock adjustment record not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get details
+  var detailsSheet = ss.getSheetByName("ADJDetails");
+  var detailsData = detailsSheet ? detailsSheet.getDataRange().getValues() : [];
+  var details = [];
+  
+  for (var i = 1; i < detailsData.length; i++) {
+    if (detailsData[i][1] == docNo) {
+      details.push({
+        docType: detailsData[i][0] || '',
+        docNo: detailsData[i][1],
+        docSrNo: detailsData[i][2] || 0,
+        stockCode: detailsData[i][3] || '',
+        stockDescription: detailsData[i][4] || '',
+        qty: detailsData[i][5] || 0,
+        unit: detailsData[i][6] || '',
+        rate: detailsData[i][7] || 0,
+        amount: detailsData[i][8] || 0
+      });
+    }
+  }
+  
+  var result = { status: "success", stockAdjustment: { header: header, details: details } };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Create new stock adjustment
+function handleCreateStockAdjustmentGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var stockAdjustmentDataJson = e.parameter.stockAdjustmentData;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Parse data
+  var stockAdjustmentData;
+  try {
+    stockAdjustmentData = JSON.parse(stockAdjustmentDataJson);
+  } catch (error) {
+    var errorResult = { status: "error", message: "Invalid data format" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!stockAdjustmentData.header || !stockAdjustmentData.details || stockAdjustmentData.details.length === 0) {
+    var errorResult = { status: "error", message: "Header and at least one detail line are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Generate DocNo
+  var headerSheet = ss.getSheetByName("ADJHeader");
+  if (!headerSheet) {
+    headerSheet = ss.insertSheet("ADJHeader");
+    headerSheet.appendRow(["DocType", "DocNo", "Date", "Amount", "Narration", "CreatedBy", "CreatedTime", "PostedBy", "PostedTime"]);
+  }
+  var headerData = headerSheet.getDataRange().getValues();
+  var maxNum = 10000;
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1]) {
+      var docNo = headerData[i][1].toString();
+      if (docNo.startsWith('ADJ')) {
+        var num = parseInt(docNo.substring(3));
+        if (num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+  }
+  
+  var newDocNo = 'ADJ' + (maxNum + 1);
+  
+  // Add header
+  var header = stockAdjustmentData.header;
+  var now = new Date();
+  var createdTime = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+  
+  headerSheet.appendRow([
+    'ADJ', // DocType
+    newDocNo,
+    header.date,
+    header.amount || 0,
+    header.narration || '',
+    validation.userName,
+    createdTime
+  ]);
+  
+  // Add details
+  var detailsSheet = ss.getSheetByName("ADJDetails");
+  if (!detailsSheet) {
+    detailsSheet = ss.insertSheet("ADJDetails");
+    detailsSheet.appendRow(["DocType", "DocNo", "DocSrNo", "StockCode", "StockDescription", "Qty", "Unit", "Rate", "Amount"]);
+  }
+  for (var i = 0; i < stockAdjustmentData.details.length; i++) {
+    var detail = stockAdjustmentData.details[i];
+    detailsSheet.appendRow([
+      'ADJ', // DocType
+      newDocNo,
+      detail.docSrNo || (i + 1),
+      detail.stockCode,
+      detail.stockDescription || '',
+      detail.qty || 0,
+      detail.unit || '',
+      detail.rate || 0,
+      detail.amount || 0
+    ]);
+  }
+  
+  var result = { status: "success", message: "Stock adjustment created successfully", docNo: newDocNo };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Update existing stock adjustment
+function handleUpdateStockAdjustmentGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var stockAdjustmentDataJson = e.parameter.stockAdjustmentData;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Parse data
+  var stockAdjustmentData;
+  try {
+    stockAdjustmentData = JSON.parse(stockAdjustmentDataJson);
+  } catch (error) {
+    var errorResult = { status: "error", message: "Invalid data format" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!stockAdjustmentData.header || !stockAdjustmentData.header.docNo || !stockAdjustmentData.details || stockAdjustmentData.details.length === 0) {
+    var errorResult = { status: "error", message: "Header with DocNo and at least one detail line are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var docNo = stockAdjustmentData.header.docNo;
+  
+  // Update header
+  var headerSheet = ss.getSheetByName("ADJHeader");
+  if (!headerSheet) {
+    var errorResult = { status: "error", message: "Stock adjustment record not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  var headerData = headerSheet.getDataRange().getValues();
+  var headerFound = false;
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1] == docNo) {
+      var header = stockAdjustmentData.header;
+      headerSheet.getRange(i + 1, 1, 1, 7).setValues([[
+        'ADJ', // DocType
+        docNo,
+        header.date,
+        header.amount || 0,
+        header.narration || '',
+        headerData[i][5],
+        headerData[i][6]
+      ]]);
+      headerFound = true;
+      break;
+    }
+  }
+  
+  if (!headerFound) {
+    var errorResult = { status: "error", message: "Stock adjustment record not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Delete existing details
+  var detailsSheet = ss.getSheetByName("ADJDetails");
+  if (detailsSheet) {
+    var detailsData = detailsSheet.getDataRange().getValues();
+    for (var i = detailsData.length - 1; i >= 1; i--) {
+      if (detailsData[i][1] == docNo) {
+        detailsSheet.deleteRow(i + 1);
+      }
+    }
+  } else {
+    detailsSheet = ss.insertSheet("ADJDetails");
+    detailsSheet.appendRow(["DocType", "DocNo", "DocSrNo", "StockCode", "StockDescription", "Qty", "Unit", "Rate", "Amount"]);
+  }
+  
+  // Add new details
+  for (var i = 0; i < stockAdjustmentData.details.length; i++) {
+    var detail = stockAdjustmentData.details[i];
+    detailsSheet.appendRow([
+      'ADJ', // DocType
+      docNo,
+      detail.docSrNo || (i + 1),
+      detail.stockCode,
+      detail.stockDescription || '',
+      detail.qty || 0,
+      detail.unit || '',
+      detail.rate || 0,
+      detail.amount || 0
+    ]);
+  }
+  
+  var result = { status: "success", message: "Stock adjustment updated successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Delete stock adjustment
+function handleDeleteStockAdjustmentGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var docNo = e.parameter.docNo;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Delete header
+  var headerSheet = ss.getSheetByName("ADJHeader");
+  if (!headerSheet) {
+    var errorResult = { status: "error", message: "Stock adjustment record not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  var headerData = headerSheet.getDataRange().getValues();
+  var headerFound = false;
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1] == docNo) {
+      headerSheet.deleteRow(i + 1);
+      headerFound = true;
+      break;
+    }
+  }
+  
+  if (!headerFound) {
+    var errorResult = { status: "error", message: "Stock adjustment record not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Delete details
+  var detailsSheet = ss.getSheetByName("ADJDetails");
+  if (detailsSheet) {
+    var detailsData = detailsSheet.getDataRange().getValues();
+    for (var i = detailsData.length - 1; i >= 1; i--) {
+      if (detailsData[i][1] == docNo) {
+        detailsSheet.deleteRow(i + 1);
+      }
+    }
+  }
+  
+  var result = { status: "success", message: "Stock adjustment deleted successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Post ADJ to StockTransaction
+function handlePostADJToStockTransactionGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var docNo = e.parameter.docNo;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!docNo) {
+    var errorResult = { status: "error", message: "DocNo is required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Check if already posted
+  var headerSheet = ss.getSheetByName("ADJHeader");
+  if (!headerSheet) {
+    var errorResult = { status: "error", message: "ADJHeader sheet not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var headerData = headerSheet.getDataRange().getValues();
+  var headerRow = -1;
+  var headerDate = '';
+  var postedBy = '';
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1] == docNo) {
+      headerRow = i;
+      headerDate = headerData[i][2] ? Utilities.formatDate(new Date(headerData[i][2]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '';
+      postedBy = headerData[i][7] || '';
+      break;
+    }
+  }
+  
+  if (headerRow === -1) {
+    var errorResult = { status: "error", message: "ADJ document not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  if (postedBy) {
+    var errorResult = { status: "error", message: "Document is already posted by " + postedBy };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get ADJ details
+  var detailsSheet = ss.getSheetByName("ADJDetails");
+  if (!detailsSheet) {
+    var errorResult = { status: "error", message: "ADJDetails sheet not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var detailsData = detailsSheet.getDataRange().getValues();
+  var adjDetails = [];
+  
+  for (var i = 1; i < detailsData.length; i++) {
+    if (detailsData[i][1] == docNo) {
+      adjDetails.push({
+        docSrNo: detailsData[i][2] || 0,
+        stockCode: detailsData[i][3] || '',
+        stockDescription: detailsData[i][4] || '',
+        qty: parseFloat(detailsData[i][5]) || 0,
+        unit: detailsData[i][6] || '',
+        rate: parseFloat(detailsData[i][7]) || 0,
+        amount: parseFloat(detailsData[i][8]) || 0
+      });
+    }
+  }
+  
+  if (adjDetails.length === 0) {
+    var errorResult = { status: "error", message: "No details found for this document" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get StockMaster to find base units
+  var stockSheet = ss.getSheetByName("StockMaster");
+  var stockData = stockSheet ? stockSheet.getDataRange().getValues() : [];
+  var stockMap = {};
+  for (var i = 1; i < stockData.length; i++) {
+    if (stockData[i][0]) {
+      stockMap[stockData[i][0].toString()] = {
+        description: stockData[i][1] || '',
+        baseUnit: stockData[i][2] || ''
+      };
+    }
+  }
+  
+  // Ensure StockTransaction sheet exists
+  var stockTransactionSheet = ensureStockTransactionSheet(ss);
+  
+  // Post each detail line to StockTransaction
+  var now = new Date();
+  var postedTime = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+  
+  for (var d = 0; d < adjDetails.length; d++) {
+    var detail = adjDetails[d];
+    var stockCode = detail.stockCode;
+    var stockDesc = detail.stockDescription;
+    var docUnit = detail.unit;
+    var docQty = detail.qty;
+    var docRate = detail.rate;
+    var docAmount = detail.amount;
+    
+    // Get base unit from StockMaster
+    var stockInfo = stockMap[stockCode.toString()];
+    var baseUnit = (stockInfo && stockInfo.baseUnit) || docUnit || 'PCS';
+    
+    // Convert to base unit if needed
+    var baseQty = docQty;
+    var baseRate = docRate;
+    var baseAmount = docAmount;
+    
+    if (docUnit && docUnit !== baseUnit) {
+      var conversion = getStockUnitConversion(ss, stockCode, docUnit, baseUnit);
+      baseQty = docQty * conversion.factor;
+      baseRate = docRate / conversion.factor;
+      baseAmount = baseQty * baseRate;
+    }
+    
+    // For ADJ, CostRate = Rate (adjustment cost equals the rate)
+    var costRate = baseRate;
+    var costValue = Math.abs(baseQty) * costRate;
+    
+    // Add to StockTransaction sheet (qty preserves sign - positive for Up, negative for Down)
+    stockTransactionSheet.appendRow([
+      'ADJ',       // DocType
+      docNo,       // DocNo
+      detail.docSrNo, // DocSrNo
+      headerDate,  // Date
+      '',          // PartyType (empty for ADJ)
+      '',          // PartyCode (empty for ADJ)
+      '',          // PartyDesc (empty for ADJ)
+      stockCode,   // StockCode
+      stockDesc,   // StockDesc
+      baseQty,     // Qty (in base unit, preserves sign)
+      baseUnit,    // BaseUnit
+      baseRate,    // Rate (in base unit)
+      baseAmount,  // Amount
+      costRate,    // CostRate
+      costValue    // CostValue
+    ]);
+  }
+  
+  // Update ADJHeader with PostedBy and PostedTime
+  headerSheet.getRange(headerRow + 1, 8).setValue(validation.userName);
+  headerSheet.getRange(headerRow + 1, 9).setValue(postedTime);
+  
+  var result = { status: "success", message: "ADJ posted to stock transaction successfully", postedBy: validation.userName, postedTime: postedTime };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Cancel ADJ stock transaction post
+function handleCancelADJStockTransactionPostGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var docNo = e.parameter.docNo;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!docNo) {
+    var errorResult = { status: "error", message: "DocNo is required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Check if posted
+  var headerSheet = ss.getSheetByName("ADJHeader");
+  if (!headerSheet) {
+    var errorResult = { status: "error", message: "ADJHeader sheet not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var headerData = headerSheet.getDataRange().getValues();
+  var headerRow = -1;
+  var postedBy = '';
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1] == docNo) {
+      headerRow = i;
+      postedBy = headerData[i][7] || '';
+      break;
+    }
+  }
+  
+  if (headerRow === -1) {
+    var errorResult = { status: "error", message: "ADJ document not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  if (!postedBy) {
+    var errorResult = { status: "error", message: "Document is not posted" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Delete from StockTransaction sheet
+  var stockTransactionSheet = ss.getSheetByName("StockTransaction");
+  if (stockTransactionSheet) {
+    var transData = stockTransactionSheet.getDataRange().getValues();
+    for (var i = transData.length - 1; i >= 1; i--) {
+      if (transData[i][0] == 'ADJ' && transData[i][1] == docNo) {
+        stockTransactionSheet.deleteRow(i + 1);
+      }
+    }
+  }
+  
+  // Clear PostedBy and PostedTime in ADJHeader
+  headerSheet.getRange(headerRow + 1, 8).setValue('');
+  headerSheet.getRange(headerRow + 1, 9).setValue('');
+  
+  var result = { status: "success", message: "ADJ stock transaction post cancelled successfully" };
   if (callback) {
     return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
       .setMimeType(ContentService.MimeType.JAVASCRIPT);

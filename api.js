@@ -3,7 +3,7 @@
 // Centralized API calls with session validation
 // ============================================
 
-const API_URL = "https://script.google.com/macros/s/AKfycbxSu8cU_pO6g_x9Y3nMLHy5UH5Wj-FdBRP_7gYc6e95a9x-47UZyNEJbF3lwsSUJQ/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbwp0djlg7WN61NlrfJYMKKWKqB0evlidHBVSW4dWG6W4OgrJrUAvC1xsOuI9-3Wlyk/exec";
 
 const API_TIMEOUT = 15000; // 15 seconds
 
@@ -244,6 +244,280 @@ function deleteOpeningStock(session, docNo, callback) {
     
     const script = document.createElement('script');
     script.src = `${API_URL}?action=deleteOpeningStock&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&docNo=${encodeURIComponent(docNo)}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// ============================================
+// STOCK ADJUSTMENT MANAGEMENT API
+// ============================================
+
+// Get all stock adjustments with pagination and search
+function getStockAdjustments(session, page, pageSize, search, callback) {
+    const callbackName = 'jsonp_getStockAdjustments_' + Date.now();
+    
+    const timeoutId = setTimeout(function() {
+        delete window[callbackName];
+        callback({
+            status: "error",
+            message: "Request timeout"
+        });
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=getStockAdjustments&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&page=${page}&pageSize=${pageSize}&search=${encodeURIComponent(search)}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        console.error('JSONP request failed for getStockAdjustments. URL:', script.src);
+        callback({
+            status: "error",
+            message: "Connection error."
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// Get single stock adjustment by DocNo
+function getStockAdjustmentByDocNo(session, docNo, callback) {
+    const callbackName = 'jsonp_getStockAdjustmentByDocNo_' + Date.now();
+    
+    const timeoutId = setTimeout(function() {
+        delete window[callbackName];
+        callback({
+            status: "error",
+            message: "Request timeout"
+        });
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=getStockAdjustmentByDocNo&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&docNo=${encodeURIComponent(docNo)}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// Create new stock adjustment
+function createStockAdjustment(session, stockAdjustmentData, callback) {
+    const callbackName = 'jsonp_createStockAdjustment_' + Date.now();
+    
+    const timeoutId = setTimeout(function() {
+        delete window[callbackName];
+        callback({
+            status: "error",
+            message: "Request timeout"
+        });
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=createStockAdjustment&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&stockAdjustmentData=${encodeURIComponent(JSON.stringify(stockAdjustmentData))}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// Update existing stock adjustment
+function updateStockAdjustment(session, stockAdjustmentData, callback) {
+    const callbackName = 'jsonp_updateStockAdjustment_' + Date.now();
+    
+    const timeoutId = setTimeout(function() {
+        delete window[callbackName];
+        callback({
+            status: "error",
+            message: "Request timeout"
+        });
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=updateStockAdjustment&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&stockAdjustmentData=${encodeURIComponent(JSON.stringify(stockAdjustmentData))}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// Delete stock adjustment
+function deleteStockAdjustment(session, docNo, callback) {
+    const callbackName = 'jsonp_deleteStockAdjustment_' + Date.now();
+    
+    const timeoutId = setTimeout(function() {
+        delete window[callbackName];
+        callback({
+            status: "error",
+            message: "Request timeout"
+        });
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=deleteStockAdjustment&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&docNo=${encodeURIComponent(docNo)}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// Post ADJ to StockTransaction
+function apiPostADJToStockTransaction(docNo, callback) {
+    const callbackName = 'jsonp_postADJ_' + Date.now();
+    const session = getSession();
+    if (!session) {
+        callback({ status: "error", message: "No active session" });
+        return;
+    }
+    
+    const timeoutId = setTimeout(function() {
+        delete window[callbackName];
+        callback({
+            status: "error",
+            message: "Request timeout"
+        });
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=postADJToStockTransaction&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&docNo=${encodeURIComponent(docNo)}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// Cancel ADJ stock transaction post
+function apiCancelADJStockTransactionPost(docNo, callback) {
+    const callbackName = 'jsonp_cancelADJPost_' + Date.now();
+    const session = getSession();
+    if (!session) {
+        callback({ status: "error", message: "No active session" });
+        return;
+    }
+    
+    const timeoutId = setTimeout(function() {
+        delete window[callbackName];
+        callback({
+            status: "error",
+            message: "Request timeout"
+        });
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=cancelADJStockTransactionPost&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&docNo=${encodeURIComponent(docNo)}&callback=${callbackName}`;
     script.onerror = function() {
         clearTimeout(timeoutId);
         delete window[callbackName];
@@ -1444,6 +1718,108 @@ function apiGetPurchaseReport(filters, callback) {
         '&toDate=' + encodeURIComponent(filters.toDate || '') +
         '&supplier=' + encodeURIComponent(filters.supplier || '') +
         '&salesman=' + encodeURIComponent(filters.salesman || '') +
+        '&reportType=' + encodeURIComponent(filters.reportType || 'headerwise') +
+        '&callback=' + callbackName;
+    
+    const script = document.createElement('script');
+    script.src = API_URL + '?' + params;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// Get stock adjustment report with date range
+function apiGetStockAdjustmentReport(filters, callback) {
+    const callbackName = 'apiGetStockAdjustmentReportCallback_' + Date.now();
+    const session = getSession();
+    
+    const timeoutId = setTimeout(function() {
+        if (window[callbackName]) {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+                document.body.removeChild(script);
+            }
+            callback({
+                status: "error",
+                message: "Request timeout"
+            });
+        }
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    var params = 'action=getStockAdjustmentReport' +
+        '&sessionId=' + encodeURIComponent(session.sessionId) +
+        '&userId=' + encodeURIComponent(session.userId) +
+        '&fromDate=' + encodeURIComponent(filters.fromDate || '') +
+        '&toDate=' + encodeURIComponent(filters.toDate || '') +
+        '&reportType=' + encodeURIComponent(filters.reportType || 'headerwise') +
+        '&callback=' + callbackName;
+    
+    const script = document.createElement('script');
+    script.src = API_URL + '?' + params;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// Get opening stock report with date range
+function apiGetOpeningStockReport(filters, callback) {
+    const callbackName = 'apiGetOpeningStockReportCallback_' + Date.now();
+    const session = getSession();
+    
+    const timeoutId = setTimeout(function() {
+        if (window[callbackName]) {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+                document.body.removeChild(script);
+            }
+            callback({
+                status: "error",
+                message: "Request timeout"
+            });
+        }
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    var params = 'action=getOpeningStockReport' +
+        '&sessionId=' + encodeURIComponent(session.sessionId) +
+        '&userId=' + encodeURIComponent(session.userId) +
+        '&fromDate=' + encodeURIComponent(filters.fromDate || '') +
+        '&toDate=' + encodeURIComponent(filters.toDate || '') +
         '&reportType=' + encodeURIComponent(filters.reportType || 'headerwise') +
         '&callback=' + callbackName;
     
