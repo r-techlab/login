@@ -1,0 +1,1414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chart of Accounts - Account Master</title>
+<link rel="stylesheet" href="menu.css">
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    margin: 0;
+    padding: 20px;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 20px;
+    margin-bottom: 30px;
+}
+
+h1 {
+    color: #333;
+    margin: 0;
+}
+
+.btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    margin-left: 10px;
+}
+
+.btn:hover {
+    background: #2980b9;
+}
+
+.btn-success {
+    background: #27ae60;
+}
+
+.btn-success:hover {
+    background: #229954;
+}
+
+.btn-danger {
+    background: #e74c3c;
+}
+
+.btn-danger:hover {
+    background: #c0392b;
+}
+
+.btn-warning {
+    background: #f39c12;
+}
+
+.btn-warning:hover {
+    background: #e67e22;
+}
+
+.btn-info {
+    background: #17a2b8;
+}
+
+.btn-info:hover {
+    background: #138496;
+}
+
+.btn:disabled {
+    background: #95a5a6;
+    cursor: not-allowed;
+}
+
+.layout-with-sidebar {
+    display: flex;
+    gap: 20px;
+}
+
+.sidebar {
+    width: 280px;
+    flex-shrink: 0;
+}
+
+.company-name-sidebar {
+    font-size: 16px;
+    font-weight: bold;
+    color: white;
+    padding: 12px;
+    margin-bottom: 15px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 8px;
+    text-align: center;
+}
+
+.main-content {
+    flex: 1;
+}
+
+.toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.search-box {
+    flex: 1;
+    max-width: 400px;
+}
+
+.search-box input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.stats-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-around;
+    text-align: center;
+}
+
+.stat-item h3 {
+    margin: 0;
+    font-size: 32px;
+}
+
+.stat-item p {
+    margin: 5px 0 0 0;
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+.table-container {
+    overflow-x: auto;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Tree view styles */
+.tree-container {
+    overflow-x: auto;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 0;
+}
+
+.tree-header {
+    display: flex;
+    background: #667eea;
+    color: white;
+    font-weight: bold;
+    border-radius: 8px 8px 0 0;
+    padding: 12px 15px;
+}
+
+.tree-header-code { width: 120px; min-width: 120px; }
+.tree-header-name { flex: 1; }
+.tree-header-type { width: 100px; min-width: 100px; text-align: center; }
+.tree-header-level { width: 60px; min-width: 60px; text-align: center; }
+.tree-header-subledger { width: 100px; min-width: 100px; text-align: center; }
+.tree-header-actions { width: 150px; min-width: 150px; text-align: center; }
+
+.tree-body {
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.tree-row {
+    display: flex;
+    align-items: center;
+    padding: 8px 15px;
+    border-bottom: 1px solid #eee;
+    font-size: 14px;
+    transition: background 0.2s;
+}
+
+.tree-row:hover {
+    background: #f0f4ff;
+}
+
+.tree-row.level-1 { background: #f8f9fa; font-weight: bold; }
+.tree-row.level-2 { background: #ffffff; }
+.tree-row.level-3 { background: #fafafa; }
+.tree-row.level-4 { background: #f5f5f5; }
+.tree-row.level-5 { background: #f0f0f0; }
+
+.tree-row .indent {
+    display: inline-block;
+}
+
+.tree-row .toggle-btn {
+    background: none;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    cursor: pointer;
+    padding: 1px 5px;
+    margin-right: 5px;
+    font-size: 10px;
+    color: #666;
+    width: 20px;
+    text-align: center;
+}
+
+.tree-row .toggle-btn:hover {
+    background: #e0e0e0;
+}
+
+.tree-row .toggle-btn.leaf {
+    visibility: hidden;
+}
+
+.tree-row .row-code {
+    width: 120px;
+    min-width: 120px;
+    font-family: monospace;
+    font-size: 12px;
+    color: #555;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tree-row .row-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 0 10px;
+}
+
+.tree-row .row-type {
+    width: 100px;
+    min-width: 100px;
+    text-align: center;
+    font-size: 12px;
+}
+
+.tree-row .row-level {
+    width: 60px;
+    min-width: 60px;
+    text-align: center;
+    font-size: 12px;
+    color: #888;
+}
+
+.tree-row .row-subledger {
+    width: 100px;
+    min-width: 100px;
+    text-align: center;
+}
+
+.tree-row .row-actions {
+    width: 150px;
+    min-width: 150px;
+    text-align: center;
+}
+
+.subledger-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: bold;
+    color: white;
+}
+
+.subledger-badge.gl { background: #6c757d; }
+.subledger-badge.ar { background: #28a745; }
+.subledger-badge.ap { background: #dc3545; }
+.subledger-badge.bk { background: #17a2b8; }
+
+.type-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: bold;
+    color: white;
+}
+
+.type-badge.type-asset { background: #007bff; }
+.type-badge.type-liability { background: #dc3545; }
+.type-badge.type-equity { background: #28a745; }
+.type-badge.type-income { background: #17a2b8; }
+.type-badge.type-expense { background: #ffc107; color: #333; }
+
+.action-buttons {
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+}
+
+.btn-small {
+    padding: 4px 8px;
+    font-size: 11px;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    animation: fadeIn 0.3s;
+    overflow-y: auto;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-content {
+    background: white;
+    margin: 3% auto;
+    padding: 30px;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 750px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    animation: slideDown 0.3s;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #667eea;
+}
+
+.modal-header h2 {
+    margin: 0;
+    color: #333;
+}
+
+.close {
+    font-size: 28px;
+    font-weight: bold;
+    color: #999;
+    cursor: pointer;
+    line-height: 20px;
+}
+
+.close:hover {
+    color: #333;
+}
+
+.form-section {
+    margin-bottom: 25px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.form-section h3 {
+    margin: 0 0 15px 0;
+    color: #667eea;
+    font-size: 16px;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 8px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.form-row.single {
+    grid-template-columns: 1fr;
+}
+
+.form-row.triple {
+    grid-template-columns: 1fr 1fr 1fr;
+}
+
+.form-group {
+    margin-bottom: 0;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #555;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 60px;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.form-group input:disabled,
+.form-group select:disabled {
+    background: #f5f5f5;
+    cursor: not-allowed;
+}
+
+.form-group small {
+    display: block;
+    margin-top: 3px;
+    color: #666;
+    font-size: 12px;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 25px;
+}
+
+.message {
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    font-weight: bold;
+}
+
+.message.success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.message.error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.message.warning {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #999;
+}
+
+.empty-state-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+}
+
+/* Filter tabs */
+.filter-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+
+.filter-tab {
+    padding: 6px 14px;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 13px;
+    background: white;
+    color: #666;
+    transition: all 0.2s;
+}
+
+.filter-tab:hover {
+    background: #f0f4ff;
+    border-color: #667eea;
+}
+
+.filter-tab.active {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+}
+
+@media (max-width: 992px) {
+    .layout-with-sidebar {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+    }
+    
+    .toolbar {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .search-box {
+        max-width: 100%;
+    }
+    
+    .stats-card {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .form-row, .form-row.triple {
+        grid-template-columns: 1fr;
+    }
+
+    .tree-header, .tree-row {
+        font-size: 12px;
+        padding: 6px 10px;
+    }
+
+    .tree-header-code, .tree-row .row-code { width: 80px; min-width: 80px; }
+    .tree-header-type, .tree-row .row-type { width: 70px; min-width: 70px; }
+    .tree-header-level, .tree-row .row-level { width: 40px; min-width: 40px; }
+    .tree-header-subledger, .tree-row .row-subledger { width: 70px; min-width: 70px; }
+    .tree-header-actions, .tree-row .row-actions { width: 100px; min-width: 100px; }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>📊 Chart of Accounts - Account Master</h1>
+        <div>
+            <button class="btn" onclick="window.location.href='home.html'">🏠 Home</button>
+            <button class="btn btn-danger" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div id="breadcrumbContainer" class="breadcrumb-container"></div>
+
+    <div class="layout-with-sidebar">
+        <div class="sidebar">
+            <div id="companyNameSidebar" class="company-name-sidebar"></div>
+            <h3>Navigation Menu</h3>
+            <div id="menuContainer"></div>
+        </div>
+
+        <div class="main-content">
+            <div id="messageContainer"></div>
+
+            <div class="stats-card" id="statsCard" style="display: none;">
+                <div class="stat-item">
+                    <h3 id="totalAccounts">0</h3>
+                    <p>Total Accounts</p>
+                </div>
+                <div class="stat-item">
+                    <h3 id="totalLevels">0</h3>
+                    <p>Hierarchy Levels</p>
+                </div>
+            </div>
+
+            <div class="toolbar">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="🔍 Search by Code, Description, or Type..." onkeyup="filterAccounts()">
+                </div>
+                <button class="btn btn-success" onclick="openAddAccountModal()">➕ Add New Account</button>
+            </div>
+
+            <!-- Filter tabs -->
+            <div class="filter-tabs" id="filterTabs">
+                <span class="filter-tab active" data-filter="all" onclick="setFilter('all')">All</span>
+                <span class="filter-tab" data-filter="ASSET" onclick="setFilter('ASSET')">📈 Assets</span>
+                <span class="filter-tab" data-filter="LIABILITY" onclick="setFilter('LIABILITY')">📉 Liabilities</span>
+                <span class="filter-tab" data-filter="EQUITY" onclick="setFilter('EQUITY')">💰 Equity</span>
+                <span class="filter-tab" data-filter="INCOME" onclick="setFilter('INCOME')">💵 Income</span>
+                <span class="filter-tab" data-filter="EXPENSE" onclick="setFilter('EXPENSE')">💸 Expenses</span>
+            </div>
+
+            <div class="tree-container" id="treeContainer">
+                <div id="loadingIndicator" class="loading">Loading Chart of Accounts</div>
+                <div id="emptyState" class="empty-state" style="display: none;">
+                    <div class="empty-state-icon">📊</div>
+                    <h3>No Accounts Found</h3>
+                    <p>Start by adding your first account.</p>
+                </div>
+                <div id="treeView" style="display: none;">
+                    <div class="tree-header">
+                        <span class="tree-header-code">Code</span>
+                        <span class="tree-header-name">Account Name</span>
+                        <span class="tree-header-type">Type</span>
+                        <span class="tree-header-level">Level</span>
+                        <span class="tree-header-subledger">Subledger</span>
+                        <span class="tree-header-actions">Actions</span>
+                    </div>
+                    <div class="tree-body" id="treeBody">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Account Modal -->
+<div id="accountModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Add New Account</h2>
+            <span class="close" onclick="closeAccountModal()">&times;</span>
+        </div>
+        <form id="accountForm" onsubmit="saveAccount(event)">
+            <!-- Basic Information Section -->
+            <div class="form-section">
+                <h3>📋 Account Information</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="acCode">Account Code</label>
+                        <input type="text" id="acCode" maxlength="50" placeholder="e.g., 1010101">
+                        <small>Leave blank for group/header accounts</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="acType">Account Type *</label>
+                        <select id="acType" required>
+                            <option value="">-- Select Type --</option>
+                            <option value="ASSET">ASSET</option>
+                            <option value="LIABILITY">LIABILITY</option>
+                            <option value="EQUITY">EQUITY</option>
+                            <option value="INCOME">INCOME</option>
+                            <option value="EXPENSE">EXPENSE</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row single">
+                    <div class="form-group">
+                        <label for="description">Description *</label>
+                        <input type="text" id="description" required maxlength="200" placeholder="Account Name">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hierarchy Section -->
+            <div class="form-section">
+                <h3>🔗 Hierarchy</h3>
+                <div class="form-row triple">
+                    <div class="form-group">
+                        <label for="level">Level *</label>
+                        <select id="level" required onchange="onLevelChange()">
+                            <option value="">-- Select --</option>
+                            <option value="1">1 - Top Level</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                        </select>
+                        <small>Hierarchy depth</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="parent">Parent Account</label>
+                        <select id="parent">
+                            <option value="0">None (Top Level)</option>
+                        </select>
+                        <small>Parent DOCNO (0 = root)</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="firstLevel">First Level</label>
+                        <select id="firstLevel">
+                            <option value="">-- Auto --</option>
+                            <option value="1">1 - ASSET</option>
+                            <option value="2">2 - LIABILITY</option>
+                            <option value="3">3 - EQUITY</option>
+                            <option value="4">4 - GROSS PROFIT / INCOME</option>
+                            <option value="5">5 - ADMIN EXP / EXPENSE</option>
+                        </select>
+                        <small>Top-level classification</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Configuration Section -->
+            <div class="form-section">
+                <h3>⚙️ Configuration</h3>
+                <div class="form-row triple">
+                    <div class="form-group">
+                        <label for="balanceSheetAccount">Balance Sheet Account</label>
+                        <select id="balanceSheetAccount">
+                            <option value="0">0 - No</option>
+                            <option value="1">1 - Yes</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="subledgerExists">Subledger</label>
+                        <select id="subledgerExists">
+                            <option value="0">0 - None</option>
+                            <option value="1">1 - Exists</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="defaultBalanceSign">Default Balance Sign</label>
+                        <select id="defaultBalanceSign">
+                            <option value="-1">-1 (Debit)</option>
+                            <option value="1">1 (Credit)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="actypeDocno">Subledger Type (ACTYPE_DOCNO)</label>
+                        <select id="actypeDocno">
+                            <option value="">None</option>
+                            <option value="GL">GL - General Ledger</option>
+                            <option value="AR">AR - Accounts Receivable</option>
+                            <option value="AP">AP - Accounts Payable</option>
+                            <option value="BK">BK - Bank</option>
+                        </select>
+                        <small>Determines the subledger module</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="remarks">Remarks</label>
+                        <input type="text" id="remarks" maxlength="500" placeholder="Optional remarks">
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn" onclick="closeAccountModal()">Cancel</button>
+                <button type="submit" class="btn btn-success" id="saveButton">Save Account</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- View Account Details Modal -->
+<div id="viewModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Account Details</h2>
+            <span class="close" onclick="closeViewModal()">&times;</span>
+        </div>
+        <div id="viewContent">
+            <div class="loading">Loading account details...</div>
+        </div>
+    </div>
+</div>
+
+<script src="api.js"></script>
+<script src="indexedDB.js"></script>
+<script src="session.js"></script>
+<script src="menu.js"></script>
+<script src="systemConfig.js"></script>
+<script src="themeManager.js"></script>
+<script>
+// Global variables
+let allAccounts = [];
+let editingSrno = null;
+let currentFilter = 'all';
+let currentExpandState = {}; // Track which nodes are expanded
+
+// Initialize system config with theme
+initPageWithTheme('coamaster.htm', 'companyNameSidebar');
+
+// Protect this page with menu-based access control
+protectPageWithMenuAccess(function(isValid) {
+    if (isValid) {
+        renderMenu('menuContainer');
+        renderBreadcrumb('breadcrumbContainer');
+        loadAccounts();
+    }
+});
+
+// ============================================
+// DATA LOADING
+// ============================================
+
+// Load all accounts
+function loadAccounts() {
+    document.getElementById('loadingIndicator').style.display = 'block';
+    document.getElementById('treeView').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('statsCard').style.display = 'none';
+    
+    apiGetCOA(function(response) {
+        document.getElementById('loadingIndicator').style.display = 'none';
+        
+        if (response.status === 'success') {
+            allAccounts = response.accounts || [];
+            processAndDisplay();
+            updateStats();
+        } else {
+            showMessage('Error loading accounts: ' + response.message, 'error');
+            document.getElementById('emptyState').style.display = 'block';
+        }
+    });
+}
+
+// Update statistics
+function updateStats() {
+    const levels = new Set();
+    allAccounts.forEach(a => levels.add(a.level));
+    
+    document.getElementById('totalAccounts').textContent = allAccounts.length;
+    document.getElementById('totalLevels').textContent = levels.size;
+    document.getElementById('statsCard').style.display = 'flex';
+}
+
+// Process and display accounts
+function processAndDisplay() {
+    if (allAccounts.length === 0) {
+        document.getElementById('treeView').style.display = 'none';
+        document.getElementById('emptyState').style.display = 'block';
+        return;
+    }
+    
+    document.getElementById('treeView').style.display = 'block';
+    document.getElementById('emptyState').style.display = 'none';
+    
+    // Build hierarchy
+    const filtered = getFilteredAccounts();
+    const hierarchy = buildHierarchy(filtered);
+    renderTree(hierarchy);
+}
+
+// ============================================
+// FILTERING
+// ============================================
+
+function getFilteredAccounts() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+    
+    return allAccounts.filter(account => {
+        // Apply type filter
+        if (currentFilter !== 'all') {
+            // For INCOME and EXPENSE, they are stored as their actual types
+            // Level 1 items: ASSET, LIABILITY, EQUITY, GROSS PROFIT, ADMINISTRATIVE EXPENSES
+            // Map filter to actual types
+            const acType = (account.acType || '').toUpperCase();
+            let matchesFilter = false;
+            
+            if (currentFilter === 'ASSET' && acType === 'ASSET') matchesFilter = true;
+            else if (currentFilter === 'LIABILITY' && acType === 'LIABILITY') matchesFilter = true;
+            else if (currentFilter === 'EQUITY' && acType === 'EQUITY') matchesFilter = true;
+            else if (currentFilter === 'INCOME') {
+                // Income accounts: type could be GROSS PROFIT or INCOME
+                // Also accounts under GROSS PROFIT parent
+                if (acType === 'GROSS PROFIT' || acType === 'INCOME') matchesFilter = true;
+            }
+            else if (currentFilter === 'EXPENSE') {
+                // Expense accounts: ADMINISTRATIVE EXPENSES or EXPENSE
+                if (acType === 'ADMINISTRATIVE EXPENSES' || acType === 'EXPENSE') matchesFilter = true;
+            }
+            
+            if (!matchesFilter) return false;
+        }
+        
+        // Apply search filter
+        if (searchTerm) {
+            const code = (account.acCode || '').toLowerCase();
+            const desc = (account.description || '').toLowerCase();
+            const type = (account.acType || '').toLowerCase();
+            
+            if (code.includes(searchTerm) || desc.includes(searchTerm) || type.includes(searchTerm)) {
+                return true;
+            }
+            
+            // Also check parent description
+            if (account.parentDesc && account.parentDesc.toLowerCase().includes(searchTerm)) {
+                return true;
+            }
+            
+            return false;
+        }
+        
+        return true;
+    });
+}
+
+function setFilter(filter) {
+    currentFilter = filter;
+    
+    // Update active tab
+    document.querySelectorAll('.filter-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.filter === filter);
+    });
+    
+    processAndDisplay();
+}
+
+// Filter accounts on search
+function filterAccounts() {
+    processAndDisplay();
+}
+
+// ============================================
+// HIERARCHY BUILDING & TREE RENDERING
+// ============================================
+
+// Build hierarchy from flat list
+function buildHierarchy(accounts) {
+    // Sort by DOCNO
+    const sorted = [...accounts].sort((a, b) => a.docno - b.docno);
+    
+    // Build children map
+    const childrenMap = {};
+    const accountMap = {};
+    
+    sorted.forEach(account => {
+        accountMap[account.docno] = account;
+        account.children = [];
+        
+        const parent = account.parent || 0;
+        if (!childrenMap[parent]) {
+            childrenMap[parent] = [];
+        }
+        childrenMap[parent].push(account);
+    });
+    
+    // Assign children
+    sorted.forEach(account => {
+        if (childrenMap[account.docno]) {
+            account.children = childrenMap[account.docno];
+        }
+    });
+    
+    // Return root level items (parent = 0, or level 1)
+    return childrenMap[0] || sorted.filter(a => a.level == 1 || a.parent == 0);
+}
+
+// Render tree
+function renderTree(hierarchy) {
+    const treeBody = document.getElementById('treeBody');
+    treeBody.innerHTML = '';
+    
+    if (!hierarchy || hierarchy.length === 0) {
+        treeBody.innerHTML = '<div class="empty-state" style="display:block;">No matching accounts found</div>';
+        return;
+    }
+    
+    let html = '';
+    hierarchy.forEach(node => {
+        html += buildTreeNode(node, 0);
+    });
+    
+    treeBody.innerHTML = html;
+    
+    // Apply expand/collapse state
+    Object.keys(currentExpandState).forEach(docno => {
+        const submenu = document.getElementById(`children-${docno}`);
+        const toggle = document.getElementById(`toggle-${docno}`);
+        if (submenu && toggle) {
+            if (currentExpandState[docno]) {
+                submenu.style.display = 'block';
+                toggle.textContent = '−';
+            } else {
+                submenu.style.display = 'none';
+                toggle.textContent = '+';
+            }
+        }
+    });
+}
+
+// Build a single tree node (recursive)
+function buildTreeNode(node, depth) {
+    const hasChildren = node.children && node.children.length > 0;
+    const srno = node.srno || 0;
+    const indentSize = depth * 20;
+    const isLeaf = !hasChildren;
+    
+    // Subledger badge
+    let subledgerHtml = '';
+    const actype = (node.actypeDocno || '').toUpperCase();
+    if (actype) {
+        const cls = actype.toLowerCase();
+        subledgerHtml = `<span class="subledger-badge ${cls}">${actype}</span>`;
+    } else {
+        subledgerHtml = '<span style="color:#ccc;">-</span>';
+    }
+    
+    // Type badge
+    let typeHtml = '';
+    const acType = (node.acType || '').toUpperCase();
+    let typeClass = '';
+    if (acType === 'ASSET') typeClass = 'type-asset';
+    else if (acType === 'LIABILITY') typeClass = 'type-liability';
+    else if (acType === 'EQUITY') typeClass = 'type-equity';
+    else if (acType === 'GROSS PROFIT' || acType === 'INCOME') typeClass = 'type-income';
+    else if (acType === 'ADMINISTRATIVE EXPENSES' || acType === 'EXPENSE') typeClass = 'type-expense';
+    
+    if (acType) {
+        typeHtml = `<span class="type-badge ${typeClass}">${acType}</span>`;
+    }
+    
+    // Toggle button
+    const toggleBtn = hasChildren 
+        ? `<button class="toggle-btn" id="toggle-${node.docno}" onclick="toggleNode(${node.docno})">+</button>`
+        : `<button class="toggle-btn leaf">+</button>`;
+    
+    const row = `
+        <div class="tree-row level-${node.level || 1}">
+            <span class="indent" style="min-width:${indentSize}px;width:${indentSize}px;"></span>
+            ${toggleBtn}
+            <span class="row-code">${escapeHtml(node.acCode || '')}</span>
+            <span class="row-name"><strong>${escapeHtml(node.description || '')}</strong></span>
+            <span class="row-type">${typeHtml}</span>
+            <span class="row-level">${node.level || '-'}</span>
+            <span class="row-subledger">${subledgerHtml}</span>
+            <span class="row-actions">
+                <div class="action-buttons">
+                    <button class="btn btn-warning btn-small" onclick="openEditAccountModal(${srno})">✏️</button>
+                    <button class="btn btn-info btn-small" onclick="viewAccount(${srno})">👁️</button>
+                    <button class="btn btn-danger btn-small" onclick="deleteAccount(${srno})">🗑️</button>
+                </div>
+            </span>
+        </div>
+    `;
+    
+    let childrenHtml = '';
+    if (hasChildren) {
+        childrenHtml = `<div id="children-${node.docno}" style="display:none;">`;
+        node.children.forEach(child => {
+            childrenHtml += buildTreeNode(child, depth + 1);
+        });
+        childrenHtml += '</div>';
+    }
+    
+    return row + childrenHtml;
+}
+
+// Toggle node expand/collapse
+function toggleNode(docno) {
+    const submenu = document.getElementById(`children-${docno}`);
+    const toggle = document.getElementById(`toggle-${docno}`);
+    
+    if (!submenu || !toggle) return;
+    
+    if (submenu.style.display === 'block') {
+        submenu.style.display = 'none';
+        toggle.textContent = '+';
+        currentExpandState[docno] = false;
+    } else {
+        submenu.style.display = 'block';
+        toggle.textContent = '−';
+        currentExpandState[docno] = true;
+    }
+}
+
+// ============================================
+// MODAL MANAGEMENT
+// ============================================
+
+// Open add account modal
+function openAddAccountModal() {
+    editingSrno = null;
+    document.getElementById('modalTitle').textContent = 'Add New Account';
+    document.getElementById('accountForm').reset();
+    document.getElementById('saveButton').textContent = 'Save Account';
+    
+    // Populate parent dropdown
+    populateParentDropdown(0);
+    
+    document.getElementById('accountModal').style.display = 'block';
+}
+
+// Open edit account modal
+function openEditAccountModal(srno) {
+    const account = allAccounts.find(a => a.srno == srno);
+    if (!account) {
+        showMessage('Account not found', 'error');
+        return;
+    }
+    
+    editingSrno = srno;
+    document.getElementById('modalTitle').textContent = 'Edit Account';
+    
+    document.getElementById('acCode').value = account.acCode || '';
+    document.getElementById('acType').value = account.acType || '';
+    document.getElementById('description').value = account.description || '';
+    document.getElementById('level').value = account.level || '';
+    document.getElementById('firstLevel').value = account.firstLevel || '';
+    document.getElementById('balanceSheetAccount').value = account.balanceSheetAccount || '0';
+    document.getElementById('subledgerExists').value = account.subledgerExists || '0';
+    document.getElementById('defaultBalanceSign').value = account.defaultBalanceSign || '-1';
+    document.getElementById('actypeDocno').value = account.actypeDocno || '';
+    document.getElementById('remarks').value = account.remarks || '';
+    
+    // Populate parent dropdown
+    populateParentDropdown(account.parent || 0);
+    
+    document.getElementById('saveButton').textContent = 'Update Account';
+    document.getElementById('accountModal').style.display = 'block';
+}
+
+// Close account modal
+function closeAccountModal() {
+    document.getElementById('accountModal').style.display = 'none';
+    document.getElementById('accountForm').reset();
+    editingSrno = null;
+}
+
+// Populate parent dropdown
+function populateParentDropdown(selectedParent) {
+    const select = document.getElementById('parent');
+    select.innerHTML = '<option value="0">None (Top Level)</option>';
+    
+    // Add all accounts as potential parents
+    allAccounts.sort((a, b) => a.docno - b.docno).forEach(account => {
+        // A parent must have a lower level than its children
+        const option = document.createElement('option');
+        option.value = account.docno;
+        option.textContent = `${account.description || ''} (DOCNO: ${account.docno})`;
+        
+        if (account.docno == selectedParent) {
+            option.selected = true;
+        }
+        
+        select.appendChild(option);
+    });
+}
+
+// On level change - auto suggest parent
+function onLevelChange() {
+    const level = parseInt(document.getElementById('level').value);
+    if (!level || level <= 1) return;
+    
+    // Suggest setting parent to accounts of level-1
+    const parentSelect = document.getElementById('parent');
+    // Just a hint - user can select manually
+}
+
+// ============================================
+// CRUD OPERATIONS
+// ============================================
+
+// Save account (add or update)
+function saveAccount(event) {
+    event.preventDefault();
+    
+    const acCode = document.getElementById('acCode').value.trim();
+    const acType = document.getElementById('acType').value;
+    const description = document.getElementById('description').value.trim();
+    const level = parseInt(document.getElementById('level').value);
+    const parent = parseInt(document.getElementById('parent').value) || 0;
+    const firstLevel = parseInt(document.getElementById('firstLevel').value) || 0;
+    const balanceSheetAccount = parseInt(document.getElementById('balanceSheetAccount').value) || 0;
+    const subledgerExists = parseInt(document.getElementById('subledgerExists').value) || 0;
+    const defaultBalanceSign = parseInt(document.getElementById('defaultBalanceSign').value) || -1;
+    const actypeDocno = document.getElementById('actypeDocno').value;
+    const remarks = document.getElementById('remarks').value.trim();
+    
+    // Validation
+    if (!acType) {
+        showMessage('Please select an Account Type', 'error');
+        return;
+    }
+    
+    if (!description) {
+        showMessage('Please enter a Description', 'error');
+        return;
+    }
+    
+    if (!level) {
+        showMessage('Please select a Level', 'error');
+        return;
+    }
+    
+    const saveButton = document.getElementById('saveButton');
+    saveButton.disabled = true;
+    saveButton.textContent = editingSrno ? 'Updating...' : 'Saving...';
+    
+    const accountData = {
+        acCode: acCode,
+        acType: acType,
+        description: description,
+        level: level,
+        parent: parent,
+        firstLevel: firstLevel,
+        balanceSheetAccount: balanceSheetAccount,
+        subledgerExists: subledgerExists,
+        defaultBalanceSign: defaultBalanceSign,
+        actypeDocno: actypeDocno,
+        remarks: remarks
+    };
+    
+    if (editingSrno) {
+        // Update existing account
+        accountData.srno = editingSrno;
+        apiUpdateCOA(accountData, function(response) {
+            saveButton.disabled = false;
+            saveButton.textContent = 'Update Account';
+            
+            if (response.status === 'success') {
+                showMessage('Account updated successfully!', 'success');
+                closeAccountModal();
+                loadAccounts();
+            } else {
+                showMessage('Error: ' + response.message, 'error');
+            }
+        });
+    } else {
+        // Create new account
+        apiCreateCOA(accountData, function(response) {
+            saveButton.disabled = false;
+            saveButton.textContent = 'Save Account';
+            
+            if (response.status === 'success') {
+                showMessage('Account created successfully!', 'success');
+                closeAccountModal();
+                loadAccounts();
+            } else {
+                showMessage('Error: ' + response.message, 'error');
+            }
+        });
+    }
+}
+
+// Delete account
+function deleteAccount(srno) {
+    const account = allAccounts.find(a => a.srno == srno);
+    if (!account) return;
+    
+    // Check if account has children
+    const hasChildren = allAccounts.some(a => a.parent == account.docno);
+    
+    let confirmMsg = `Are you sure you want to delete account "${account.description}"?`;
+    if (hasChildren) {
+        confirmMsg += '\n\n⚠️ This account has child accounts. They will also be affected!';
+    }
+    confirmMsg += '\n\nThis action cannot be undone.';
+    
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+    
+    apiDeleteCOA(srno, function(response) {
+        if (response.status === 'success') {
+            showMessage('Account deleted successfully!', 'success');
+            loadAccounts();
+        } else {
+            showMessage('Error: ' + response.message, 'error');
+        }
+    });
+}
+
+// View account details
+function viewAccount(srno) {
+    const account = allAccounts.find(a => a.srno == srno);
+    if (!account) return;
+    
+    // Find parent account
+    let parentDesc = 'None (Root)';
+    if (account.parent && account.parent > 0) {
+        const parent = allAccounts.find(a => a.docno == account.parent);
+        if (parent) {
+            parentDesc = parent.description + ' (DOCNO: ' + parent.docno + ')';
+        }
+    }
+    
+    // Find first level name
+    let firstLevelDesc = '-';
+    if (account.firstLevel) {
+        const flAccounts = {1: 'ASSET', 2: 'LIABILITY', 3: 'EQUITY', 4: 'GROSS PROFIT / INCOME', 5: 'ADMIN EXPENSES / EXPENSE'};
+        firstLevelDesc = flAccounts[account.firstLevel] || account.firstLevel.toString();
+    }
+    
+    // Subledger badge
+    let subledgerHtml = '-';
+    if (account.actypeDocno) {
+        const cls = account.actypeDocno.toLowerCase();
+        subledgerHtml = `<span class="subledger-badge ${cls}">${account.actypeDocno}</span>`;
+    }
+    
+    // Count children
+    const childCount = allAccounts.filter(a => a.parent == account.docno).length;
+    
+    const content = `
+        <div style="padding: 20px 0;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr><td style="padding: 8px 15px; font-weight: bold; color: #555; width: 150px;">Account Code</td><td style="padding: 8px 15px;"><code>${escapeHtml(account.acCode || '-')}</code></td></tr>
+                <tr style="background: #f8f9fa;"><td style="padding: 8px 15px; font-weight: bold; color: #555;">Description</td><td style="padding: 8px 15px;"><strong>${escapeHtml(account.description || '')}</strong></td></tr>
+                <tr><td style="padding: 8px 15px; font-weight: bold; color: #555;">Account Type</td><td style="padding: 8px 15px;">${escapeHtml(account.acType || '-')}</td></tr>
+                <tr style="background: #f8f9fa;"><td style="padding: 8px 15px; font-weight: bold; color: #555;">Level</td><td style="padding: 8px 15px;">${account.level || '-'}</td></tr>
+                <tr><td style="padding: 8px 15px; font-weight: bold; color: #555;">Parent</td><td style="padding: 8px 15px;">${escapeHtml(parentDesc)}</td></tr>
+                <tr style="background: #f8f9fa;"><td style="padding: 8px 15px; font-weight: bold; color: #555;">First Level</td><td style="padding: 8px 15px;">${escapeHtml(firstLevelDesc)}</td></tr>
+                <tr><td style="padding: 8px 15px; font-weight: bold; color: #555;">DOCNO</td><td style="padding: 8px 15px;">${account.docno || '-'}</td></tr>
+                <tr style="background: #f8f9fa;"><td style="padding: 8px 15px; font-weight: bold; color: #555;">Balance Sheet Account</td><td style="padding: 8px 15px;">${account.balanceSheetAccount == 1 ? 'Yes' : 'No'}</td></tr>
+                <tr><td style="padding: 8px 15px; font-weight: bold; color: #555;">Subledger Exists</td><td style="padding: 8px 15px;">${account.subledgerExists == 1 ? 'Yes' : 'No'}</td></tr>
+                <tr style="background: #f8f9fa;"><td style="padding: 8px 15px; font-weight: bold; color: #555;">Subledger Type</td><td style="padding: 8px 15px;">${subledgerHtml}</td></tr>
+                <tr><td style="padding: 8px 15px; font-weight: bold; color: #555;">Default Balance Sign</td><td style="padding: 8px 15px;">${account.defaultBalanceSign == 1 ? 'Credit (1)' : 'Debit (-1)'}</td></tr>
+                <tr style="background: #f8f9fa;"><td style="padding: 8px 15px; font-weight: bold; color: #555;">Child Accounts</td><td style="padding: 8px 15px;">${childCount} child(s)</td></tr>
+                <tr><td style="padding: 8px 15px; font-weight: bold; color: #555;">Remarks</td><td style="padding: 8px 15px;">${escapeHtml(account.remarks || '-')}</td></tr>
+                <tr style="background: #f8f9fa;"><td style="padding: 8px 15px; font-weight: bold; color: #555;">Created By</td><td style="padding: 8px 15px;">${escapeHtml(account.createdBy || '-')}</td></tr>
+                <tr><td style="padding: 8px 15px; font-weight: bold; color: #555;">Created</td><td style="padding: 8px 15px;">${escapeHtml(account.createdTs || '-')}</td></tr>
+            </table>
+            <div class="form-actions">
+                <button type="button" class="btn" onclick="closeViewModal()">Close</button>
+                <button type="button" class="btn btn-warning" onclick="closeViewModal(); openEditAccountModal(${srno});">✏️ Edit</button>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('viewContent').innerHTML = content;
+    document.getElementById('viewModal').style.display = 'block';
+}
+
+// Close view modal
+function closeViewModal() {
+    document.getElementById('viewModal').style.display = 'none';
+}
+
+// ============================================
+// UTILITY FUNCTIONS
+// ============================================
+
+// Show message
+function showMessage(message, type) {
+    const container = document.getElementById('messageContainer');
+    container.innerHTML = `<div class="message ${type}">${escapeHtml(message)}</div>`;
+    
+    setTimeout(() => {
+        container.innerHTML = '';
+    }, 5000);
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Logout function
+function logout() {
+    if (confirm('Are you sure you want to logout?')) {
+        performLogout();
+    }
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const accountModal = document.getElementById('accountModal');
+    const viewModal = document.getElementById('viewModal');
+    if (event.target === accountModal) {
+        closeAccountModal();
+    }
+    if (event.target === viewModal) {
+        closeViewModal();
+    }
+}
+</script>
+
+</body>
+</html>

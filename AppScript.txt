@@ -6,6 +6,375 @@ var MAX_LOGIN_ATTEMPTS = 5; // Max attempts per 15 minutes
 var ATTEMPT_WINDOW = 15 * 60 * 1000; // 15 minutes in milliseconds
 
 // ============================================
+// CHART OF ACCOUNTS (COA) HANDLERS
+// ============================================
+
+// Get all COA accounts
+function handleGetCOAGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get all accounts from COA sheet
+  var coaSheet = ss.getSheetByName("COA");
+  if (!coaSheet) {
+    // Create sheet if it doesn't exist
+    coaSheet = ss.insertSheet("COA");
+    coaSheet.appendRow(["AC_CODE", "AC_TYPE", "DESCRIPTION", "LEVEL", "PARENT", "DOCNO", "FIRST_LEVEL", "BALANCE_SHEET_ACCOUNT", "SUBLEDGER_EXISTS", "DOC_SRNO", "CREATED_BY", "CREATED_TS", "REMARKS", "ACTYPE_DOCNO", "DEFAULT_BALANCE_SIGN", "SRNO"]);
+    var emptyResult = { status: "success", accounts: [] };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(emptyResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(emptyResult);
+  }
+  
+  var coaData = coaSheet.getDataRange().getValues();
+  var accounts = [];
+  
+  for (var i = 1; i < coaData.length; i++) {
+    if (coaData[i][2]) { // Check if DESCRIPTION exists
+      accounts.push({
+        acCode: coaData[i][0] || '',
+        acType: coaData[i][1] || '',
+        description: coaData[i][2] || '',
+        level: parseInt(coaData[i][3]) || 1,
+        parent: parseInt(coaData[i][4]) || 0,
+        docno: parseInt(coaData[i][5]) || 0,
+        firstLevel: parseInt(coaData[i][6]) || 0,
+        balanceSheetAccount: parseInt(coaData[i][7]) || 0,
+        subledgerExists: parseInt(coaData[i][8]) || 0,
+        docSrno: parseInt(coaData[i][9]) || 0,
+        createdBy: coaData[i][10] || '',
+        createdTs: coaData[i][11] || '',
+        remarks: coaData[i][12] || '',
+        actypeDocno: coaData[i][13] || '',
+        defaultBalanceSign: parseInt(coaData[i][14]) || -1,
+        srno: parseInt(coaData[i][15]) || 0
+      });
+    }
+  }
+  
+  var result = { status: "success", accounts: accounts };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Create new COA account
+function handleCreateCOAGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var accountDataJson = e.parameter.accountData;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Parse data
+  var accountData;
+  try {
+    accountData = JSON.parse(accountDataJson);
+  } catch (error) {
+    var errorResult = { status: "error", message: "Invalid data format" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!accountData.description || !accountData.acType || !accountData.level) {
+    var errorResult = { status: "error", message: "Description, Account Type, and Level are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get or create COA sheet
+  var coaSheet = ss.getSheetByName("COA");
+  if (!coaSheet) {
+    coaSheet = ss.insertSheet("COA");
+    coaSheet.appendRow(["AC_CODE", "AC_TYPE", "DESCRIPTION", "LEVEL", "PARENT", "DOCNO", "FIRST_LEVEL", "BALANCE_SHEET_ACCOUNT", "SUBLEDGER_EXISTS", "DOC_SRNO", "CREATED_BY", "CREATED_TS", "REMARKS", "ACTYPE_DOCNO", "DEFAULT_BALANCE_SIGN", "SRNO"]);
+  }
+  
+  // Get existing data to calc max DOCNO and SRNO
+  var coaData = coaSheet.getDataRange().getValues();
+  var maxDocno = 0;
+  var maxSrno = 0;
+  
+  for (var i = 1; i < coaData.length; i++) {
+    if (coaData[i][5]) {
+      var docno = parseInt(coaData[i][5]);
+      if (docno > maxDocno) maxDocno = docno;
+    }
+    if (coaData[i][15]) {
+      var srno = parseInt(coaData[i][15]);
+      if (srno > maxSrno) maxSrno = srno;
+    }
+  }
+  
+  var newDocno = maxDocno + 1;
+  var newSrno = maxSrno + 1;
+  
+  // Get current timestamp
+  var now = new Date();
+  var createdTs = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+  
+  // Validate parent exists if specified
+  var parent = parseInt(accountData.parent) || 0;
+  if (parent > 0) {
+    var parentExists = false;
+    for (var i = 1; i < coaData.length; i++) {
+      if (parseInt(coaData[i][5]) == parent) {
+        parentExists = true;
+        break;
+      }
+    }
+    if (!parentExists) {
+      var errorResult = { status: "error", message: "Parent account not found" };
+      if (callback) {
+        return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+          .setMimeType(ContentService.MimeType.JAVASCRIPT);
+      }
+      return createJsonResponse(errorResult);
+    }
+  }
+  
+  // Add new account
+  coaSheet.appendRow([
+    accountData.acCode || '',
+    accountData.acType,
+    accountData.description,
+    parseInt(accountData.level),
+    parent,
+    newDocno,
+    parseInt(accountData.firstLevel) || 0,
+    parseInt(accountData.balanceSheetAccount) || 0,
+    parseInt(accountData.subledgerExists) || 0,
+    parseInt(accountData.docSrno) || 0,
+    validation.userName,
+    createdTs,
+    accountData.remarks || '',
+    accountData.actypeDocno || '',
+    parseInt(accountData.defaultBalanceSign) || -1,
+    newSrno
+  ]);
+  
+  var result = { status: "success", message: "Account created successfully", docno: newDocno, srno: newSrno };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Update existing COA account
+function handleUpdateCOAGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var accountDataJson = e.parameter.accountData;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Parse data
+  var accountData;
+  try {
+    accountData = JSON.parse(accountDataJson);
+  } catch (error) {
+    var errorResult = { status: "error", message: "Invalid data format" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!accountData.srno) {
+    var errorResult = { status: "error", message: "SRNO is required for update" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var coaSheet = ss.getSheetByName("COA");
+  if (!coaSheet) {
+    var errorResult = { status: "error", message: "COA sheet not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var coaData = coaSheet.getDataRange().getValues();
+  var found = false;
+  var rowIndex = -1;
+  
+  for (var i = 1; i < coaData.length; i++) {
+    if (parseInt(coaData[i][15]) == parseInt(accountData.srno)) {
+      found = true;
+      rowIndex = i + 1; // 1-based for sheet operations
+      break;
+    }
+  }
+  
+  if (!found) {
+    var errorResult = { status: "error", message: "Account not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Preserve original DOCNO, SRNO, createdBy, createdTs
+  var originalDocno = coaData[rowIndex - 1][5];
+  var originalSrno = coaData[rowIndex - 1][15];
+  var originalCreatedBy = coaData[rowIndex - 1][10];
+  var originalCreatedTs = coaData[rowIndex - 1][11];
+  
+  // Update the row
+  coaSheet.getRange(rowIndex, 1, 1, 16).setValues([[
+    accountData.acCode || '',
+    accountData.acType || coaData[rowIndex - 1][1],
+    accountData.description || coaData[rowIndex - 1][2],
+    parseInt(accountData.level) || parseInt(coaData[rowIndex - 1][3]) || 1,
+    parseInt(accountData.parent) || parseInt(coaData[rowIndex - 1][4]) || 0,
+    originalDocno,
+    parseInt(accountData.firstLevel) || parseInt(coaData[rowIndex - 1][6]) || 0,
+    parseInt(accountData.balanceSheetAccount) || parseInt(coaData[rowIndex - 1][7]) || 0,
+    parseInt(accountData.subledgerExists) || parseInt(coaData[rowIndex - 1][8]) || 0,
+    parseInt(accountData.docSrno) || parseInt(coaData[rowIndex - 1][9]) || 0,
+    originalCreatedBy,
+    originalCreatedTs,
+    accountData.remarks || '',
+    accountData.actypeDocno || '',
+    parseInt(accountData.defaultBalanceSign) || parseInt(coaData[rowIndex - 1][14]) || -1,
+    originalSrno
+  ]]);
+  
+  var result = { status: "success", message: "Account updated successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Delete COA account
+function handleDeleteCOAGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var srno = e.parameter.srno;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  if (!srno) {
+    var errorResult = { status: "error", message: "SRNO is required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var coaSheet = ss.getSheetByName("COA");
+  if (!coaSheet) {
+    var errorResult = { status: "error", message: "COA sheet not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var coaData = coaSheet.getDataRange().getValues();
+  var found = false;
+  
+  for (var i = 1; i < coaData.length; i++) {
+    if (parseInt(coaData[i][15]) == parseInt(srno)) {
+      coaSheet.deleteRow(i + 1);
+      found = true;
+      break;
+    }
+  }
+  
+  if (!found) {
+    var errorResult = { status: "error", message: "Account not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var result = { status: "success", message: "Account deleted successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
 // MAIN ENDPOINTS
 // ============================================
 
@@ -240,6 +609,14 @@ function doGet(e) {
     return handleUpdateStockUnitGet(e);
   } else if (action === "deleteStockUnit") {
     return handleDeleteStockUnitGet(e);
+  } else if (action === "getCOA") {
+    return handleGetCOAGet(e);
+  } else if (action === "createCOA") {
+    return handleCreateCOAGet(e);
+  } else if (action === "updateCOA") {
+    return handleUpdateCOAGet(e);
+  } else if (action === "deleteCOA") {
+    return handleDeleteCOAGet(e);
   } else {
     var errorResult = { status: "error", message: "Invalid action" };
     var callback = e.parameter.callback;
