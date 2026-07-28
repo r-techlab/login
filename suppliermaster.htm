@@ -703,7 +703,20 @@ function openAddSupplierModal() {
     editingSupplierCode = null;
     document.getElementById('modalTitle').textContent = 'Add New Supplier';
     document.getElementById('supplierForm').reset();
-    document.getElementById('supplierCode').disabled = false;
+    
+    // Auto-generate next supplier code
+    let maxNum = 10000;
+    allSuppliers.forEach(s => {
+        const code = s.code.toString();
+        if (code.startsWith('SUPP')) {
+            const num = parseInt(code.substring(4));
+            if (num > maxNum) maxNum = num;
+        }
+    });
+    const nextCode = 'SUPP' + (maxNum + 1);
+    document.getElementById('supplierCode').value = nextCode;
+    document.getElementById('supplierCode').disabled = true; // Read-only for auto-generated code
+    
     document.getElementById('saveButton').textContent = 'Save Supplier';
     document.getElementById('supplierModal').style.display = 'block';
 }

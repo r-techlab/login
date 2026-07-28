@@ -703,7 +703,20 @@ function openAddCustomerModal() {
     editingCustomerCode = null;
     document.getElementById('modalTitle').textContent = 'Add New Customer';
     document.getElementById('customerForm').reset();
-    document.getElementById('customerCode').disabled = false;
+    
+    // Auto-generate next customer code
+    let maxNum = 10000;
+    allCustomers.forEach(c => {
+        const code = c.code.toString();
+        if (code.startsWith('CUST')) {
+            const num = parseInt(code.substring(4));
+            if (num > maxNum) maxNum = num;
+        }
+    });
+    const nextCode = 'CUST' + (maxNum + 1);
+    document.getElementById('customerCode').value = nextCode;
+    document.getElementById('customerCode').disabled = true; // Read-only for auto-generated code
+    
     document.getElementById('saveButton').textContent = 'Save Customer';
     document.getElementById('customerModal').style.display = 'block';
 }

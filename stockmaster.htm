@@ -449,8 +449,8 @@ tbody tr:hover {
         <form id="stockForm" onsubmit="saveStock(event)">
             <div class="form-group">
                 <label for="stockCode">Code *</label>
-                <input type="text" id="stockCode" required maxlength="50" placeholder="e.g., ITEM001" style="text-transform: uppercase;">
-                <small style="color: #666;">Enter a unique stock code</small>
+                <input type="text" id="stockCode" required maxlength="50" readonly style="text-transform: uppercase; background: #f0f0f0;">
+                <small style="color: #666;">Auto-generated sequential stock code</small>
             </div>
             <div class="form-group">
                 <label for="stockDescription">Description *</label>
@@ -666,9 +666,45 @@ function openAddStockModal() {
     editingStockCode = null;
     document.getElementById('modalTitle').textContent = 'Add New Stock';
     document.getElementById('stockForm').reset();
-    document.getElementById('stockCode').disabled = false;
+    
+    // Auto-generate the next stock code
+    var nextCode = generateNextStockCode();
+    document.getElementById('stockCode').value = nextCode;
+    document.getElementById('stockCode').disabled = true;
+    
     document.getElementById('saveButton').textContent = 'Save Stock';
     document.getElementById('stockModal').style.display = 'block';
+}
+
+// Generate the next sequential stock code based on existing stock codes
+function generateNextStockCode() {
+    var maxNum = 0;
+    
+    // Scan all existing stocks to find the maximum numeric code
+    for (var i = 0; i < allStocks.length; i++) {
+        var code = allStocks[i].code;
+        // Try to parse the code as a number (or extract trailing numeric portion)
+        var num = parseInt(code, 10);
+        if (isNaN(num)) {
+            // If code has non-numeric prefix, try to extract trailing digits
+            var match = code.match(/(\d+)$/);
+            if (match) {
+                num = parseInt(match[1], 10);
+            }
+        }
+        if (!isNaN(num) && num > maxNum) {
+            maxNum = num;
+        }
+    }
+    
+    // Next number is maxNum + 1, zero-padded to 4 digits
+    var nextNum = maxNum + 1;
+    var nextCode = nextNum.toString();
+    // Pad to at least 4 digits
+    while (nextCode.length < 4) {
+        nextCode = '0' + nextCode;
+    }
+    return nextCode;
 }
 
 // Open edit stock modal
