@@ -3,7 +3,7 @@
 // Centralized API calls with session validation
 // ============================================
 
-const API_URL = "https://script.google.com/macros/s/AKfycbxCzSViBWdm7Dh_0NfYC9qOQUC9oCA3TF5eAOGoNEmzWWSIcNnvprjRdC_Fot5858c/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbzjklVEUJBeE9DUg7fOlMHwAJGZ640oySCTUgSEu7XQrQI1-cKtXDUSMJBbmghfb_U/exec";
 
 const API_TIMEOUT = 15000; // 15 seconds
 

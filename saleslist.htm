@@ -499,6 +499,7 @@ function loadSales() {
     // Read ListRowCount from system parameters
     pageSize = parseInt(getSystemParameter('ListRowCount', '10')) || 10;
     
+    // Try server-side search first (works after Apps Script fix)
     apiGetSales(currentPage, pageSize, currentSearch, function(response) {
         document.getElementById('loadingIndicator').style.display = 'none';
         
@@ -509,6 +510,61 @@ function loadSales() {
             
             displaySales(sales);
             updateStats();
+        } else if (currentSearch) {
+            // Server-side search failed - fetch all data page by page, then filter client-side
+            showMessage('Server search unavailable, using local filter...', 'warning');
+            
+            // First fetch page 1 with no search to get totalRecords
+            apiGetSales(1, pageSize, '', function(firstResponse) {
+                if (firstResponse.status === 'success') {
+                    var allSales = firstResponse.sales || [];
+                    var totalServerRecords = firstResponse.totalRecords || 0;
+                    var totalServerPages = firstResponse.totalPages || 1;
+                    var loadedPages = 1;
+                    
+                    // Function to collect remaining pages
+                    function loadNextPage() {
+                        if (loadedPages >= totalServerPages) {
+                            // All pages loaded - now filter and paginate client-side
+                            var search = currentSearch.toLowerCase();
+                            var filteredSales = allSales.filter(function(sale) {
+                                return (sale.docNo && sale.docNo.toLowerCase().indexOf(search) !== -1) ||
+                                       (sale.customer && sale.customer.toLowerCase().indexOf(search) !== -1) ||
+                                       (sale.narration && sale.narration.toLowerCase().indexOf(search) !== -1) ||
+                                       (sale.date && sale.date.toLowerCase().indexOf(search) !== -1);
+                            });
+                            
+                            totalRecords = filteredSales.length;
+                            totalPages = Math.ceil(totalRecords / pageSize) || 1;
+                            
+                            var startIndex = (currentPage - 1) * pageSize;
+                            var endIndex = Math.min(startIndex + pageSize, totalRecords);
+                            var pagedSales = filteredSales.slice(startIndex, endIndex);
+                            
+                            displaySales(pagedSales);
+                            updateStats();
+                            return;
+                        }
+                        
+                        loadedPages++;
+                        apiGetSales(loadedPages, pageSize, '', function(nextResponse) {
+                            if (nextResponse.status === 'success') {
+                                var nextSales = nextResponse.sales || [];
+                                nextSales.forEach(function(s) { allSales.push(s); });
+                                loadNextPage();
+                            } else {
+                                // Even if a page fails, use what we have
+                                loadNextPage();
+                            }
+                        });
+                    }
+                    
+                    loadNextPage();
+                } else {
+                    showMessage('Error loading sales: ' + firstResponse.message, 'error');
+                    document.getElementById('emptyState').style.display = 'block';
+                }
+            });
         } else {
             showMessage('Error loading sales: ' + response.message, 'error');
             document.getElementById('emptyState').style.display = 'block';

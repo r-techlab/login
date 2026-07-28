@@ -494,6 +494,7 @@ function loadPurchases() {
     
     pageSize = parseInt(getSystemParameter('ListRowCount', '10')) || 10;
     
+    // Try server-side search first, fall back to client-side filtering if it fails
     apiGetPurchases(currentPage, pageSize, currentSearch, function(response) {
         document.getElementById('loadingIndicator').style.display = 'none';
         
@@ -504,6 +505,35 @@ function loadPurchases() {
             
             displayPurchases(purchases);
             updateStats();
+        } else if (currentSearch) {
+            // Server-side search failed, fall back to client-side filtering
+            showMessage('Server search unavailable, using local filter...', 'warning');
+            apiGetPurchases(1, 99999, '', function(allResponse) {
+                if (allResponse.status === 'success') {
+                    var allPurchases = allResponse.purchases || [];
+                    var search = currentSearch.toLowerCase();
+                    
+                    var filteredPurchases = allPurchases.filter(function(purchase) {
+                        return (purchase.docNo && purchase.docNo.toLowerCase().indexOf(search) !== -1) ||
+                               (purchase.supplier && purchase.supplier.toLowerCase().indexOf(search) !== -1) ||
+                               (purchase.narration && purchase.narration.toLowerCase().indexOf(search) !== -1) ||
+                               (purchase.date && purchase.date.toLowerCase().indexOf(search) !== -1);
+                    });
+                    
+                    totalRecords = filteredPurchases.length;
+                    totalPages = Math.ceil(totalRecords / pageSize);
+                    
+                    var startIndex = (currentPage - 1) * pageSize;
+                    var endIndex = Math.min(startIndex + pageSize, totalRecords);
+                    var pagedPurchases = filteredPurchases.slice(startIndex, endIndex);
+                    
+                    displayPurchases(pagedPurchases);
+                    updateStats();
+                } else {
+                    showMessage('Error loading purchases: ' + allResponse.message, 'error');
+                    document.getElementById('emptyState').style.display = 'block';
+                }
+            });
         } else {
             showMessage('Error loading purchases: ' + response.message, 'error');
             document.getElementById('emptyState').style.display = 'block';

@@ -4501,50 +4501,99 @@ function handleGetSalesGet(e) {
   var search = (e.parameter.search || '').toLowerCase();
   
   // Get all sales from SalesHeader sheet
-  var salesHeaderSheet = ss.getSheetByName("SalesHeader");
-  var salesHeaderData = salesHeaderSheet.getDataRange().getValues();
+  try {
+    var salesHeaderSheet = ss.getSheetByName("SalesHeader");
+    if (!salesHeaderSheet) {
+      var emptyResult = { status: "success", sales: [], totalRecords: 0, totalPages: 0, currentPage: page, pageSize: pageSize };
+      if (callback) {
+        return ContentService.createTextOutput(callback + "(" + JSON.stringify(emptyResult) + ")")
+          .setMimeType(ContentService.MimeType.JAVASCRIPT);
+      }
+      return createJsonResponse(emptyResult);
+    }
+    var salesHeaderData = salesHeaderSheet.getDataRange().getValues();
+  } catch (e) {
+    var errorResult = { status: "error", message: "Error reading SalesHeader sheet: " + e.toString() };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
   var allSales = [];
   
   for (var i = 1; i < salesHeaderData.length; i++) {
     if (salesHeaderData[i][1]) { // Check if DocNo exists
-      var docNo = salesHeaderData[i][1].toString();
-      var customer = salesHeaderData[i][3] || '';
-      var narration = salesHeaderData[i][4] || '';
-      var date = salesHeaderData[i][2] ? Utilities.formatDate(new Date(salesHeaderData[i][2]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '';
-      
-      // Apply search filter if search term is provided
-      if (search) {
-        if (docNo.toLowerCase().indexOf(search) === -1 &&
-            customer.toLowerCase().indexOf(search) === -1 &&
-            narration.toLowerCase().indexOf(search) === -1 &&
-            date.toLowerCase().indexOf(search) === -1) {
-          continue; // Skip this record if no match
+      try {
+        var docNo = salesHeaderData[i][1].toString();
+        var customer = salesHeaderData[i][3] || '';
+        var narration = salesHeaderData[i][4] || '';
+        var date = '';
+        if (salesHeaderData[i][2]) {
+          try {
+            var dateObj = new Date(salesHeaderData[i][2]);
+            if (!isNaN(dateObj.getTime())) {
+              date = Utilities.formatDate(dateObj, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+            } else {
+              date = salesHeaderData[i][2].toString();
+            }
+          } catch (dateErr) {
+            date = salesHeaderData[i][2].toString() || '';
+          }
         }
+        
+        // Apply search filter if search term is provided
+        if (search) {
+          if (docNo.toLowerCase().indexOf(search) === -1 &&
+              customer.toLowerCase().indexOf(search) === -1 &&
+              narration.toLowerCase().indexOf(search) === -1 &&
+              date.toLowerCase().indexOf(search) === -1) {
+            continue; // Skip this record if no match
+          }
+        }
+        
+        var refDate = '';
+        if (salesHeaderData[i][17]) {
+          try {
+            var refDateObj = new Date(salesHeaderData[i][17]);
+            if (!isNaN(refDateObj.getTime())) {
+              refDate = Utilities.formatDate(refDateObj, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+            } else {
+              refDate = salesHeaderData[i][17].toString();
+            }
+          } catch (refDateErr) {
+            refDate = salesHeaderData[i][17].toString() || '';
+          }
+        }
+        
+        allSales.push({
+          docType: salesHeaderData[i][0] || '',
+          docNo: docNo,
+          date: date,
+          customer: customer,
+          salesman: salesHeaderData[i][18] || '',
+          narration: narration,
+          grossAmount: salesHeaderData[i][5] || 0,
+          discountPercentage: salesHeaderData[i][6] || 0,
+          discountAmount: salesHeaderData[i][7] || 0,
+          vat: salesHeaderData[i][8] || 0,
+          net: salesHeaderData[i][9] || 0,
+          createdBy: salesHeaderData[i][10] || '',
+          createdTime: salesHeaderData[i][11] || '',
+          address: salesHeaderData[i][12] || '',
+          trn: salesHeaderData[i][13] || '',
+          vatTreatment: salesHeaderData[i][14] || '',
+          rateType: salesHeaderData[i][15] || '',
+          refNo: salesHeaderData[i][16] || '',
+          refDate: refDate,
+          postedBy: salesHeaderData[i][19] || '',
+          postedTime: salesHeaderData[i][20] || ''
+        });
+      } catch (rowErr) {
+        // Skip row that caused error and continue with next
+        continue;
       }
-      
-      allSales.push({
-        docType: salesHeaderData[i][0] || '',
-        docNo: docNo,
-        date: date,
-        customer: customer,
-        salesman: salesHeaderData[i][18] || '',
-        narration: narration,
-        grossAmount: salesHeaderData[i][5] || 0,
-        discountPercentage: salesHeaderData[i][6] || 0,
-        discountAmount: salesHeaderData[i][7] || 0,
-        vat: salesHeaderData[i][8] || 0,
-        net: salesHeaderData[i][9] || 0,
-        createdBy: salesHeaderData[i][10] || '',
-        createdTime: salesHeaderData[i][11] || '',
-        address: salesHeaderData[i][12] || '',
-        trn: salesHeaderData[i][13] || '',
-        vatTreatment: salesHeaderData[i][14] || '',
-        rateType: salesHeaderData[i][15] || '',
-        refNo: salesHeaderData[i][16] || '',
-        refDate: salesHeaderData[i][17] ? Utilities.formatDate(new Date(salesHeaderData[i][17]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
-        postedBy: salesHeaderData[i][19] || '',
-        postedTime: salesHeaderData[i][20] || ''
-      });
     }
   }
   
