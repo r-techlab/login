@@ -77,6 +77,14 @@ h1 {
     background: #e67e22;
 }
 
+.btn-info {
+    background: #17a2b8;
+}
+
+.btn-info:hover {
+    background: #138496;
+}
+
 .btn-secondary {
     background: #95a5a6;
 }
@@ -416,6 +424,7 @@ tbody tr:hover {
             <button class="btn btn-success" id="viewPrintBtn" style="display: none;" onclick="printFromView()">🖨️ Print</button>
             <button class="btn btn-success" id="viewPostBtn" style="display: none;" onclick="postFromView()">📤 Post</button>
             <button class="btn btn-warning" id="viewCancelPostBtn" style="display: none;" onclick="cancelPostFromView()">↩ CancelPost</button>
+            <button class="btn btn-info" id="viewAcctEntryBtn" style="display: none;" onclick="showAccountingEntry()">📒 Accounting Entry</button>
 
             <button class="btn" onclick="window.location.href='home.html'">🏠 Home</button>
             <button class="btn btn-danger" onclick="logout()">Logout</button>
@@ -569,6 +578,53 @@ tbody tr:hover {
         </div>
 
     </form>
+</div>
+
+<!-- Accounting Entry Modal -->
+<div id="acctEntryModal" class="modal" style="display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); animation: fadeIn 0.3s; overflow-y: auto;">
+    <div class="modal-content" style="background: white; margin: 3% auto; padding: 30px; border-radius: 10px; width: 95%; max-width: 1200px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); animation: slideDown 0.3s;">
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #667eea;">
+            <h2 style="margin: 0; color: #333;">📒 Accounting Entry</h2>
+            <span onclick="closeAcctEntryModal()" style="font-size: 28px; font-weight: bold; color: #999; cursor: pointer; line-height: 20px;">&times;</span>
+        </div>
+        <div id="acctEntryDocInfo" style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 5px; font-size: 14px;">
+            <strong>Document:</strong> <span id="acctEntryDocNo"></span> | 
+            <strong>Date:</strong> <span id="acctEntryDate"></span> | 
+            <strong>Supplier:</strong> <span id="acctEntrySupplier"></span>
+        </div>
+        <div id="acctEntryLoading" class="loading" style="display: none;">Loading accounting entries...</div>
+        <div id="acctEntryEmpty" style="display: none; text-align: center; padding: 40px; color: #999;">
+            <p style="font-size: 18px;">No accounting entries found for this document.</p>
+            <p>Accounting entries are created when the document is posted.</p>
+        </div>
+        <div class="table-container" id="acctEntryTableContainer" style="display: none;">
+            <table id="acctEntryTable" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead>
+                    <tr>
+                        <th style="width: 40px; padding: 10px 8px; text-align: left; font-weight: bold; font-size: 12px; background: #667eea; color: white;">#</th>
+                        <th style="padding: 10px 8px; text-align: left; font-weight: bold; font-size: 12px; background: #667eea; color: white;">Account Code</th>
+                        <th style="padding: 10px 8px; text-align: left; font-weight: bold; font-size: 12px; background: #667eea; color: white;">Description</th>
+                        <th style="padding: 10px 8px; text-align: right; font-weight: bold; font-size: 12px; background: #667eea; color: white;">Debit</th>
+                        <th style="padding: 10px 8px; text-align: right; font-weight: bold; font-size: 12px; background: #667eea; color: white;">Credit</th>
+                        <th style="padding: 10px 8px; text-align: left; font-weight: bold; font-size: 12px; background: #667eea; color: white;">Narration</th>
+                    </tr>
+                </thead>
+                <tbody id="acctEntryTableBody"></tbody>
+                <tfoot id="acctEntryTableFoot" style="display: none;">
+                    <tr style="font-weight: bold; background: #e8f4f8;">
+                        <td colspan="2" style="padding: 10px 8px; text-align: right; border-top: 2px solid #333;">Total</td>
+                        <td style="padding: 10px 8px; border-top: 2px solid #333;"></td>
+                        <td id="acctEntryTotalDebit" style="padding: 10px 8px; text-align: right; border-top: 2px solid #333; font-family: 'Courier New', monospace;">0.00</td>
+                        <td id="acctEntryTotalCredit" style="padding: 10px 8px; text-align: right; border-top: 2px solid #333; font-family: 'Courier New', monospace;">0.00</td>
+                        <td style="padding: 10px 8px; border-top: 2px solid #333;"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        <div class="form-actions" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px;">
+            <button type="button" class="btn" onclick="closeAcctEntryModal()">Close</button>
+        </div>
+    </div>
 </div>
 
 <script src="api.js"></script>
@@ -1446,15 +1502,17 @@ function populateForm(purchase, isView) {
         document.getElementById('headerSection').classList.add('view-mode');
         document.getElementById('detailsTable').classList.add('view-mode');
         
-        // Show/hide post/cancel post buttons based on posted status
+        // Show/hide buttons based on posted status
         if (isPosted) {
             document.getElementById('viewEditBtn').style.display = 'none';
             document.getElementById('viewDeleteBtn').style.display = 'none';
             document.getElementById('viewPostBtn').style.display = 'none';
             document.getElementById('viewCancelPostBtn').style.display = 'inline-block';
+            document.getElementById('viewAcctEntryBtn').style.display = 'inline-block';
         } else {
             document.getElementById('viewPostBtn').style.display = 'inline-block';
             document.getElementById('viewCancelPostBtn').style.display = 'none';
+            document.getElementById('viewAcctEntryBtn').style.display = 'none';
         }
     }
 }
@@ -1637,6 +1695,82 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// ============================================
+// ACCOUNTING ENTRY MODAL
+// ============================================
+
+// Show accounting entry modal
+function showAccountingEntry() {
+    if (!viewDocNo) return;
+    
+    const modal = document.getElementById('acctEntryModal');
+    const docNo = document.getElementById('docNo').value;
+    const docDate = document.getElementById('date').value;
+    const supplier = document.getElementById('supplierSearch').value;
+    
+    // Set document info
+    document.getElementById('acctEntryDocNo').textContent = docNo || viewDocNo;
+    document.getElementById('acctEntryDate').textContent = docDate || '-';
+    document.getElementById('acctEntrySupplier').textContent = supplier || '-';
+    
+    // Show loading, hide table and empty state
+    document.getElementById('acctEntryLoading').style.display = 'block';
+    document.getElementById('acctEntryEmpty').style.display = 'none';
+    document.getElementById('acctEntryTableContainer').style.display = 'none';
+    
+    modal.style.display = 'block';
+    
+    // Fetch accounting entries from server
+    apiGetAccountTransactions('PI', viewDocNo, function(response) {
+        document.getElementById('acctEntryLoading').style.display = 'none';
+        
+        if (response.status === 'success' && response.entries && response.entries.length > 0) {
+            displayAcctEntries(response.entries);
+        } else {
+            document.getElementById('acctEntryEmpty').style.display = 'block';
+        }
+    });
+}
+
+// Display accounting entries in the modal table
+function displayAcctEntries(entries) {
+    const tbody = document.getElementById('acctEntryTableBody');
+    tbody.innerHTML = '';
+    
+    let totalDebit = 0;
+    let totalCredit = 0;
+    
+    entries.forEach(function(entry, index) {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td style="padding: 8px 10px; border-bottom: 1px solid #eee;">${index + 1}</td>
+            <td style="padding: 8px 10px; border-bottom: 1px solid #eee;"><strong>${escapeHtml(entry.acDocNo)}</strong></td>
+            <td style="padding: 8px 10px; border-bottom: 1px solid #eee;">${escapeHtml(entry.accountDescription || '-')}</td>
+            <td style="padding: 8px 10px; border-bottom: 1px solid #eee; text-align: right; font-family: 'Courier New', monospace; font-weight: bold; color: ${entry.debit > 0 ? '#e74c3c' : '#999'};">${entry.debit > 0 ? entry.debit.toFixed(2) : ''}</td>
+            <td style="padding: 8px 10px; border-bottom: 1px solid #eee; text-align: right; font-family: 'Courier New', monospace; font-weight: bold; color: ${entry.credit > 0 ? '#27ae60' : '#999'};">${entry.credit > 0 ? entry.credit.toFixed(2) : ''}</td>
+            <td style="padding: 8px 10px; border-bottom: 1px solid #eee;">${escapeHtml(entry.narration || '-')}</td>
+        `;
+        tbody.appendChild(row);
+        
+        totalDebit += entry.debit;
+        totalCredit += entry.credit;
+    });
+    
+    // Update totals
+    document.getElementById('acctEntryTotalDebit').textContent = totalDebit.toFixed(2);
+    document.getElementById('acctEntryTotalCredit').textContent = totalCredit.toFixed(2);
+    
+    // Show table with footer
+    document.getElementById('acctEntryTableContainer').style.display = 'block';
+    document.getElementById('acctEntryTableFoot').style.display = 'table-footer-group';
+    document.getElementById('acctEntryEmpty').style.display = 'none';
+}
+
+// Close accounting entry modal
+function closeAcctEntryModal() {
+    document.getElementById('acctEntryModal').style.display = 'none';
 }
 
 // Logout function

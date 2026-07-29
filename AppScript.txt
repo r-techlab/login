@@ -6,6 +6,110 @@ var MAX_LOGIN_ATTEMPTS = 5; // Max attempts per 15 minutes
 var ATTEMPT_WINDOW = 15 * 60 * 1000; // 15 minutes in milliseconds
 
 // ============================================
+// ACCOUNT TRANSACTION HANDLER
+// ============================================
+
+// Get account transactions by docType and docNo
+function handleGetAccountTransactionGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var docType = e.parameter.docType;
+  var docNo = e.parameter.docNo;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!docType || !docNo) {
+    var errorResult = { status: "error", message: "DocType and DocNo are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get account transactions
+  var accountTransactionSheet = ss.getSheetByName("AccountTransaction");
+  if (!accountTransactionSheet) {
+    var emptyResult = { status: "success", entries: [] };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(emptyResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(emptyResult);
+  }
+  
+  // Build COA description lookup map (only GL accounts)
+  var coaSheet = ss.getSheetByName("COA");
+  var coaDescMap = {};
+  if (coaSheet) {
+    var coaData = coaSheet.getDataRange().getValues();
+    for (var i = 1; i < coaData.length; i++) {
+      var acType = String(coaData[i][1] || '');
+      var acCode = String(coaData[i][0] || '');
+      var desc = coaData[i][2] || '';
+      // Only map GL accounts (posting level), skip groups and headers
+      if (acCode && acType === 'GL') {
+        coaDescMap[acCode] = desc;
+      }
+    }
+  }
+  
+  var data = accountTransactionSheet.getDataRange().getValues();
+  var entries = [];
+  
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] && data[i][0].toString() == docType.toString() && data[i][1] && data[i][1].toString() == docNo.toString()) {
+      var acDocNo = String(data[i][3] || '');
+      var accountDesc = coaDescMap[acDocNo] || '';
+      var amount = parseFloat(data[i][8]) || 0;
+      
+      // -ve AMOUNT = Debit, +ve AMOUNT = Credit
+      var debit = amount < 0 ? Math.abs(amount) : 0;
+      var credit = amount > 0 ? amount : 0;
+      
+      entries.push({
+        docSrNo: data[i][2] || 0,
+        acDocNo: acDocNo,
+        accountDescription: accountDesc,
+        subledgerDocNo: data[i][4] || '',
+        docDate: data[i][5] ? Utilities.formatDate(new Date(data[i][5]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
+        valDate: data[i][6] ? Utilities.formatDate(new Date(data[i][6]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
+        narration: data[i][7] || '',
+        amount: amount,
+        debit: Math.round(debit * 100) / 100,
+        credit: Math.round(credit * 100) / 100,
+        balanceAmount: parseFloat(data[i][9]) || 0,
+        refNo: data[i][10] || '',
+        refDate: data[i][11] || '',
+        createdBy: data[i][12] || '',
+        createdTs: data[i][13] || ''
+      });
+    }
+  }
+  
+  var result = { status: "success", entries: entries };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// ============================================
 // CHART OF ACCOUNTS (COA) HANDLERS
 // ============================================
 
@@ -609,6 +713,8 @@ function doGet(e) {
     return handleUpdateStockUnitGet(e);
   } else if (action === "deleteStockUnit") {
     return handleDeleteStockUnitGet(e);
+  } else if (action === "getAccountTransaction") {
+    return handleGetAccountTransactionGet(e);
   } else if (action === "getCOA") {
     return handleGetCOAGet(e);
   } else if (action === "createCOA") {
@@ -6984,6 +7090,30 @@ function ensureStockTransactionSheet(ss) {
   return sheet;
 }
 
+// Ensure AccountTransaction sheet exists with proper headers
+function ensureAccountTransactionSheet(ss) {
+  var sheet = ss.getSheetByName("AccountTransaction");
+  if (!sheet) {
+    sheet = ss.insertSheet("AccountTransaction");
+    sheet.appendRow(["DOCTYPE", "DOCNO", "DOCSRNO", "AC_DOCNO", "SUBLEDGER_DOCNO", "DOCDATE", "VALDATE", "NARRATION", "AMOUNT", "BAL_AMOUNT", "REF_NO", "REF_DATE", "CREATED_BY", "CREATED_TS"]);
+  }
+  return sheet;
+}
+
+// Get system parameter value from SystemParameters sheet
+function getSystemParameterValue(ss, paramCode, defaultValue) {
+  if (defaultValue === undefined) defaultValue = '';
+  var paramsSheet = ss.getSheetByName("SystemParameters");
+  if (!paramsSheet) return defaultValue;
+  var paramsData = paramsSheet.getDataRange().getValues();
+  for (var i = 1; i < paramsData.length; i++) {
+    if (paramsData[i][0] && paramsData[i][0].toString() == paramCode.toString()) {
+      return paramsData[i][1] || defaultValue;
+    }
+  }
+  return defaultValue;
+}
+
 // Get stock transaction records
 function handleGetStockTransactionGet(e) {
   var sessionId = e.parameter.sessionId;
@@ -7952,12 +8082,135 @@ function handlePostPIToStockTransactionGet(e) {
     ]);
   }
   
+  // ---- POST TO ACCOUNT TRANSACTION ----
+  // Read header totals for accounting entries
+  var grossAmount = parseFloat(headerData[headerRow][5]) || 0;
+  var discountAmount = parseFloat(headerData[headerRow][7]) || 0;
+  var vatAmount = parseFloat(headerData[headerRow][8]) || 0;
+  var netAmount = parseFloat(headerData[headerRow][9]) || 0;
+  var refNo = headerData[headerRow][16] || '';
+  var refDate = headerData[headerRow][17] || '';
+  
+  // Get system parameters for account codes
+  var purchaseAccount = getSystemParameterValue(ss, 'PurchaseAccount', '5010101');
+  var inputVATAccount = getSystemParameterValue(ss, 'InputVATAccount', '2010811');
+  var accountsPayableCode = getSystemParameterValue(ss, 'AccountsPayableCode', 'AP');
+  var purchaseDiscountAccount = getSystemParameterValue(ss, 'PurchaseDiscountAccount', '23789');
+  
+  // Get formatted values
+  var docDate = headerDate;
+  var valDate = headerDate;
+  var createdBy = validation.userName;
+  var createdTs = postedTime;
+  
+  // Ensure AccountTransaction sheet exists
+  var accountTransactionSheet = ensureAccountTransactionSheet(ss);
+  
+  var docSrNo = 0;
+  
+  // For VAT Inclusive, the purchase amount is the taxable value (Net - VAT)
+  // For VAT Exclusive, the purchase amount is the Gross value
+  var rateType = headerData[headerRow][15] || '';
+  var purchaseAmount = 0;
+  if (rateType == 'Include') {
+    // VAT Inclusive: Purchase = Net - VAT (the value excluding VAT)
+    purchaseAmount = netAmount - vatAmount;
+  } else {
+    // VAT Exclusive: Purchase = Gross (full value, VAT on top)
+    purchaseAmount = grossAmount;
+  }
+  
+  // Line 1: Purchase (Stock) Account - Debit = -PurchaseAmount
+  docSrNo++;
+  accountTransactionSheet.appendRow([
+    'PI',                    // DOCTYPE
+    docNo,                   // DOCNO
+    docSrNo,                 // DOCSRNO
+    purchaseAccount,         // AC_DOCNO (Purchase account)
+    '',                      // SUBLEDGER_DOCNO (none for stock)
+    docDate,                 // DOCDATE
+    valDate,                 // VALDATE
+    'Purchase',              // NARRATION
+    -purchaseAmount,         // AMOUNT (negative = debit side)
+    -purchaseAmount,         // BAL_AMOUNT
+    supplierCode,            // REF_NO
+    docDate,                 // REF_DATE
+    createdBy,               // CREATED_BY
+    createdTs                // CREATED_TS
+  ]);
+  
+  // Line 2: Discount Account - Credit = +DiscountAmount (only if discount > 0)
+  // For RateType = Include, the purchase amount already reflects the discount
+  // (purchaseAmount = netAmount - vatAmount = discounted, VAT-exclusive value),
+  // so posting discount separately would double-count it and cause imbalance.
+  // For RateType = Exclude, posting discount separately is needed since
+  // purchaseAmount = grossAmount (pre-discount value).
+  if (discountAmount > 0 && rateType != 'Include') {
+    docSrNo++;
+    accountTransactionSheet.appendRow([
+      'PI',                    // DOCTYPE
+      docNo,                   // DOCNO
+      docSrNo,                 // DOCSRNO
+      purchaseDiscountAccount, // AC_DOCNO (Discount account)
+      '',                      // SUBLEDGER_DOCNO
+      docDate,                 // DOCDATE
+      valDate,                 // VALDATE
+      'Purchase Discount',     // NARRATION
+      discountAmount,          // AMOUNT (positive = credit side)
+      discountAmount,          // BAL_AMOUNT
+      supplierCode,            // REF_NO
+      docDate,                 // REF_DATE
+      createdBy,               // CREATED_BY
+      createdTs                // CREATED_TS
+    ]);
+  }
+  
+  // Line 3 (or 2 if no discount): VAT Account - Debit = -VAT (only if vat > 0)
+  if (vatAmount > 0) {
+    docSrNo++;
+    accountTransactionSheet.appendRow([
+      'PI',                    // DOCTYPE
+      docNo,                   // DOCNO
+      docSrNo,                 // DOCSRNO
+      inputVATAccount,         // AC_DOCNO (VAT Input account)
+      '',                      // SUBLEDGER_DOCNO
+      docDate,                 // DOCDATE
+      valDate,                 // VALDATE
+      'VAT',                   // NARRATION
+      -vatAmount,              // AMOUNT (negative = debit side)
+      -vatAmount,              // BAL_AMOUNT
+      supplierCode,            // REF_NO
+      docDate,                 // REF_DATE
+      createdBy,               // CREATED_BY
+      createdTs                // CREATED_TS
+    ]);
+  }
+  
+  // Line 4 (or 3): Supplier (AP) Account - Credit = +Net
+  docSrNo++;
+  accountTransactionSheet.appendRow([
+    'PI',                    // DOCTYPE
+    docNo,                   // DOCNO
+    docSrNo,                 // DOCSRNO
+    accountsPayableCode,     // AC_DOCNO (AP control account)
+    supplierCode,            // SUBLEDGER_DOCNO (Supplier code)
+    docDate,                 // DOCDATE
+    valDate,                 // VALDATE
+    'Supplier',              // NARRATION
+    netAmount,               // AMOUNT (positive = credit side)
+    netAmount,               // BAL_AMOUNT
+    supplierCode,            // REF_NO
+    docDate,                 // REF_DATE
+    createdBy,               // CREATED_BY
+    createdTs                // CREATED_TS
+  ]);
+  
   // Update PurchaseHeader with PostedBy and PostedTime
   // PurchaseHeader has 19 columns (indices 0-18), PostedBy at column 20 (index 19), PostedTime at column 21 (index 20)
   headerSheet.getRange(headerRow + 1, 20).setValue(validation.userName);
   headerSheet.getRange(headerRow + 1, 21).setValue(postedTime);
   
-  var result = { status: "success", message: "Purchase invoice posted to stock transaction successfully", postedBy: validation.userName, postedTime: postedTime };
+  var result = { status: "success", message: "Purchase invoice posted to stock and accounting successfully", postedBy: validation.userName, postedTime: postedTime };
 
   if (callback) {
     return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
@@ -8046,6 +8299,17 @@ function handleCancelPIStockTransactionPostGet(e) {
     for (var i = transData.length - 1; i >= 1; i--) {
       if (transData[i][0] == 'PI' && transData[i][1] == docNo) {
         stockTransactionSheet.deleteRow(i + 1);
+      }
+    }
+  }
+  
+  // Delete from AccountTransaction sheet
+  var accountTransactionSheet = ss.getSheetByName("AccountTransaction");
+  if (accountTransactionSheet) {
+    var acctData = accountTransactionSheet.getDataRange().getValues();
+    for (var i = acctData.length - 1; i >= 1; i--) {
+      if (acctData[i][0] == 'PI' && acctData[i][1] == docNo) {
+        accountTransactionSheet.deleteRow(i + 1);
       }
     }
   }

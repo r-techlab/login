@@ -3,7 +3,7 @@
 // Centralized API calls with session validation
 // ============================================
 
-const API_URL = "https://script.google.com/macros/s/AKfycbzjklVEUJBeE9DUg7fOlMHwAJGZ640oySCTUgSEu7XQrQI1-cKtXDUSMJBbmghfb_U/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbyqgJxxuShfxfZg0bsdUHTm9gNj3Q2D9-o0pMOztcAhVdWSm7IJUpGZzRumLdsITSg/exec";
 
 const API_TIMEOUT = 15000; // 15 seconds
 
@@ -2193,6 +2193,53 @@ function apiDeleteCustomer(code, callback) {
     
     const script = document.createElement('script');
     script.src = `${API_URL}?action=deleteCustomer&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&code=${encodeURIComponent(code)}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// ============================================
+// ACCOUNT TRANSACTION API
+// ============================================
+
+// Get account transactions by docType and docNo
+function apiGetAccountTransactions(docType, docNo, callback) {
+    const callbackName = 'apiGetAccountTransactionsCallback_' + Date.now();
+    const session = getSession();
+    
+    const timeoutId = setTimeout(function() {
+        if (window[callbackName]) {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+                document.body.removeChild(script);
+            }
+            callback({
+                status: "error",
+                message: "Request timeout"
+            });
+        }
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=getAccountTransaction&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&docType=${encodeURIComponent(docType)}&docNo=${encodeURIComponent(docNo)}&callback=${callbackName}`;
     script.onerror = function() {
         clearTimeout(timeoutId);
         delete window[callbackName];
