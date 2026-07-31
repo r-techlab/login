@@ -109,6 +109,239 @@ function handleGetAccountTransactionGet(e) {
   return createJsonResponse(result);
 }
 
+// Ensure AccountTransaction sheet exists with proper headers
+function ensureAccountTransactionSheet(ss) {
+  var sheet = ss.getSheetByName("AccountTransaction");
+  if (!sheet) {
+    sheet = ss.insertSheet("AccountTransaction");
+    sheet.appendRow(["DOCTYPE", "DOCNO", "DOCSRNO", "AC_DOCNO", "SUBLEDGER_DOCNO", "DOCDATE", "VALDATE", "NARRATION", "AMOUNT", "BAL_AMOUNT", "REF_NO", "REF_DATE", "CREATED_BY", "CREATED_TS"]);
+  }
+  return sheet;
+}
+
+// Post SI to AccountTransaction (Sales Accounting Entry)
+function handlePostSIToAccountTransactionGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var docNo = e.parameter.docNo;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  if (!docNo) {
+    var errorResult = { status: "error", message: "DocNo is required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Check if accounting entries already exist for this document
+  var existingSheet = ss.getSheetByName("AccountTransaction");
+  if (existingSheet) {
+    var existingData = existingSheet.getDataRange().getValues();
+    for (var i = 1; i < existingData.length; i++) {
+      if (existingData[i][0] && existingData[i][0].toString() == 'SI' && existingData[i][1] && existingData[i][1].toString() == docNo.toString()) {
+        var alreadyResult = { status: "error", message: "Accounting entries already exist for this document. Cancel post first." };
+        if (callback) {
+          return ContentService.createTextOutput(callback + "(" + JSON.stringify(alreadyResult) + ")")
+            .setMimeType(ContentService.MimeType.JAVASCRIPT);
+        }
+        return createJsonResponse(alreadyResult);
+      }
+    }
+  }
+  
+  // Get sale header to find date and amounts
+  var salesHeaderSheet = ss.getSheetByName("SalesHeader");
+  if (!salesHeaderSheet) {
+    var errorResult = { status: "error", message: "SalesHeader sheet not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var salesHeaderData = salesHeaderSheet.getDataRange().getValues();
+  var header = null;
+  
+  for (var i = 1; i < salesHeaderData.length; i++) {
+    if (salesHeaderData[i][1] == docNo) {
+      header = {
+        docType: salesHeaderData[i][0] || '',
+        docNo: salesHeaderData[i][1],
+        date: salesHeaderData[i][2] ? Utilities.formatDate(new Date(salesHeaderData[i][2]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
+        customer: salesHeaderData[i][3] || '',
+        grossAmount: parseFloat(salesHeaderData[i][5]) || 0,
+        discountAmount: parseFloat(salesHeaderData[i][7]) || 0,
+        vat: parseFloat(salesHeaderData[i][8]) || 0,
+        net: parseFloat(salesHeaderData[i][9]) || 0
+      };
+      break;
+    }
+  }
+  
+  if (!header) {
+    var errorResult = { status: "error", message: "Sale not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Read system parameters for account codes
+  var systemParamSheet = ss.getSheetByName("SystemParameters");
+  var systemParams = {};
+  if (systemParamSheet) {
+    var paramData = systemParamSheet.getDataRange().getValues();
+    for (var i = 1; i < paramData.length; i++) {
+      if (paramData[i][0]) {
+        systemParams[String(paramData[i][0]).trim()] = paramData[i][1] || '';
+      }
+    }
+  }
+  
+  var accountsReceivableCode = systemParams['AccountsReceivableCode'] || '';
+  var salesAccount = systemParams['SalesAccount'] || '';
+  var outputVATAccount = systemParams['OutputVATAccount'] || '';
+  var salesDiscountAccount = systemParams['SalesDiscountAccount'] || '';
+  
+  if (!accountsReceivableCode || !salesAccount) {
+    var errorResult = { status: "error", message: "System parameters AccountsReceivableCode and SalesAccount are not configured" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Ensure AccountTransaction sheet exists
+  var accountTransactionSheet = ensureAccountTransactionSheet(ss);
+  
+  var netAmt = header.net || 0;
+  var vatAmt = header.vat || 0;
+  var discAmt = header.discountAmount || 0;
+  var customerAmt = netAmt + vatAmt; // Total receivable = Net + VAT
+  
+  var now = new Date();
+  var createdTs = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+  var docSrNo = 1;
+  
+  // Entry 1: Debit Accounts Receivable (Customer) - Negative amount
+  // Narration includes customer code
+  accountTransactionSheet.appendRow([
+    'SI', docNo, docSrNo++, accountsReceivableCode, header.customer,
+    header.date, header.date, 'Sale ' + docNo + ' - Customer ' + header.customer,
+    -customerAmt, 0, '', '', validation.userName, createdTs
+  ]);
+  
+  // Entry 2: Credit Sales Account (Revenue) - Positive amount
+  accountTransactionSheet.appendRow([
+    'SI', docNo, docSrNo++, salesAccount, '',
+    header.date, header.date, 'Sale ' + docNo + ' - Sales Revenue',
+    netAmt, 0, '', '', validation.userName, createdTs
+  ]);
+  
+  // Entry 3: Credit Output VAT Account - Positive amount (if VAT > 0)
+  if (vatAmt > 0 && outputVATAccount) {
+    accountTransactionSheet.appendRow([
+      'SI', docNo, docSrNo++, outputVATAccount, '',
+      header.date, header.date, 'Sale ' + docNo + ' - Output VAT',
+      vatAmt, 0, '', '', validation.userName, createdTs
+    ]);
+  }
+  
+  // Entry 4: Debit Sales Discount Account - Negative amount (if discount > 0)
+  if (discAmt > 0 && salesDiscountAccount) {
+    accountTransactionSheet.appendRow([
+      'SI', docNo, docSrNo++, salesDiscountAccount, '',
+      header.date, header.date, 'Sale ' + docNo + ' - Discount',
+      -discAmt, 0, '', '', validation.userName, createdTs
+    ]);
+  }
+  
+  var result = { status: "success", message: "Sales accounting entries created successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Cancel SI AccountTransaction Post (Delete entries)
+function handleCancelSIAccountTransactionPostGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var docNo = e.parameter.docNo;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  if (!docNo) {
+    var errorResult = { status: "error", message: "DocNo is required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Delete from AccountTransaction sheet
+  var accountTransactionSheet = ss.getSheetByName("AccountTransaction");
+  if (!accountTransactionSheet) {
+    var result = { status: "success", message: "No accounting entries to cancel" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(result);
+  }
+  
+  var data = accountTransactionSheet.getDataRange().getValues();
+  var deleted = false;
+  
+  for (var i = data.length - 1; i >= 1; i--) {
+    if (data[i][0] && data[i][0].toString() == 'SI' && data[i][1] && data[i][1].toString() == docNo.toString()) {
+      accountTransactionSheet.deleteRow(i + 1);
+      deleted = true;
+    }
+  }
+  
+  var result = { status: "success", message: deleted ? "Accounting entries cancelled successfully" : "No accounting entries found" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
 // ============================================
 // CHART OF ACCOUNTS (COA) HANDLERS
 // ============================================
@@ -715,6 +948,10 @@ function doGet(e) {
     return handleDeleteStockUnitGet(e);
   } else if (action === "getAccountTransaction") {
     return handleGetAccountTransactionGet(e);
+  } else if (action === "postSIToAccountTransaction") {
+    return handlePostSIToAccountTransactionGet(e);
+  } else if (action === "cancelSIAccountTransactionPost") {
+    return handleCancelSIAccountTransactionPostGet(e);
   } else if (action === "getCOA") {
     return handleGetCOAGet(e);
   } else if (action === "createCOA") {
@@ -8531,12 +8768,146 @@ function handlePostSIToStockTransactionGet(e) {
     ]);
   }
   
+  // ---- POST TO ACCOUNT TRANSACTION ----
+  // Read header totals for accounting entries
+  var grossAmount = parseFloat(headerData[headerRow][5]) || 0;
+  var discountAmount = parseFloat(headerData[headerRow][7]) || 0;
+  var vatAmount = parseFloat(headerData[headerRow][8]) || 0;
+  var netAmount = parseFloat(headerData[headerRow][9]) || 0;
+  var refNo = headerData[headerRow][16] || '';
+  var refDate = headerData[headerRow][17] || '';
+  
+  // Get system parameters for account codes
+  var salesAccount = getSystemParameterValue(ss, 'SalesAccount', '');
+  var outputVATAccount = getSystemParameterValue(ss, 'OutputVATAccount', '');
+  var accountsReceivableCode = getSystemParameterValue(ss, 'AccountsReceivableCode', '');
+  var salesDiscountAccount = getSystemParameterValue(ss, 'SalesDiscountAccount', '');
+  
+  // Get formatted values
+  var docDate = headerDate;
+  var valDate = headerDate;
+  var createdBy = validation.userName;
+  var createdTs = postedTime;
+  
+  // Ensure AccountTransaction sheet exists
+  var accountTransactionSheet = ensureAccountTransactionSheet(ss);
+  
+  var docSrNo = 0;
+  
+  // Calculate accounting amounts based on RateType
+  var rateType = headerData[headerRow][15] || '';
+  var netAmt = netAmount || 0;
+  var vatAmt = vatAmount || 0;
+  var discAmt = discountAmount || 0;
+  var grossAmt = grossAmount || 0;
+  
+  var arAmt, salesRevenue;
+  var postDiscountSeparately = false;
+  
+  if (rateType === 'Exclude') {
+    // Exclude: Net = Gross - Disc + VAT (VAT on top of pre-discount)
+    // AR = Net (what customer owes after disc)
+    // Revenue = Gross (full pre-discount sale value)
+    // Discount posted separately
+    arAmt = netAmt;
+    salesRevenue = grossAmt;
+    postDiscountSeparately = (discAmt > 0);
+  } else {
+    // Include: Net = (Gross - Disc) with VAT inside, so AR discounted already
+    // AR = Net (discounted amount including VAT)
+    // Revenue = Net - VAT (discounted, VAT-exclusive revenue)
+    // Discount NOT posted separately (already reflected in AR/Revenue)
+    arAmt = netAmt;
+    salesRevenue = netAmt - vatAmt;
+    postDiscountSeparately = false; // Discount already factored into net
+  }
+  
+  // Entry 1: Debit Accounts Receivable (Customer) - Negative amount
+  docSrNo++;
+  accountTransactionSheet.appendRow([
+    'SI',                    // DOCTYPE
+    docNo,                   // DOCNO
+    docSrNo,                 // DOCSRNO
+    accountsReceivableCode,  // AC_DOCNO (AR account)
+    customerCode,            // SUBLEDGER_DOCNO (Customer code)
+    docDate,                 // DOCDATE
+    valDate,                 // VALDATE
+    'Sale ' + docNo + ' - Customer', // NARRATION
+    -arAmt,                  // AMOUNT (negative = debit side)
+    -arAmt,                  // BAL_AMOUNT
+    customerCode,            // REF_NO
+    docDate,                 // REF_DATE
+    createdBy,               // CREATED_BY
+    createdTs                // CREATED_TS
+  ]);
+  
+  // Entry 2: Credit Sales Account (Revenue) - Positive amount
+  docSrNo++;
+  accountTransactionSheet.appendRow([
+    'SI',                    // DOCTYPE
+    docNo,                   // DOCNO
+    docSrNo,                 // DOCSRNO
+    salesAccount,            // AC_DOCNO (Sales account)
+    '',                      // SUBLEDGER_DOCNO
+    docDate,                 // DOCDATE
+    valDate,                 // VALDATE
+    'Sale ' + docNo + ' - Sales Revenue', // NARRATION
+    salesRevenue,            // AMOUNT (positive = credit side)
+    salesRevenue,            // BAL_AMOUNT
+    customerCode,            // REF_NO
+    docDate,                 // REF_DATE
+    createdBy,               // CREATED_BY
+    createdTs                // CREATED_TS
+  ]);
+  
+  // Entry 3: Credit Output VAT Account - Positive amount (if VAT > 0)
+  if (vatAmt > 0 && outputVATAccount) {
+    docSrNo++;
+    accountTransactionSheet.appendRow([
+      'SI',                    // DOCTYPE
+      docNo,                   // DOCNO
+      docSrNo,                 // DOCSRNO
+      outputVATAccount,        // AC_DOCNO (Output VAT account)
+      '',                      // SUBLEDGER_DOCNO
+      docDate,                 // DOCDATE
+      valDate,                 // VALDATE
+      'Sale ' + docNo + ' - Output VAT', // NARRATION
+      vatAmt,                  // AMOUNT (positive = credit side)
+      vatAmt,                  // BAL_AMOUNT
+      customerCode,            // REF_NO
+      docDate,                 // REF_DATE
+      createdBy,               // CREATED_BY
+      createdTs                // CREATED_TS
+    ]);
+  }
+  
+  // Entry 4: Debit Sales Discount Account - Negative amount (only for Exclude)
+  if (postDiscountSeparately && salesDiscountAccount) {
+    docSrNo++;
+    accountTransactionSheet.appendRow([
+      'SI',                    // DOCTYPE
+      docNo,                   // DOCNO
+      docSrNo,                 // DOCSRNO
+      salesDiscountAccount,    // AC_DOCNO (Sales Discount account)
+      '',                      // SUBLEDGER_DOCNO
+      docDate,                 // DOCDATE
+      valDate,                 // VALDATE
+      'Sale ' + docNo + ' - Discount', // NARRATION
+      -discAmt,                // AMOUNT (negative = debit side)
+      -discAmt,                // BAL_AMOUNT
+      customerCode,            // REF_NO
+      docDate,                 // REF_DATE
+      createdBy,               // CREATED_BY
+      createdTs                // CREATED_TS
+    ]);
+  }
+  
   // Update SalesHeader with PostedBy and PostedTime
   // SalesHeader has 19 columns (indices 0-18), PostedBy at column 20 (index 19), PostedTime at column 21 (index 20)
   headerSheet.getRange(headerRow + 1, 20).setValue(validation.userName);
   headerSheet.getRange(headerRow + 1, 21).setValue(postedTime);
   
-  var result = { status: "success", message: "Sales invoice posted to stock transaction successfully", postedBy: validation.userName, postedTime: postedTime };
+  var result = { status: "success", message: "Sales invoice posted to stock and accounting successfully", postedBy: validation.userName, postedTime: postedTime };
 
   if (callback) {
     return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
@@ -8628,12 +8999,23 @@ function handleCancelSIStockTransactionPostGet(e) {
     }
   }
   
+  // Delete from AccountTransaction sheet
+  var accountTransactionSheet = ss.getSheetByName("AccountTransaction");
+  if (accountTransactionSheet) {
+    var acctData = accountTransactionSheet.getDataRange().getValues();
+    for (var i = acctData.length - 1; i >= 1; i--) {
+      if (acctData[i][0] == 'SI' && acctData[i][1] == docNo) {
+        accountTransactionSheet.deleteRow(i + 1);
+      }
+    }
+  }
+  
   // Clear PostedBy and PostedTime in SalesHeader
   // SalesHeader has 19 columns (indices 0-18), PostedBy at column 20 (index 19), PostedTime at column 21 (index 20)
   headerSheet.getRange(headerRow + 1, 20).setValue('');
   headerSheet.getRange(headerRow + 1, 21).setValue('');
   
-  var result = { status: "success", message: "Sales invoice stock transaction post cancelled successfully" };
+  var result = { status: "success", message: "Sales invoice post cancelled successfully" };
 
   if (callback) {
     return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
