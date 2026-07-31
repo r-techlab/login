@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Statement of Account</title>
+<link rel="stylesheet" href="menu.css">
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    margin: 0;
+    padding: 20px;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 20px;
+    margin-bottom: 30px;
+}
+
+h1 {
+    color: #333;
+    margin: 0;
+}
+
+.btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    margin-left: 10px;
+}
+
+.btn:hover {
+    background: #2980b9;
+}
+
+.btn-success {
+    background: #27ae60;
+}
+
+.btn-success:hover {
+    background: #229954;
+}
+
+.btn-warning {
+    background: #f39c12;
+}
+
+.btn-warning:hover {
+    background: #e67e22;
+}
+
+.btn-danger {
+    background: #e74c3c;
+}
+
+.btn-danger:hover {
+    background: #c0392b;
+}
+
+.btn:disabled {
+    background: #95a5a6;
+    cursor: not-allowed;
+}
+
+.layout-with-sidebar {
+    display: flex;
+    gap: 20px;
+}
+
+.sidebar {
+    width: 280px;
+    flex-shrink: 0;
+}
+
+.company-name-sidebar {
+    font-size: 16px;
+    font-weight: bold;
+    color: white;
+    padding: 12px;
+    margin-bottom: 15px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 8px;
+    text-align: center;
+}
+
+.main-content {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+/* Filter Section */
+.filter-section {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.filter-row {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.filter-group label {
+    font-size: 12px;
+    font-weight: bold;
+    color: #555;
+    text-transform: uppercase;
+}
+
+.filter-group input,
+.filter-group select {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+    min-width: 180px;
+}
+
+.filter-group input:focus,
+.filter-group select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+.filter-actions {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+}
+
+.radio-group {
+    display: flex;
+    gap: 15px;
+    padding-top: 8px;
+}
+
+.radio-group label {
+    font-weight: normal;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+/* Summary Cards */
+.summary-cards {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.summary-card {
+    flex: 1;
+    min-width: 180px;
+    padding: 15px;
+    border-radius: 8px;
+    color: white;
+    text-align: center;
+}
+
+.summary-card .card-label {
+    font-size: 12px;
+    text-transform: uppercase;
+    opacity: 0.85;
+    margin-bottom: 5px;
+}
+
+.summary-card .card-value {
+    font-size: 22px;
+    font-weight: bold;
+    font-family: 'Courier New', monospace;
+}
+
+.card-opening {
+    background: linear-gradient(135deg, #607d8b, #78909c);
+}
+
+.card-debit {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+}
+
+.card-credit {
+    background: linear-gradient(135deg, #27ae60, #229954);
+}
+
+.card-closing {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+}
+
+.party-info {
+    background: #fff8e1;
+    border-left: 4px solid #f39c12;
+    padding: 12px 15px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    border-radius: 5px;
+}
+
+.party-info .party-name {
+    font-weight: bold;
+    color: #333;
+}
+
+.party-info .party-type {
+    color: #f39c12;
+    font-weight: bold;
+}
+
+/* Table */
+.table-container {
+    overflow-x: auto;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    max-width: 100%;
+}
+
+table {
+    width: auto;
+    border-collapse: collapse;
+    min-width: 700px;
+}
+
+thead {
+    background: #667eea;
+    color: white;
+}
+
+th {
+    padding: 12px 15px;
+    text-align: left;
+    font-weight: bold;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+td {
+    padding: 10px 15px;
+    border-bottom: 1px solid #eee;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.amount {
+    text-align: right;
+    font-weight: bold;
+}
+
+.debit-amount {
+    color: #e74c3c;
+}
+
+.credit-amount {
+    color: #27ae60;
+}
+
+.balance-amount {
+    font-weight: bold;
+}
+
+.message {
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    font-weight: bold;
+}
+
+.message.success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.message.error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.message.warning {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+}
+
+.loading::after {
+    content: '...';
+    animation: dots 1.5s steps(4, end) infinite;
+}
+
+@keyframes dots {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    60%, 100% { content: '...'; }
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #999;
+}
+
+.empty-state-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+}
+
+@media (max-width: 992px) {
+    .layout-with-sidebar {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+    }
+    
+    .filter-row {
+        flex-direction: column;
+    }
+    
+    .filter-group input,
+    .filter-group select {
+        min-width: 100%;
+    }
+    
+    .summary-cards {
+        flex-direction: column;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>📊 Ledger / Statement of Account</h1>
+        <div>
+            <button class="btn" onclick="window.location.href='home.html'">🏠 Home</button>
+            <button class="btn btn-danger" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div id="breadcrumbContainer" class="breadcrumb-container"></div>
+
+    <div class="layout-with-sidebar">
+        <div class="sidebar">
+            <div id="companyNameSidebar" class="company-name-sidebar"></div>
+            <h3>Navigation Menu</h3>
+            <div id="menuContainer"></div>
+        </div>
+
+        <div class="main-content">
+            <div id="messageContainer"></div>
+
+            <!-- Filter Section -->
+            <div class="filter-section">
+                <div class="filter-row">
+                    <div class="filter-group" style="flex: 1; min-width: 250px;">
+                        <label>Account (GL)</label>
+                        <select id="accountSelect" style="min-width: 280px;" onchange="onAccountChange()">
+                            <option value="">-- Select Account --</option>
+                        </select>
+                    </div>
+                    <div class="filter-group" id="partyGroup" style="display: none;">
+                        <label id="partyLabel">Party</label>
+                        <select id="partySelect" style="min-width: 250px;">
+                            <option value="">-- Select Party --</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>From Date</label>
+                        <input type="date" id="fromDate">
+                    </div>
+                    <div class="filter-group">
+                        <label>To Date</label>
+                        <input type="date" id="toDate">
+                    </div>
+                    <div class="filter-actions">
+                        <button class="btn btn-success" onclick="loadStatement()">🔍 Generate</button>
+                        <button class="btn btn-warning" onclick="resetFilters()">↺ Reset</button>
+                        <button class="btn" onclick="exportToCSV()">📥 Export CSV</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Party Info -->
+            <div id="partyInfo" class="party-info" style="display: none;"></div>
+            
+            <!-- Account Info -->
+            <div id="accountInfo" class="party-info" style="display: none; background: #e8f0fe; border-left-color: #667eea; border-left: 4px solid #667eea;"></div>
+
+            <!-- Summary Cards -->
+            <div class="summary-cards" id="summaryCards" style="display: none;">
+                <div class="summary-card card-opening">
+                    <div class="card-label">Opening Balance</div>
+                    <div class="card-value" id="openingBalance">0.00</div>
+                </div>
+                <div class="summary-card card-debit">
+                    <div class="card-label">Total Debit</div>
+                    <div class="card-value" id="totalDebit">0.00</div>
+                </div>
+                <div class="summary-card card-credit">
+                    <div class="card-label">Total Credit</div>
+                    <div class="card-value" id="totalCredit">0.00</div>
+                </div>
+                <div class="summary-card card-closing">
+                    <div class="card-label">Closing Balance</div>
+                    <div class="card-value" id="closingBalance">0.00</div>
+                </div>
+            </div>
+
+            <!-- Data Table -->
+            <div class="table-container">
+                <div id="loadingIndicator" class="loading">Loading statement...</div>
+                <div id="emptyState" class="empty-state" style="display: none;">
+                    <div class="empty-state-icon">📊</div>
+                    <h3>No Transactions Found</h3>
+                    <p>Select a party and click "Generate" to view the statement of account.</p>
+                </div>
+                <table id="statementTable" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Doc Type</th>
+                            <th>Doc No</th>
+                            <th>Account Code</th>
+                            <th>Description</th>
+                            <th>Narration</th>
+                            <th class="amount">Debit</th>
+                            <th class="amount">Credit</th>
+                            <th class="amount">Balance</th>
+                        </tr>
+                    </thead>
+                    <tbody id="statementTableBody">
+                    </tbody>
+                    <tfoot id="statementTableFooter" style="display: none;">
+                        <tr style="background: #e8f0fe; font-weight: bold; border-top: 2px solid #667eea;">
+                            <td colspan="6" style="text-align: right; padding: 12px 15px; font-size: 14px;">Totals:</td>
+                            <td class="amount debit-amount" style="padding: 12px 15px; font-size: 14px;" id="totalDebitDisplay">0.00</td>
+                            <td class="amount credit-amount" style="padding: 12px 15px; font-size: 14px;" id="totalCreditDisplay">0.00</td>
+                            <td class="amount balance-amount" style="padding: 12px 15px; font-size: 14px;" id="closingBalanceDisplay">0.00</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="api.js"></script>
+<script src="indexedDB.js"></script>
+<script src="session.js"></script>
+<script src="menu.js"></script>
+<script src="systemConfig.js"></script>
+<script src="themeManager.js"></script>
+<script>
+// Global variables
+let allAccounts = [];
+let allCustomers = [];
+let allSuppliers = [];
+let statementData = [];
+let statementSummary = null;
+let statementParty = null;
+let statementAccount = null;
+let selectedAccountCode = '';
+
+// Initialize system config with theme
+initPageWithTheme('statementofaccount.htm', 'companyNameSidebar');
+
+// Protect this page with menu-based access control
+protectPageWithMenuAccess(function(isValid) {
+    if (isValid) {
+        renderMenu('menuContainer');
+        renderBreadcrumb('breadcrumbContainer');
+        
+        // Load accounts + parties for dropdowns
+        loadAccounts();
+        loadCustomers();
+        loadSuppliers();
+    }
+});
+
+// Check if an account code needs a subledger (AP or AR)
+function needsSubledger(acCode) {
+    if (!acCode) return false;
+    const code = String(acCode).toUpperCase();
+    return code.startsWith('AP') || code.startsWith('AR') || code.includes('PAYABLE') || code.includes('RECEIVABLE');
+}
+
+// Get subledger type label for an account code
+function getSubledgerType(acCode) {
+    if (!acCode) return 'Party';
+    const code = String(acCode).toUpperCase();
+    if (code.startsWith('AP') || code.includes('PAYABLE')) return 'Supplier';
+    if (code.startsWith('AR') || code.includes('RECEIVABLE')) return 'Customer';
+    return 'Party';
+}
+
+// Load GL accounts from IndexedDB or API
+function loadAccounts() {
+    if (typeof getCOAAccountsFromDB === 'function') {
+        getCOAAccountsFromDB(function(cached) {
+            if (cached && cached.length > 0) {
+                allAccounts = cached;
+                populateAccountSelect();
+            } else {
+                apiGetCOA(function(response) {
+                    if (response.status === 'success') {
+                        allAccounts = response.accounts || [];
+                        if (typeof saveCOAAccountsToDB === 'function') {
+                            saveCOAAccountsToDB(allAccounts);
+                        }
+                        populateAccountSelect();
+                    }
+                });
+            }
+        });
+    } else {
+        apiGetCOA(function(response) {
+            if (response.status === 'success') {
+                allAccounts = response.accounts || [];
+                populateAccountSelect();
+            }
+        });
+    }
+}
+
+// Populate account select with GL accounts
+function populateAccountSelect() {
+    const accountSelect = document.getElementById('accountSelect');
+    accountSelect.innerHTML = '';
+    accountSelect.appendChild(new Option('-- Select Account --', ''));
+    
+    const glAccounts = allAccounts.filter(function(a) {
+        return a.acType === 'GL';
+    });
+    
+    glAccounts.forEach(function(a) {
+        accountSelect.appendChild(new Option(a.acCode + ' - ' + a.description, a.acCode));
+    });
+}
+
+// Called when account changes - show/hide party dropdown
+function onAccountChange() {
+    const acCode = document.getElementById('accountSelect').value;
+    selectedAccountCode = acCode;
+    
+    const partyGroup = document.getElementById('partyGroup');
+    const partyLabel = document.getElementById('partyLabel');
+    const partySelect = document.getElementById('partySelect');
+    
+    if (!acCode) {
+        partyGroup.style.display = 'none';
+        partySelect.innerHTML = '';
+        partySelect.appendChild(new Option('-- Select Party --', ''));
+        return;
+    }
+    
+    if (needsSubledger(acCode)) {
+        // AR/AP account - show party dropdown
+        const type = getSubledgerType(acCode);
+        partyLabel.textContent = type;
+        partyGroup.style.display = '';
+        
+        partySelect.innerHTML = '';
+        partySelect.appendChild(new Option('-- Select ' + type + ' --', ''));
+        
+        if (type === 'Customer') {
+            allCustomers.forEach(function(c) {
+                partySelect.appendChild(new Option(c.code + ' - ' + c.description, c.code));
+            });
+        } else {
+            allSuppliers.forEach(function(s) {
+                partySelect.appendChild(new Option(s.code + ' - ' + s.description, s.code));
+            });
+        }
+    } else {
+        // Non-AR/AP account - hide party dropdown (ledger view)
+        partyGroup.style.display = 'none';
+        partySelect.innerHTML = '';
+        partySelect.appendChild(new Option('-- Select Party --', ''));
+    }
+}
+
+// Load customers from IndexedDB or API
+function loadCustomers() {
+    if (typeof getCustomersFromDB === 'function') {
+        getCustomersFromDB(function(cached) {
+            if (cached && cached.length > 0) {
+                allCustomers = cached;
+                if (document.getElementById('accountSelect').value) onAccountChange();
+            } else {
+                apiGetCustomers(function(response) {
+                    if (response.status === 'success') {
+                        allCustomers = response.customers || [];
+                        if (typeof saveCustomersToDB === 'function') {
+                            saveCustomersToDB(allCustomers);
+                        }
+                        if (document.getElementById('accountSelect').value) onAccountChange();
+                    }
+                });
+            }
+        });
+    } else {
+        apiGetCustomers(function(response) {
+            if (response.status === 'success') {
+                allCustomers = response.customers || [];
+                if (document.getElementById('accountSelect').value) onAccountChange();
+            }
+        });
+    }
+}
+
+// Load suppliers from IndexedDB or API
+function loadSuppliers() {
+    if (typeof getSuppliersFromDB === 'function') {
+        getSuppliersFromDB(function(cached) {
+            if (cached && cached.length > 0) {
+                allSuppliers = cached;
+                if (document.getElementById('accountSelect').value) onAccountChange();
+            } else {
+                apiGetSuppliers(function(response) {
+                    if (response.status === 'success') {
+                        allSuppliers = response.suppliers || [];
+                        if (typeof saveSuppliersToDB === 'function') {
+                            saveSuppliersToDB(allSuppliers);
+                        }
+                        if (document.getElementById('accountSelect').value) onAccountChange();
+                    }
+                });
+            }
+        });
+    } else {
+        apiGetSuppliers(function(response) {
+            if (response.status === 'success') {
+                allSuppliers = response.suppliers || [];
+                if (document.getElementById('accountSelect').value) onAccountChange();
+            }
+        });
+    }
+}
+
+// Load statement data
+function loadStatement() {
+    const acCode = document.getElementById('accountSelect').value;
+    if (!acCode) {
+        showMessage('Please select an account first.', 'warning');
+        return;
+    }
+    
+    const partyCode = document.getElementById('partySelect').value;
+    const partyType = getSubledgerType(acCode);
+    
+    document.getElementById('loadingIndicator').style.display = 'block';
+    document.getElementById('statementTable').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('summaryCards').style.display = 'none';
+    document.getElementById('partyInfo').style.display = 'none';
+    document.getElementById('accountInfo').style.display = 'none';
+    
+    var filters = {
+        acCode: acCode,
+        partyType: partyType,
+        partyCode: partyCode,
+        fromDate: document.getElementById('fromDate').value,
+        toDate: document.getElementById('toDate').value
+    };
+    
+    apiGetStatementOfAccount(filters, function(response) {
+        document.getElementById('loadingIndicator').style.display = 'none';
+        
+        if (response.status === 'success') {
+            statementData = response.entries || [];
+            statementSummary = response.summary || null;
+            statementParty = response.party || null;
+            statementAccount = response.account || null;
+            
+            displayStatement(statementData);
+        } else {
+            showMessage('Error loading statement: ' + response.message, 'error');
+            document.getElementById('emptyState').style.display = 'block';
+        }
+    });
+}
+
+// Display statement in table
+function displayStatement(entries) {
+    const tbody = document.getElementById('statementTableBody');
+    tbody.innerHTML = '';
+    
+    // Show account info
+    if (statementAccount) {
+        const accountInfo = document.getElementById('accountInfo');
+        accountInfo.innerHTML = '<span class="party-type" style="color: #667eea;">Ledger Account:</span> ' +
+            '<span class="party-name">' + escapeHtml(statementAccount.code) + ' - ' + escapeHtml(statementAccount.description) + '</span>';
+        accountInfo.style.display = 'block';
+    }
+    
+    // Show party info (if party filtered)
+    if (statementParty) {
+        const partyInfo = document.getElementById('partyInfo');
+        partyInfo.innerHTML = '<span class="party-type">' + escapeHtml(statementParty.type) + ':</span> ' +
+            '<span class="party-name">' + escapeHtml(statementParty.code) + ' - ' + escapeHtml(statementParty.name) + '</span>';
+        partyInfo.style.display = 'block';
+    } else {
+        document.getElementById('partyInfo').style.display = 'none';
+    }
+    
+    // Show summary cards
+    if (statementSummary) {
+        document.getElementById('openingBalance').textContent = formatAmount(statementSummary.openingBalance);
+        document.getElementById('totalDebit').textContent = formatAmount(statementSummary.totalDebit);
+        document.getElementById('totalCredit').textContent = formatAmount(statementSummary.totalCredit);
+        document.getElementById('closingBalance').textContent = formatAmount(statementSummary.closingBalance);
+        document.getElementById('summaryCards').style.display = 'flex';
+    }
+    
+    if (entries.length === 0) {
+        document.getElementById('statementTable').style.display = 'none';
+        document.getElementById('statementTableFooter').style.display = 'none';
+        document.getElementById('emptyState').style.display = 'block';
+        return;
+    }
+    
+    document.getElementById('statementTable').style.display = 'table';
+    document.getElementById('emptyState').style.display = 'none';
+    
+    entries.forEach(function(entry) {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${formatDate(entry.date)}</td>
+            <td><strong>${escapeHtml(entry.docType)}</strong></td>
+            <td><strong>${escapeHtml(entry.docNo)}</strong></td>
+            <td>${escapeHtml(entry.acDocNo || '-')}</td>
+            <td>${escapeHtml(entry.accountDescription || '-')}</td>
+            <td>${escapeHtml(entry.narration || '-')}</td>
+            <td class="amount debit-amount">${entry.debit > 0 ? formatAmount(entry.debit) : ''}</td>
+            <td class="amount credit-amount">${entry.credit > 0 ? formatAmount(entry.credit) : ''}</td>
+            <td class="amount balance-amount">${formatAmount(entry.runningBalance)}</td>
+        `;
+        tbody.appendChild(row);
+    });
+    
+    // Update footer
+    if (statementSummary) {
+        document.getElementById('totalDebitDisplay').textContent = formatAmount(statementSummary.totalDebit);
+        document.getElementById('totalCreditDisplay').textContent = formatAmount(statementSummary.totalCredit);
+        document.getElementById('closingBalanceDisplay').textContent = formatAmount(statementSummary.closingBalance);
+        document.getElementById('statementTableFooter').style.display = '';
+    }
+}
+
+// Reset filters
+function resetFilters() {
+    document.getElementById('accountSelect').selectedIndex = 0;
+    document.getElementById('partySelect').selectedIndex = 0;
+    document.getElementById('partyGroup').style.display = 'none';
+    document.getElementById('fromDate').value = '';
+    document.getElementById('toDate').value = '';
+    
+    document.getElementById('statementTable').style.display = 'none';
+    document.getElementById('statementTableFooter').style.display = 'none';
+    document.getElementById('summaryCards').style.display = 'none';
+    document.getElementById('partyInfo').style.display = 'none';
+    document.getElementById('accountInfo').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'block';
+    document.getElementById('emptyState').querySelector('p').textContent = 'Select an account (and party if AR/AP) and click "Generate" to view the ledger/statement.';
+}
+
+// Export to CSV
+function exportToCSV() {
+    if (!statementData || statementData.length === 0) {
+        showMessage('No data to export. Please generate a statement first.', 'warning');
+        return;
+    }
+    
+    var csv = 'Date,Doc Type,Doc No,Account Code,Description,Narration,Debit,Credit,Balance\n';
+    
+    statementData.forEach(function(entry) {
+        csv += '"' + (entry.date || '') + '",';
+        csv += '"' + (entry.docType || '') + '",';
+        csv += '"' + (entry.docNo || '') + '",';
+        csv += '"' + (entry.acDocNo || '') + '",';
+        csv += '"' + (entry.accountDescription || '') + '",';
+        csv += '"' + (entry.narration || '') + '",';
+        csv += (entry.debit || 0) + ',';
+        csv += (entry.credit || 0) + ',';
+        csv += (entry.runningBalance || 0) + '\n';
+    });
+    
+    // Add summary rows
+    if (statementSummary) {
+        csv += '\n';
+        csv += 'SUMMARY\n';
+        csv += 'Opening Balance:,' + statementSummary.openingBalance + '\n';
+        csv += 'Total Debit:,' + statementSummary.totalDebit + '\n';
+        csv += 'Total Credit:,' + statementSummary.totalCredit + '\n';
+        csv += 'Closing Balance:,' + statementSummary.closingBalance + '\n';
+    }
+    
+    // Create download link
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    var link = document.createElement('a');
+    var url = URL.createObjectURL(blob);
+    var acCode = document.getElementById('accountSelect').value || 'Account';
+    var partyCode = document.getElementById('partySelect').value || '';
+    var fileName = 'Statement_' + acCode;
+    if (partyCode) fileName += '_' + partyCode;
+    link.setAttribute('href', url);
+    link.setAttribute('download', fileName + '_' + new Date().toISOString().slice(0, 10) + '.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showMessage('Statement exported successfully!', 'success');
+}
+
+// Format date for display
+function formatDate(dateStr) {
+    if (!dateStr) return '-';
+    try {
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('en-GB');
+    } catch (e) {
+        return dateStr;
+    }
+}
+
+// Format amount for display
+function formatAmount(amount) {
+    if (amount === null || amount === undefined) return '0.00';
+    return parseFloat(amount).toFixed(2);
+}
+
+// Show message
+function showMessage(message, type) {
+    const container = document.getElementById('messageContainer');
+    container.innerHTML = '<div class="message ' + type + '">' + escapeHtml(message) + '</div>';
+    
+    setTimeout(function() {
+        container.innerHTML = '';
+    }, 5000);
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Logout function
+function logout() {
+    if (confirm('Are you sure you want to logout?')) {
+        performLogout();
+    }
+}
+</script>
+
+</body>
+</html>

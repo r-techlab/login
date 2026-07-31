@@ -3,7 +3,7 @@
 // Centralized API calls with session validation
 // ============================================
 
-const API_URL = "https://script.google.com/macros/s/AKfycbxJbFtI3C4BYeVUYq0AqfRU85XNxlLFDTeTL6_jlV3n7fsJNgdmYsv6OSfzyv8z0NU/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbx6ESIaRhL5EV7h4SaRwsOuCStRdQjGgmbtVZZ-Hds4DNWK8ihHfxm0iJ-Z_Af65CI/exec";
 
 const API_TIMEOUT = 15000; // 15 seconds
 
@@ -2564,6 +2564,451 @@ function apiDeletePurchase(docNo, callback) {
     
     const script = document.createElement('script');
     script.src = `${API_URL}?action=deletePurchase&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&docNo=${encodeURIComponent(docNo)}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// ============================================
+// JOURNAL VOUCHER MANAGEMENT API
+// ============================================
+
+// Get all journal vouchers (with server-side pagination)
+function apiGetJournalVouchers(page, pageSize, search, callback) {
+    // Handle optional parameters - if search is omitted, shift arguments
+    if (typeof search === 'function') {
+        callback = search;
+        search = '';
+    }
+    if (typeof pageSize === 'function') {
+        callback = pageSize;
+        pageSize = 10;
+        page = 1;
+    }
+    
+    const callbackName = 'apiGetJournalVouchersCallback_' + Date.now();
+    const session = getSession();
+    
+    const timeoutId = setTimeout(function() {
+        if (window[callbackName]) {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+                document.body.removeChild(script);
+            }
+            callback({
+                status: "error",
+                message: "Request timeout"
+            });
+        }
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=getJournalVouchers&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&page=${page}&pageSize=${pageSize}&search=${encodeURIComponent(search)}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// Get single journal voucher by DocNo
+function apiGetJournalVoucherByDocNo(docNo, callback) {
+    const callbackName = 'apiGetJournalVoucherByDocNoCallback_' + Date.now();
+    const session = getSession();
+    
+    const timeoutId = setTimeout(function() {
+        if (window[callbackName]) {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+                document.body.removeChild(script);
+            }
+            callback({
+                status: "error",
+                message: "Request timeout"
+            });
+        }
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=getJournalVoucherByDocNo&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&docNo=${encodeURIComponent(docNo)}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// Create new journal voucher
+// Uses a longer timeout (30s) because writing header + detail rows to Google Sheets can take time
+function apiCreateJournalVoucher(jvData, callback) {
+    const callbackName = 'apiCreateJournalVoucherCallback_' + Date.now();
+    const session = getSession();
+    if (!session) {
+        callback({ status: "error", message: "No active session" });
+        return;
+    }
+    
+    const timeoutId = setTimeout(function() {
+        if (window[callbackName]) {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+                document.body.removeChild(script);
+            }
+            callback({
+                status: "error",
+                message: "Request timeout. The server took too long to respond. Check that the Apps Script is deployed with the latest code (action=createJournalVoucher)."
+            });
+        }
+    }, 30000);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=createJournalVoucher&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&jvData=${encodeURIComponent(JSON.stringify(jvData))}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// Update existing journal voucher
+function apiUpdateJournalVoucher(jvData, callback) {
+    const callbackName = 'apiUpdateJournalVoucherCallback_' + Date.now();
+    const session = getSession();
+    
+    const timeoutId = setTimeout(function() {
+        if (window[callbackName]) {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+                document.body.removeChild(script);
+            }
+            callback({
+                status: "error",
+                message: "Request timeout"
+            });
+        }
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=updateJournalVoucher&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&jvData=${encodeURIComponent(JSON.stringify(jvData))}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// Delete journal voucher
+function apiDeleteJournalVoucher(docNo, callback) {
+    const callbackName = 'apiDeleteJournalVoucherCallback_' + Date.now();
+    const session = getSession();
+    
+    const timeoutId = setTimeout(function() {
+        if (window[callbackName]) {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+                document.body.removeChild(script);
+            }
+            callback({
+                status: "error",
+                message: "Request timeout"
+            });
+        }
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=deleteJournalVoucher&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&docNo=${encodeURIComponent(docNo)}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// Post JV to AccountTransaction (Journal Voucher Accounting)
+function apiPostJVToAccountTransaction(docNo, callback) {
+    const callbackName = 'apiPostJVToAccountTransactionCallback_' + Date.now();
+    const session = getSession();
+    if (!session) {
+        callback({ status: "error", message: "No active session" });
+        return;
+    }
+    
+    const timeoutId = setTimeout(function() {
+        if (window[callbackName]) {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+                document.body.removeChild(script);
+            }
+            callback({
+                status: "error",
+                message: "Request timeout"
+            });
+        }
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=postJVToAccountTransaction&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&docNo=${encodeURIComponent(docNo)}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// Cancel JV AccountTransaction Post (Delete entries)
+function apiCancelJVAccountTransactionPost(docNo, callback) {
+    const callbackName = 'apiCancelJVAccountTransactionPostCallback_' + Date.now();
+    const session = getSession();
+    if (!session) {
+        callback({ status: "error", message: "No active session" });
+        return;
+    }
+    
+    const timeoutId = setTimeout(function() {
+        if (window[callbackName]) {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+                document.body.removeChild(script);
+            }
+            callback({
+                status: "error",
+                message: "Request timeout"
+            });
+        }
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=cancelJVAccountTransactionPost&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&docNo=${encodeURIComponent(docNo)}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// ============================================
+// JOURNAL VOUCHER REPORT API
+// ============================================
+
+// Get journal voucher report with date range and filters
+function apiGetJournalVoucherReport(filters, callback) {
+    const callbackName = 'apiGetJournalVoucherReportCallback_' + Date.now();
+    const session = getSession();
+    
+    const timeoutId = setTimeout(function() {
+        if (window[callbackName]) {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+                document.body.removeChild(script);
+            }
+            callback({
+                status: "error",
+                message: "Request timeout"
+            });
+        }
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    var params = 'action=getJournalVoucherReport' +
+        '&sessionId=' + encodeURIComponent(session.sessionId) +
+        '&userId=' + encodeURIComponent(session.userId) +
+        '&fromDate=' + encodeURIComponent(filters.fromDate || '') +
+        '&toDate=' + encodeURIComponent(filters.toDate || '') +
+        '&reportType=' + encodeURIComponent(filters.reportType || 'headerwise') +
+        '&callback=' + callbackName;
+    
+    const script = document.createElement('script');
+    script.src = API_URL + '?' + params;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// ============================================
+// STATEMENT OF ACCOUNT API
+// ============================================
+
+// Get statement of account for a party (Customer or Supplier)
+function apiGetStatementOfAccount(filters, callback) {
+    const callbackName = 'apiGetStatementOfAccountCallback_' + Date.now();
+    const session = getSession();
+    if (!session) {
+        callback({ status: "error", message: "No active session" });
+        return;
+    }
+    
+    const timeoutId = setTimeout(function() {
+        if (window[callbackName]) {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+                document.body.removeChild(script);
+            }
+            callback({
+                status: "error",
+                message: "Request timeout"
+            });
+        }
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    var params = 'action=getStatementOfAccount' +
+        '&sessionId=' + encodeURIComponent(session.sessionId) +
+        '&userId=' + encodeURIComponent(session.userId) +
+        '&acCode=' + encodeURIComponent(filters.acCode || '') +
+        '&partyType=' + encodeURIComponent(filters.partyType || '') +
+        '&partyCode=' + encodeURIComponent(filters.partyCode || '') +
+        '&fromDate=' + encodeURIComponent(filters.fromDate || '') +
+        '&toDate=' + encodeURIComponent(filters.toDate || '') +
+        '&callback=' + callbackName;
+    
+    const script = document.createElement('script');
+    script.src = API_URL + '?' + params;
     script.onerror = function() {
         clearTimeout(timeoutId);
         delete window[callbackName];

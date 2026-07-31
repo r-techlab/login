@@ -1,0 +1,1625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Journal Voucher - Voucher Entry Form</title>
+<link rel="stylesheet" href="menu.css">
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    margin: 0;
+    padding: 20px;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 1600px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 20px;
+    margin-bottom: 30px;
+}
+
+h1 {
+    color: #333;
+    margin: 0;
+}
+
+.btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    margin-left: 10px;
+}
+
+.btn:hover {
+    background: #2980b9;
+}
+
+.btn-success {
+    background: #27ae60;
+}
+
+.btn-success:hover {
+    background: #229954;
+}
+
+.btn-danger {
+    background: #e74c3c;
+}
+
+.btn-danger:hover {
+    background: #c0392b;
+}
+
+.btn-warning {
+    background: #f39c12;
+}
+
+.btn-warning:hover {
+    background: #e67e22;
+}
+
+.btn-info {
+    background: #17a2b8;
+}
+
+.btn-info:hover {
+    background: #138496;
+}
+
+.btn-secondary {
+    background: #95a5a6;
+}
+
+.btn-secondary:hover {
+    background: #7f8c8d;
+}
+
+.btn:disabled {
+    background: #95a5a6;
+    cursor: not-allowed;
+}
+
+.btn-icon {
+    padding: 5px 10px;
+    font-size: 14px;
+}
+
+.form-section {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.form-section h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #333;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 8px;
+}
+
+.form-row {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    min-width: 150px;
+}
+
+.form-group label {
+    font-size: 12px;
+    font-weight: bold;
+    color: #555;
+    text-transform: uppercase;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    padding: 8px 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+    font-family: inherit;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+.form-group input[disabled] {
+    background: #e9ecef;
+    cursor: not-allowed;
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 60px;
+}
+
+.form-group .required::after {
+    content: ' *';
+    color: #e74c3c;
+}
+
+/* Searchable dropdown */
+.searchable-container {
+    position: relative;
+}
+
+.searchable-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 0 0 5px 5px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.searchable-dropdown.active {
+    display: block;
+}
+
+.dropdown-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 13px;
+}
+
+.dropdown-item:hover {
+    background: #667eea;
+    color: white;
+}
+
+/* Details table */
+.details-section {
+    margin-bottom: 20px;
+}
+
+.details-section h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #333;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 8px;
+}
+
+.table-container {
+    overflow-x: auto;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+thead {
+    background: #667eea;
+    color: white;
+}
+
+th {
+    padding: 10px 8px;
+    text-align: left;
+    font-weight: bold;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+td {
+    padding: 6px 8px;
+    border-bottom: 1px solid #eee;
+    vertical-align: middle;
+}
+
+td input, td select {
+    width: 100%;
+    padding: 5px 6px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    font-size: 12px;
+    box-sizing: border-box;
+}
+
+td input:focus, td select:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+td input[disabled] {
+    background: #f5f5f5;
+    cursor: not-allowed;
+}
+
+td.amount-cell {
+    min-width: 100px;
+}
+
+td.amount-cell input {
+    text-align: right;
+    font-weight: bold;
+}
+
+tbody tr:hover {
+    background: #f8f9fa;
+}
+
+/* Summary section */
+.summary-section {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 20px;
+}
+
+.summary-table {
+    width: 400px;
+    border-collapse: collapse;
+}
+
+.summary-table td {
+    padding: 8px 12px;
+    font-size: 14px;
+}
+
+.summary-table .summary-label {
+    text-align: right;
+    font-weight: bold;
+    color: #555;
+}
+
+.summary-table .summary-value {
+    text-align: right;
+    font-weight: bold;
+    font-family: 'Courier New', monospace;
+}
+
+.summary-table .summary-total td {
+    font-size: 18px;
+    border-top: 2px solid #333;
+    padding-top: 10px;
+    color: #2c3e50;
+}
+
+/* Balance indicator */
+.balance-indicator {
+    text-align: right;
+    font-size: 14px;
+    font-weight: bold;
+    padding: 10px 12px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+    display: inline-block;
+}
+
+.balance-ok {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.balance-error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+/* View mode styles */
+.view-mode input,
+.view-mode select,
+.view-mode textarea {
+    border: 1px solid #ddd;
+    background: #e9ecef;
+    pointer-events: none;
+    color: #333;
+}
+
+.view-mode td input,
+.view-mode td select {
+    border: 1px solid #ddd;
+    background: #f5f5f5;
+    pointer-events: none;
+    color: #333;
+}
+
+.view-mode .btn-icon {
+    display: none;
+}
+
+/* Hide calendar icon from date inputs in view mode only */
+.view-mode input[type="date"]::-webkit-calendar-picker-indicator {
+    display: none;
+    -webkit-appearance: none;
+}
+
+.view-mode input[type="date"]::-moz-calendar-picker-indicator {
+    display: none;
+}
+
+.message {
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    font-weight: bold;
+}
+
+.message.success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.message.error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.message.warning {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+}
+
+.loading::after {
+    content: '...';
+    animation: dots 1.5s steps(4, end) infinite;
+}
+
+@keyframes dots {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    60%, 100% { content: '...'; }
+}
+
+/* Modal styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 2000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    animation: fadeIn 0.3s;
+    overflow-y: auto;
+}
+
+.modal-content {
+    background: white;
+    margin: 3% auto;
+    padding: 30px;
+    border-radius: 10px;
+    width: 95%;
+    max-width: 1200px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    animation: slideDown 0.3s;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #667eea;
+}
+
+.modal-header h2 {
+    margin: 0;
+    color: #333;
+}
+
+.modal-close {
+    font-size: 28px;
+    font-weight: bold;
+    color: #999;
+    cursor: pointer;
+    line-height: 20px;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideDown {
+    from { transform: translateY(-30px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+@media (max-width: 992px) {
+    .form-row {
+        flex-direction: column;
+    }
+    
+    .form-group {
+        min-width: 100%;
+    }
+    
+    .summary-table {
+        width: 100%;
+    }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1 id="pageTitle">📒 Journal Voucher - New Voucher</h1>
+        <div>
+            <button class="btn" onclick="window.location.href='journalvoucherlist.htm'">📋 Back to List</button>
+            <button class="btn btn-secondary" id="refreshBtn" onclick="refreshMasterData()">🔄 Refresh Data</button>
+            <button class="btn btn-warning" id="viewEditBtn" style="display: none;" onclick="editFromView()">✏️ Edit</button>
+            <button class="btn btn-danger" id="viewDeleteBtn" style="display: none;" onclick="deleteFromView()">🗑️ Delete</button>
+            <button class="btn btn-success" id="viewPrintBtn" style="display: none;" onclick="printFromView()">🖨️ Print</button>
+            <button class="btn btn-success" id="viewPostBtn" style="display: none;" onclick="postFromView()">📤 Post</button>
+            <button class="btn btn-warning" id="viewCancelPostBtn" style="display: none;" onclick="cancelPostFromView()">↩ CancelPost</button>
+            <button class="btn btn-info" id="viewAcctEntryBtn" style="display: none;" onclick="showAccountingEntry()">📒 Accounting Entry</button>
+
+            <button class="btn" onclick="window.location.href='home.html'">🏠 Home</button>
+            <button class="btn btn-danger" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div id="breadcrumbContainer" class="breadcrumb-container"></div>
+
+    <div id="messageContainer"></div>
+
+    <div id="loadingIndicator" class="loading" style="display: none;">Loading journal voucher...</div>
+
+    <form id="jvForm" onsubmit="saveJournalVoucher(event)" style="display: none;">
+        <!-- Header Section -->
+        <div class="form-section" id="headerSection">
+            <h3>Journal Voucher Header</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Doc No</label>
+                    <input type="text" id="docNo" disabled placeholder="Auto-generated">
+                </div>
+                <div class="form-group">
+                    <label class="required">Date</label>
+                    <input type="date" id="date" required>
+                </div>
+                <div class="form-group" id="postedStatusGroup" style="display: none;">
+                    <label>Post Status</label>
+                    <div id="postedStatus" style="padding: 8px 10px; border-radius: 5px; font-size: 14px; font-weight: bold;"></div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group" style="flex: 2;">
+                    <label>Narration</label>
+                    <textarea id="narration" rows="2"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Reference No</label>
+                    <input type="text" id="refNo">
+                </div>
+                <div class="form-group">
+                    <label>Reference Date</label>
+                    <input type="date" id="refDate">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Created By</label>
+                    <input type="text" id="createdBy" disabled>
+                </div>
+                <div class="form-group">
+                    <label>Created Time</label>
+                    <input type="text" id="createdTime" disabled>
+                </div>
+                <div class="form-group">
+                    <label>Posted By</label>
+                    <input type="text" id="postedBy" disabled>
+                </div>
+                <div class="form-group">
+                    <label>Posted Time</label>
+                    <input type="text" id="postedTime" disabled>
+                </div>
+            </div>
+        </div>
+
+        <!-- Details Section -->
+        <div class="details-section">
+            <h3>Journal Voucher Entries</h3>
+            <div style="text-align: right; margin-bottom: 10px;">
+                <span id="balanceIndicator" class="balance-indicator balance-error">⚠ Voucher is NOT Balanced</span>
+            </div>
+            <div class="table-container">
+                <table id="detailsTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 30px;">#</th>
+                            <th style="min-width: 110px;">Type</th>
+                            <th style="min-width: 130px;">AC Code</th>
+                            <th style="min-width: 180px;">AC Description</th>
+                            <th style="min-width: 150px;">Subledger</th>
+                            <th class="amount-cell">Amount</th>
+                            <th style="min-width: 150px;">Narration</th>
+                            <th style="min-width: 130px;">Mode</th>
+                            <th style="min-width: 90px;">Bank</th>
+                            <th style="min-width: 130px;">Instrument No</th>
+                            <th style="min-width: 130px;">Instrument Date</th>
+                            <th style="width: 40px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="detailsTableBody">
+                    </tbody>
+                </table>
+            </div>
+            <div style="margin-top: 10px;">
+                <button type="button" class="btn btn-success" onclick="addDetailLine()">➕ Add Entry</button>
+            </div>
+        </div>
+
+        <!-- Summary Section -->
+        <div class="summary-section">
+            <table class="summary-table">
+                <tr>
+                    <td class="summary-label">Total Debit:</td>
+                    <td class="summary-value" id="summaryDebit" style="color: #e74c3c;">0.00</td>
+                </tr>
+                <tr>
+                    <td class="summary-label">Total Credit:</td>
+                    <td class="summary-value" id="summaryCredit" style="color: #27ae60;">0.00</td>
+                </tr>
+                <tr class="summary-total">
+                    <td class="summary-label">Difference:</td>
+                    <td class="summary-value" id="summaryDifference">0.00</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Action Buttons -->
+        <div id="formActions" style="text-align: center; margin-top: 20px;">
+            <button type="submit" class="btn btn-success" id="saveButton">💾 Save Voucher</button>
+            <button type="button" class="btn" onclick="cancelForm()">✖ Cancel</button>
+        </div>
+
+    </form>
+</div>
+
+<!-- Accounting Entry Modal -->
+<div id="acctEntryModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>📒 Accounting Entry</h2>
+            <span class="modal-close" onclick="closeAcctEntryModal()">&times;</span>
+        </div>
+        <div id="acctEntryDocInfo" style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 5px; font-size: 14px;">
+            <strong>Document:</strong> <span id="acctEntryDocNo"></span> | 
+            <strong>Date:</strong> <span id="acctEntryDate"></span> | 
+            <strong>Narration:</strong> <span id="acctEntryNarration"></span>
+        </div>
+        <div id="acctEntryLoading" class="loading" style="display: none;">Loading accounting entries...</div>
+        <div id="acctEntryEmpty" style="display: none; text-align: center; padding: 40px; color: #999;">
+            <p style="font-size: 18px;">No accounting entries found for this document.</p>
+            <p>Accounting entries are created when the document is posted.</p>
+        </div>
+        <div class="table-container" id="acctEntryTableContainer" style="display: none;">
+            <table id="acctEntryTable" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead>
+                    <tr>
+                        <th style="width: 40px; padding: 10px 8px; text-align: left; font-weight: bold; font-size: 12px; background: #667eea; color: white;">#</th>
+                        <th style="padding: 10px 8px; text-align: left; font-weight: bold; font-size: 12px; background: #667eea; color: white;">Account Code</th>
+                        <th style="padding: 10px 8px; text-align: left; font-weight: bold; font-size: 12px; background: #667eea; color: white;">Description</th>
+                        <th style="padding: 10px 8px; text-align: left; font-weight: bold; font-size: 12px; background: #667eea; color: white;">Subledger</th>
+                        <th style="padding: 10px 8px; text-align: right; font-weight: bold; font-size: 12px; background: #667eea; color: white;">Debit</th>
+                        <th style="padding: 10px 8px; text-align: right; font-weight: bold; font-size: 12px; background: #667eea; color: white;">Credit</th>
+                        <th style="padding: 10px 8px; text-align: left; font-weight: bold; font-size: 12px; background: #667eea; color: white;">Narration</th>
+                    </tr>
+                </thead>
+                <tbody id="acctEntryTableBody"></tbody>
+                <tfoot id="acctEntryTableFoot" style="display: none;">
+                    <tr style="font-weight: bold; background: #e8f4f8;">
+                        <td colspan="4" style="padding: 10px 8px; text-align: right; border-top: 2px solid #333;">Total</td>
+                        <td id="acctEntryTotalDebit" style="padding: 10px 8px; text-align: right; border-top: 2px solid #333; font-family: 'Courier New', monospace;">0.00</td>
+                        <td id="acctEntryTotalCredit" style="padding: 10px 8px; text-align: right; border-top: 2px solid #333; font-family: 'Courier New', monospace;">0.00</td>
+                        <td style="padding: 10px 8px; border-top: 2px solid #333;"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px;">
+            <button type="button" class="btn" onclick="closeAcctEntryModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<script src="api.js"></script>
+<script src="indexedDB.js"></script>
+<script src="session.js"></script>
+<script src="menu.js"></script>
+<script src="systemConfig.js"></script>
+<script src="themeManager.js"></script>
+<script>
+// ============================================
+// GLOBAL VARIABLES
+// ============================================
+let editMode = false;
+let viewMode = false;
+let editDocNo = null;
+let viewDocNo = null;
+let detailLineCounter = 0;
+let allAccounts = [];
+let allSuppliers = [];
+let allCustomers = [];
+let masterDataLoaded = false;
+
+// Initialize system config with theme
+initPageWithTheme('journalvoucherform.htm', null);
+
+// Protect this page with menu-based access control
+protectPageWithMenuAccess(function(isValid) {
+    if (isValid) {
+        renderBreadcrumb('breadcrumbContainer');
+        
+        // Check URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        viewDocNo = urlParams.get('view');
+        editDocNo = urlParams.get('docno');
+        
+        if (viewDocNo) {
+            viewMode = true;
+            editMode = false;
+            document.getElementById('pageTitle').textContent = '📒 Journal Voucher - View Voucher';
+            document.getElementById('formActions').style.display = 'none';
+            // Show view mode buttons in header
+            document.getElementById('viewEditBtn').style.display = 'inline-block';
+            document.getElementById('viewDeleteBtn').style.display = 'inline-block';
+            document.getElementById('viewPrintBtn').style.display = 'inline-block';
+            document.getElementById('headerSection').classList.add('view-mode');
+            document.getElementById('detailsTable').classList.add('view-mode');
+            // Load master data first, then load voucher
+            loadMasterData(function() {
+                loadVoucherForView(viewDocNo);
+            });
+        } else if (editDocNo) {
+            editMode = true;
+            viewMode = false;
+            document.getElementById('pageTitle').textContent = '📒 Journal Voucher - Edit Voucher';
+            document.getElementById('saveButton').textContent = '💾 Update Voucher';
+            // Load master data first, then load voucher
+            loadMasterData(function() {
+                loadVoucherForEdit(editDocNo);
+            });
+        } else {
+            // New voucher - set default date
+            document.getElementById('date').value = new Date().toISOString().slice(0, 10);
+            // Load master data for new form, then show the form
+            loadMasterData(function() {
+                document.getElementById('jvForm').style.display = 'block';
+                // Add first empty detail line
+                addDetailLine();
+                recalculateSummary();
+            });
+        }
+    }
+});
+
+// Load master data (COA accounts, suppliers, customers)
+function loadMasterData(callback) {
+    let accountsLoaded = false;
+    let suppliersLoaded = false;
+    let customersLoaded = false;
+    
+    function checkAllLoaded() {
+        if (accountsLoaded && suppliersLoaded && customersLoaded) {
+            masterDataLoaded = true;
+            if (typeof callback === 'function') {
+                callback();
+            }
+        }
+    }
+    
+    loadCOAAccounts(function() {
+        accountsLoaded = true;
+        checkAllLoaded();
+    });
+    loadSuppliers(function() {
+        suppliersLoaded = true;
+        checkAllLoaded();
+    });
+    loadCustomers(function() {
+        customersLoaded = true;
+        checkAllLoaded();
+    });
+}
+
+// Load COA accounts from IndexedDB or API
+function loadCOAAccounts(callback) {
+    if (typeof getCOAAccountsFromDB === 'function') {
+        getCOAAccountsFromDB(function(cachedAccounts) {
+            if (cachedAccounts && cachedAccounts.length > 0) {
+                allAccounts = cachedAccounts;
+                if (typeof callback === 'function') callback();
+            } else {
+                apiGetCOA(function(response) {
+                    if (response.status === 'success') {
+                        allAccounts = response.accounts || [];
+                        if (typeof saveCOAAccountsToDB === 'function') {
+                            saveCOAAccountsToDB(allAccounts);
+                        }
+                    }
+                    if (typeof callback === 'function') callback();
+                });
+            }
+        });
+    } else {
+        apiGetCOA(function(response) {
+            if (response.status === 'success') {
+                allAccounts = response.accounts || [];
+            }
+            if (typeof callback === 'function') callback();
+        });
+    }
+}
+
+// Load suppliers from IndexedDB or API
+function loadSuppliers(callback) {
+    if (typeof getSuppliersFromDB === 'function') {
+        getSuppliersFromDB(function(cachedSuppliers) {
+            if (cachedSuppliers && cachedSuppliers.length > 0) {
+                allSuppliers = cachedSuppliers;
+                if (typeof callback === 'function') callback();
+            } else {
+                apiGetSuppliers(function(response) {
+                    if (response.status === 'success') {
+                        allSuppliers = response.suppliers || [];
+                        if (typeof saveSuppliersToDB === 'function') {
+                            saveSuppliersToDB(allSuppliers);
+                        }
+                    }
+                    if (typeof callback === 'function') callback();
+                });
+            }
+        });
+    } else {
+        apiGetSuppliers(function(response) {
+            if (response.status === 'success') {
+                allSuppliers = response.suppliers || [];
+            }
+            if (typeof callback === 'function') callback();
+        });
+    }
+}
+
+// Load customers from IndexedDB or API
+function loadCustomers(callback) {
+    if (typeof getCustomersFromDB === 'function') {
+        getCustomersFromDB(function(cachedCustomers) {
+            if (cachedCustomers && cachedCustomers.length > 0) {
+                allCustomers = cachedCustomers;
+                if (typeof callback === 'function') callback();
+            } else {
+                apiGetCustomers(function(response) {
+                    if (response.status === 'success') {
+                        allCustomers = response.customers || [];
+                        if (typeof saveCustomersToDB === 'function') {
+                            saveCustomersToDB(allCustomers);
+                        }
+                    }
+                    if (typeof callback === 'function') callback();
+                });
+            }
+        });
+    } else {
+        apiGetCustomers(function(response) {
+            if (response.status === 'success') {
+                allCustomers = response.customers || [];
+            }
+            if (typeof callback === 'function') callback();
+        });
+    }
+}
+
+// ============================================
+// DETAIL LINES MANAGEMENT
+// ============================================
+
+// Add detail line
+function addDetailLine(data = null) {
+    detailLineCounter++;
+    const tbody = document.getElementById('detailsTableBody');
+    const row = tbody.insertRow();
+    row.id = 'detailRow' + detailLineCounter;
+    
+    const srNo = tbody.rows.length;
+    // Determine Debit/Credit based on saved amount sign
+    const isDebit = (data && data.amount < 0) || !data;
+    const displayAmount = data ? Math.abs(data.amount) : '';
+    
+    row.innerHTML = `
+        <td>${srNo}</td>
+        <td>
+            <select class="line-type" onchange="onLineTypeChange(${detailLineCounter})">
+                <option value="DR" ${isDebit ? 'selected' : ''}>Debit</option>
+                <option value="CR" ${!isDebit ? 'selected' : ''}>Credit</option>
+            </select>
+        </td>
+        <td>
+            <input type="text" class="ac-search" data-row="${detailLineCounter}" 
+                   placeholder="Search..." value="${data ? data.acCode : ''}" required>
+            <input type="hidden" class="ac-code" value="${data ? data.acCode : ''}">
+        </td>
+        <td><input type="text" class="ac-desc" disabled value="${data ? data.acDescription : ''}"></td>
+        <td>
+            <select class="subledger" ${data && data.acCode && needsSubledger(data.acCode) ? '' : 'disabled'}>
+                <option value="">${data && data.acCode && needsSubledger(data.acCode) ? 'Select ' + getSubledgerType(data.acCode) : 'N/A'}</option>
+            </select>
+        </td>
+        <td class="amount-cell"><input type="number" class="amount" step="0.01" min="0" value="${displayAmount}" 
+                   oninput="onAmountChange(${detailLineCounter})" required></td>
+        <td><input type="text" class="line-narration" value="${data ? data.narration : ''}" placeholder="Line narration"></td>
+        <td>
+            <select class="mode">
+                <option value="">Select</option>
+                <option value="CASH" ${data && data.mode === 'CASH' ? 'selected' : ''}>CASH</option>
+                <option value="CHEQUE" ${data && data.mode === 'CHEQUE' ? 'selected' : ''}>CHEQUE</option>
+                <option value="ONLINE" ${data && data.mode === 'ONLINE' ? 'selected' : ''}>ONLINE</option>
+                <option value="BANK" ${data && data.mode === 'BANK' ? 'selected' : ''}>BANK</option>
+                <option value="OTHERS" ${data && data.mode === 'OTHERS' ? 'selected' : ''}>OTHERS</option>
+            </select>
+        </td>
+        <td><input type="text" class="bank" value="${data ? data.bank : ''}" placeholder="Bank"></td>
+        <td><input type="text" class="instrument-no" value="${data ? data.instrumentNo : ''}" placeholder="Inst No"></td>
+        <td><input type="date" class="instrument-date" value="${data ? data.instrumentDate : ''}"></td>
+        <td><button type="button" class="btn btn-danger btn-icon" onclick="removeDetailLine(${detailLineCounter})">🗑️</button></td>
+    `;
+    
+    // Setup AC search for this row
+    setupACSearch(detailLineCounter);
+    
+    // Setup subledger options if account already has a subledger requirement
+    if (data && data.acCode && needsSubledger(data.acCode)) {
+        populateSubledgerOptions(detailLineCounter, data.subledger);
+    }
+    
+    if (data) {
+        recalculateSummary();
+    }
+}
+
+// Check if an account code needs a subledger (AP or AR)
+function needsSubledger(acCode) {
+    if (!acCode) return false;
+    const code = String(acCode).toUpperCase();
+    return code.startsWith('AP') || code.startsWith('AR') || code.includes('PAYABLE') || code.includes('RECEIVABLE');
+}
+
+// Get subledger type label for an account code
+function getSubledgerType(acCode) {
+    if (!acCode) return 'Party';
+    const code = String(acCode).toUpperCase();
+    if (code.startsWith('AP') || code.includes('PAYABLE')) return 'Supplier';
+    if (code.startsWith('AR') || code.includes('RECEIVABLE')) return 'Customer';
+    return 'Party';
+}
+
+// Populate subledger options for a row
+function populateSubledgerOptions(rowId, selectedValue) {
+    const row = document.getElementById('detailRow' + rowId);
+    if (!row) return;
+    
+    const acCode = row.querySelector('.ac-code').value;
+    const subledgerSelect = row.querySelector('.subledger');
+    
+    subledgerSelect.innerHTML = '';
+    subledgerSelect.disabled = false;
+    
+    const type = getSubledgerType(acCode);
+    subledgerSelect.appendChild(new Option('Select ' + type, ''));
+    
+    if (type === 'Supplier') {
+        allSuppliers.forEach(function(s) {
+            const opt = new Option(s.code + ' - ' + s.description, s.code);
+            subledgerSelect.appendChild(opt);
+        });
+    } else if (type === 'Customer') {
+        allCustomers.forEach(function(c) {
+            const opt = new Option(c.code + ' - ' + c.description, c.code);
+            subledgerSelect.appendChild(opt);
+        });
+    }
+    
+    // Pre-select the saved value if it exists
+    if (selectedValue) {
+        subledgerSelect.value = selectedValue;
+        // If the value isn't in the list, add it as an option
+        if (!subledgerSelect.value) {
+            subledgerSelect.appendChild(new Option(selectedValue, selectedValue));
+            subledgerSelect.value = selectedValue;
+        }
+    }
+}
+
+// Handle line type change (Debit/Credit)
+function onLineTypeChange(rowId) {
+    const row = document.getElementById('detailRow' + rowId);
+    if (!row) return;
+    const amountInput = row.querySelector('.amount');
+    recalculateSummary();
+}
+
+// Handle amount input change - apply sign based on line type
+function onAmountChange(rowId) {
+    const row = document.getElementById('detailRow' + rowId);
+    if (!row) return;
+    const amountInput = row.querySelector('.amount');
+    const lineType = row.querySelector('.line-type').value;
+    
+    // Store signed value: Debit = negative, Credit = positive
+    const rawValue = parseFloat(amountInput.value) || 0;
+    amountInput.value = rawValue; // Keep as positive input
+    
+    recalculateSummary();
+}
+
+// Get the signed amount for a row (Debit = negative, Credit = positive)
+function getSignedAmount(rowId) {
+    const row = document.getElementById('detailRow' + rowId);
+    if (!row) return 0;
+    const rawValue = parseFloat(row.querySelector('.amount').value) || 0;
+    const lineType = row.querySelector('.line-type').value;
+    return lineType === 'DR' ? -Math.abs(rawValue) : Math.abs(rawValue);
+}
+
+// Setup AC searchable input
+function setupACSearch(rowId) {
+    const row = document.getElementById('detailRow' + rowId);
+    const searchInput = row.querySelector('.ac-search');
+    
+    let dropdown = null;
+    
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        
+        if (dropdown) {
+            dropdown.remove();
+            dropdown = null;
+        }
+        
+        if (searchTerm.length < 1) return;
+        
+        // Filter only GL accounts (posting level)
+        const filtered = allAccounts.filter(a => 
+            a.acType === 'GL' && (
+                String(a.acCode).toLowerCase().includes(searchTerm) ||
+                String(a.description).toLowerCase().includes(searchTerm)
+            )
+        );
+        
+        if (filtered.length > 0) {
+            dropdown = document.createElement('div');
+            dropdown.className = 'searchable-dropdown active';
+            dropdown.style.position = 'absolute';
+            dropdown.style.zIndex = '1001';
+            
+            dropdown.innerHTML = filtered.map(a => 
+                `<div class="dropdown-item" onclick="selectAccount(${rowId}, '${escapeHtml(String(a.acCode))}', '${escapeHtml(a.description)}')">
+                    <strong>${escapeHtml(String(a.acCode))}</strong> - ${escapeHtml(a.description)}
+                </div>`
+            ).join('');
+            
+            searchInput.parentElement.appendChild(dropdown);
+        }
+    });
+    
+    searchInput.addEventListener('blur', function() {
+        setTimeout(() => {
+            if (dropdown) {
+                dropdown.remove();
+                dropdown = null;
+            }
+        }, 200);
+    });
+}
+
+// Select account
+function selectAccount(rowId, code, description) {
+    const row = document.getElementById('detailRow' + rowId);
+    row.querySelector('.ac-code').value = code;
+    row.querySelector('.ac-search').value = code;
+    row.querySelector('.ac-desc').value = description;
+    
+    // Handle subledger dropdown based on account type
+    const subledgerSelect = row.querySelector('.subledger');
+    if (needsSubledger(code)) {
+        populateSubledgerOptions(rowId, '');
+    } else {
+        subledgerSelect.innerHTML = '<option value="">N/A</option>';
+        subledgerSelect.disabled = true;
+    }
+}
+
+// Remove detail line
+function removeDetailLine(rowId) {
+    const row = document.getElementById('detailRow' + rowId);
+    if (row) {
+        row.remove();
+        renumberRows();
+        recalculateSummary();
+    }
+}
+
+// Renumber rows
+function renumberRows() {
+    const tbody = document.getElementById('detailsTableBody');
+    Array.from(tbody.rows).forEach((row, index) => {
+        row.cells[0].textContent = index + 1;
+    });
+}
+
+// Recalculate summary
+function recalculateSummary() {
+    const tbody = document.getElementById('detailsTableBody');
+    let totalDebit = 0;
+    let totalCredit = 0;
+    
+    Array.from(tbody.rows).forEach(row => {
+        const rowId = row.id.replace('detailRow', '');
+        const signedAmount = getSignedAmount(parseInt(rowId));
+        if (signedAmount < 0) {
+            totalDebit += Math.abs(signedAmount);
+        } else {
+            totalCredit += signedAmount;
+        }
+    });
+    
+    document.getElementById('summaryDebit').textContent = totalDebit.toFixed(2);
+    document.getElementById('summaryCredit').textContent = totalCredit.toFixed(2);
+    
+    const difference = totalDebit - totalCredit;
+    document.getElementById('summaryDifference').textContent = difference.toFixed(2);
+    
+    const balanceIndicator = document.getElementById('balanceIndicator');
+    if (Math.abs(difference) < 0.01) {
+        balanceIndicator.className = 'balance-indicator balance-ok';
+        balanceIndicator.textContent = '✓ Voucher is Balanced';
+    } else {
+        balanceIndicator.className = 'balance-indicator balance-error';
+        balanceIndicator.textContent = '⚠ Voucher is NOT Balanced (Diff: ' + difference.toFixed(2) + ')';
+    }
+}
+
+// ============================================
+// SAVE / UPDATE JOURNAL VOUCHER
+// ============================================
+
+// Save journal voucher
+function saveJournalVoucher(event) {
+    event.preventDefault();
+    
+    // Validate header
+    const date = document.getElementById('date').value;
+    
+    if (!date) {
+        showMessage('Please fill in all required header fields', 'error');
+        return;
+    }
+    
+    // Get details
+    const tbody = document.getElementById('detailsTableBody');
+    if (tbody.rows.length < 2) {
+        showMessage('Please add at least two detail lines', 'error');
+        return;
+    }
+    
+    const details = [];
+    let valid = true;
+    let totalDebit = 0;
+    let totalCredit = 0;
+    
+    Array.from(tbody.rows).forEach((row, index) => {
+        const acCode = row.querySelector('.ac-code').value;
+        const rowId = row.id.replace('detailRow', '');
+        const signedAmount = getSignedAmount(parseInt(rowId));
+        
+        if (!acCode || signedAmount === 0) {
+            valid = false;
+            return;
+        }
+        
+        if (signedAmount < 0) {
+            totalDebit += Math.abs(signedAmount);
+        } else {
+            totalCredit += signedAmount;
+        }
+        
+        details.push({
+            docSrNo: index + 1,
+            acCode: acCode,
+            acDescription: row.querySelector('.ac-desc').value,
+            subledger: row.querySelector('.subledger').value,
+            amount: signedAmount,
+            narration: row.querySelector('.line-narration').value,
+            mode: row.querySelector('.mode').value,
+            bank: row.querySelector('.bank').value,
+            instrumentNo: row.querySelector('.instrument-no').value,
+            instrumentDate: row.querySelector('.instrument-date').value
+        });
+    });
+    
+    if (!valid) {
+        showMessage('Please fill in all required detail fields correctly', 'error');
+        return;
+    }
+    
+    // Validate balance
+    if (Math.abs(totalDebit - totalCredit) > 0.01) {
+        showMessage('Voucher is not balanced! Total Debit must equal Total Credit.', 'error');
+        return;
+    }
+    
+    // Prepare journal voucher data
+    const jvData = {
+        header: {
+            docType: 'JV',
+            docNo: editMode ? document.getElementById('docNo').value : null,
+            date: date,
+            narration: document.getElementById('narration').value,
+            debit: totalDebit,
+            credit: totalCredit,
+            refNo: document.getElementById('refNo').value,
+            refDate: document.getElementById('refDate').value
+        },
+        details: details
+    };
+    
+    // Disable save button
+    const saveButton = document.getElementById('saveButton');
+    saveButton.disabled = true;
+    saveButton.textContent = editMode ? 'Updating...' : 'Saving...';
+    
+    // Call API
+    const apiCall = editMode ? apiUpdateJournalVoucher : apiCreateJournalVoucher;
+    
+    apiCall(jvData, function(response) {
+        saveButton.disabled = false;
+        saveButton.textContent = editMode ? '💾 Update Voucher' : '💾 Save Voucher';
+        
+        if (response.status === 'success') {
+            showMessage(editMode ? 'Journal Voucher updated successfully!' : 'Journal Voucher created successfully!', 'success');
+            const savedDocNo = response.docNo || (editMode ? editDocNo : null);
+            setTimeout(() => {
+                if (savedDocNo) {
+                    window.location.href = 'journalvoucherform.htm?view=' + encodeURIComponent(savedDocNo);
+                } else {
+                    window.location.href = 'journalvoucherlist.htm';
+                }
+            }, 1500);
+        } else {
+            showMessage('Error: ' + response.message, 'error');
+        }
+    });
+}
+
+// Cancel form
+function cancelForm() {
+    if (viewMode) {
+        window.location.href = 'journalvoucherlist.htm';
+        return;
+    }
+    if (confirm('Are you sure you want to cancel? Any unsaved changes will be lost.')) {
+        window.location.href = 'journalvoucherlist.htm';
+    }
+}
+
+// ============================================
+// LOAD JOURNAL VOUCHER FOR VIEW / EDIT
+// ============================================
+
+// Load voucher for view
+function loadVoucherForView(docNo) {
+    document.getElementById('loadingIndicator').style.display = 'block';
+    
+    apiGetJournalVoucherByDocNo(docNo, function(response) {
+        document.getElementById('loadingIndicator').style.display = 'none';
+        
+        if (response.status === 'success') {
+            populateForm(response.jv, true);
+        } else {
+            showMessage('Error loading voucher: ' + response.message, 'error');
+        }
+    });
+}
+
+// Load voucher for edit
+function loadVoucherForEdit(docNo) {
+    document.getElementById('loadingIndicator').style.display = 'block';
+    
+    apiGetJournalVoucherByDocNo(docNo, function(response) {
+        document.getElementById('loadingIndicator').style.display = 'none';
+        
+        if (response.status === 'success') {
+            const header = response.jv.header;
+            // Check if document is already posted - prevent editing
+            if (header.postedBy && header.postedBy !== '') {
+                showMessage('Cannot edit a posted voucher. Please cancel the post first.', 'error');
+                setTimeout(function() {
+                    window.location.href = 'journalvoucherform.htm?view=' + encodeURIComponent(docNo);
+                }, 2000);
+                return;
+            }
+            populateForm(response.jv, false);
+        } else {
+            showMessage('Error loading voucher: ' + response.message, 'error');
+        }
+    });
+}
+
+// Populate form with voucher data
+function populateForm(jv, isView) {
+    const header = jv.header;
+    const details = jv.details || [];
+    
+    // Set header fields
+    document.getElementById('docNo').value = header.docNo || '';
+    document.getElementById('date').value = header.date || '';
+    document.getElementById('narration').value = header.narration || '';
+    document.getElementById('refNo').value = header.refNo || '';
+    document.getElementById('refDate').value = header.refDate || '';
+    document.getElementById('createdBy').value = header.createdBy || '';
+    document.getElementById('createdTime').value = header.createdTime || '';
+    document.getElementById('postedBy').value = header.postedBy || '';
+    document.getElementById('postedTime').value = header.postedTime || '';
+    
+    // Populate details
+    details.forEach(function(item) {
+        addDetailLine({
+            acCode: item.acCode,
+            acDescription: item.acDescription,
+            subledger: item.subledger,
+            amount: item.amount,
+            narration: item.narration,
+            mode: item.mode,
+            bank: item.bank,
+            instrumentNo: item.instrumentNo,
+            instrumentDate: item.instrumentDate
+        });
+    });
+    
+    // Update summary
+    recalculateSummary();
+    
+    // Show posted status if available
+    const isPosted = header.postedBy && header.postedBy !== '';
+    if (isPosted) {
+        document.getElementById('postedStatusGroup').style.display = 'block';
+        const postedStatus = document.getElementById('postedStatus');
+        postedStatus.textContent = '✓ Posted by ' + header.postedBy + ' on ' + (header.postedTime || '');
+        postedStatus.style.color = '#27ae60';
+        postedStatus.style.background = '#d4edda';
+        postedStatus.style.padding = '8px 10px';
+        postedStatus.style.borderRadius = '5px';
+    }
+    
+    // Show the form now that data is loaded
+    document.getElementById('jvForm').style.display = 'block';
+    
+    // If view mode, add view-mode class
+    if (isView) {
+        document.getElementById('headerSection').classList.add('view-mode');
+        document.getElementById('detailsTable').classList.add('view-mode');
+        
+        // Show/hide buttons based on posted status
+        if (isPosted) {
+            document.getElementById('viewEditBtn').style.display = 'none';
+            document.getElementById('viewDeleteBtn').style.display = 'none';
+            document.getElementById('viewPostBtn').style.display = 'none';
+            document.getElementById('viewCancelPostBtn').style.display = 'inline-block';
+            document.getElementById('viewAcctEntryBtn').style.display = 'inline-block';
+        } else {
+            document.getElementById('viewPostBtn').style.display = 'inline-block';
+            document.getElementById('viewCancelPostBtn').style.display = 'none';
+            document.getElementById('viewAcctEntryBtn').style.display = 'none';
+        }
+    }
+}
+
+
+// ============================================
+// VIEW MODE ACTIONS
+// ============================================
+
+// Edit from view mode
+function editFromView() {
+    if (viewDocNo) {
+        window.location.href = 'journalvoucherform.htm?docno=' + encodeURIComponent(viewDocNo);
+    }
+}
+
+// Delete from view mode
+function deleteFromView() {
+    if (!viewDocNo) return;
+    
+    // Check if posted - prevent deletion
+    const postedStatus = document.getElementById('postedStatus');
+    if (postedStatus && postedStatus.textContent && postedStatus.textContent.includes('Posted')) {
+        showMessage('Cannot delete a posted voucher. Please cancel the post first.', 'error');
+        return;
+    }
+    
+    const confirmMsg = 'Are you sure you want to delete voucher "' + viewDocNo + '"?';
+    
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+    
+    const deleteBtn = document.getElementById('viewDeleteBtn');
+    deleteBtn.disabled = true;
+    deleteBtn.textContent = 'Deleting...';
+    
+    apiDeleteJournalVoucher(viewDocNo, function(response) {
+        deleteBtn.disabled = false;
+        deleteBtn.textContent = '🗑️ Delete';
+        
+        if (response.status === 'success') {
+            showMessage('Journal Voucher deleted successfully!', 'success');
+            setTimeout(function() {
+                window.location.href = 'journalvoucherlist.htm';
+            }, 1500);
+        } else {
+            showMessage('Error: ' + response.message, 'error');
+        }
+    });
+}
+
+// Print from view mode
+function printFromView() {
+    if (viewDocNo) {
+        window.open('journalvoucherprint.htm?docno=' + encodeURIComponent(viewDocNo), '_blank');
+    }
+}
+
+// Post from view mode
+function postFromView() {
+    if (!viewDocNo) return;
+    
+    let confirmMsg = 'Are you sure you want to post journal voucher "' + viewDocNo + '" to accounting?';
+    confirmMsg += '\n\nThis will create accounting entries in AccountTransaction.';
+    
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+    
+    const postBtn = document.getElementById('viewPostBtn');
+    postBtn.disabled = true;
+    postBtn.textContent = 'Posting...';
+    
+    apiPostJVToAccountTransaction(viewDocNo, function(response) {
+        postBtn.disabled = false;
+        postBtn.textContent = '📤 Post';
+        
+        if (response.status === 'success') {
+            showMessage('Journal Voucher posted to accounting successfully!', 'success');
+            // Reload the page to reflect posted status
+            setTimeout(function() {
+                window.location.href = 'journalvoucherform.htm?view=' + encodeURIComponent(viewDocNo);
+            }, 1500);
+        } else {
+            showMessage('Error: ' + response.message, 'error');
+        }
+    });
+}
+
+// Cancel post from view mode
+function cancelPostFromView() {
+    if (!viewDocNo) return;
+    
+    let confirmMsg = 'Are you sure you want to cancel the post for voucher "' + viewDocNo + '"?';
+    confirmMsg += '\n\nThis will delete the accounting entries.';
+    
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+    
+    const cancelBtn = document.getElementById('viewCancelPostBtn');
+    cancelBtn.disabled = true;
+    cancelBtn.textContent = 'Cancelling...';
+    
+    apiCancelJVAccountTransactionPost(viewDocNo, function(response) {
+        cancelBtn.disabled = false;
+        cancelBtn.textContent = '↩ CancelPost';
+        
+        if (response.status === 'success') {
+            showMessage('Journal Voucher post cancelled successfully!', 'success');
+            // Reload the page to reflect unposted status
+            setTimeout(function() {
+                window.location.href = 'journalvoucherform.htm?view=' + encodeURIComponent(viewDocNo);
+            }, 1500);
+        } else {
+            showMessage('Error: ' + response.message, 'error');
+        }
+    });
+}
+
+// ============================================
+// REFRESH MASTER DATA
+// ============================================
+
+// Refresh master data from server
+function refreshMasterData() {
+    const refreshBtn = document.getElementById('refreshBtn');
+    refreshBtn.disabled = true;
+    refreshBtn.textContent = '⏳ Refreshing...';
+    
+    refreshMasterDataFromServer(function(result) {
+        // Reload data from IndexedDB (now freshly populated)
+        allAccounts = [];
+        
+        getCOAAccountsFromDB(function(accounts) {
+            allAccounts = accounts || [];
+            refreshBtn.disabled = false;
+            refreshBtn.textContent = '🔄 Refresh Data';
+            
+            if (result.status === 'success') {
+                showMessage('Master data refreshed successfully from server!', 'success');
+            } else {
+                showMessage('Some data may not have refreshed. Check your connection.', 'error');
+            }
+        });
+    });
+}
+
+// ============================================
+// ACCOUNTING ENTRY MODAL
+// ============================================
+
+// Show accounting entry modal
+function showAccountingEntry() {
+    if (!viewDocNo) return;
+    
+    const modal = document.getElementById('acctEntryModal');
+    const docNo = document.getElementById('docNo').value;
+    const docDate = document.getElementById('date').value;
+    const narration = document.getElementById('narration').value;
+    
+    // Set document info
+    document.getElementById('acctEntryDocNo').textContent = docNo || viewDocNo;
+    document.getElementById('acctEntryDate').textContent = docDate || '-';
+    document.getElementById('acctEntryNarration').textContent = narration || '-';
+    
+    // Show loading, hide table and empty state
+    document.getElementById('acctEntryLoading').style.display = 'block';
+    document.getElementById('acctEntryEmpty').style.display = 'none';
+    document.getElementById('acctEntryTableContainer').style.display = 'none';
+    
+    modal.style.display = 'block';
+    
+    // Fetch accounting entries from server
+    apiGetAccountTransactions('JV', viewDocNo, function(response) {
+        document.getElementById('acctEntryLoading').style.display = 'none';
+        
+        if (response.status === 'success' && response.entries && response.entries.length > 0) {
+            displayAcctEntries(response.entries);
+        } else {
+            document.getElementById('acctEntryEmpty').style.display = 'block';
+        }
+    });
+}
+
+// Display accounting entries in the modal table
+function displayAcctEntries(entries) {
+    const tbody = document.getElementById('acctEntryTableBody');
+    tbody.innerHTML = '';
+    
+    let totalDebit = 0;
+    let totalCredit = 0;
+    
+    entries.forEach(function(entry, index) {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td style="padding: 8px 10px; border-bottom: 1px solid #eee;">${index + 1}</td>
+            <td style="padding: 8px 10px; border-bottom: 1px solid #eee;"><strong>${escapeHtml(entry.acDocNo)}</strong></td>
+            <td style="padding: 8px 10px; border-bottom: 1px solid #eee;">${escapeHtml(entry.accountDescription || '-')}</td>
+            <td style="padding: 8px 10px; border-bottom: 1px solid #eee;">${escapeHtml(entry.subledgerDocNo || '-')}</td>
+            <td style="padding: 8px 10px; border-bottom: 1px solid #eee; text-align: right; font-family: 'Courier New', monospace; font-weight: bold; color: ${entry.debit > 0 ? '#e74c3c' : '#999'};">${entry.debit > 0 ? entry.debit.toFixed(2) : ''}</td>
+            <td style="padding: 8px 10px; border-bottom: 1px solid #eee; text-align: right; font-family: 'Courier New', monospace; font-weight: bold; color: ${entry.credit > 0 ? '#27ae60' : '#999'};">${entry.credit > 0 ? entry.credit.toFixed(2) : ''}</td>
+            <td style="padding: 8px 10px; border-bottom: 1px solid #eee;">${escapeHtml(entry.narration || '-')}</td>
+        `;
+        tbody.appendChild(row);
+        
+        totalDebit += entry.debit;
+        totalCredit += entry.credit;
+    });
+    
+    // Update totals
+    document.getElementById('acctEntryTotalDebit').textContent = totalDebit.toFixed(2);
+    document.getElementById('acctEntryTotalCredit').textContent = totalCredit.toFixed(2);
+    
+    // Show table with footer
+    document.getElementById('acctEntryTableContainer').style.display = 'block';
+    document.getElementById('acctEntryTableFoot').style.display = 'table-footer-group';
+    document.getElementById('acctEntryEmpty').style.display = 'none';
+}
+
+// Close accounting entry modal
+function closeAcctEntryModal() {
+    document.getElementById('acctEntryModal').style.display = 'none';
+}
+
+// ============================================
+// UTILITY FUNCTIONS
+// ============================================
+
+// Show message
+function showMessage(message, type) {
+    const container = document.getElementById('messageContainer');
+    container.innerHTML = '<div class="message ' + type + '">' + escapeHtml(message) + '</div>';
+    
+    setTimeout(function() {
+        container.innerHTML = '';
+    }, 5000);
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Logout function
+function logout() {
+    if (confirm('Are you sure you want to logout?')) {
+        performLogout();
+    }
+}
+</script>
+
+</body>
+</html>

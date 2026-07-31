@@ -5,7 +5,7 @@
 // ============================================
 
 const DB_NAME = 'AppCache';
-const DB_VERSION = 5;
+const DB_VERSION = 6;
 const STORE_NAME = 'menuAccess';
 const STORE_NAME_PARAMS = 'systemParams';
 const STORE_NAME_CUSTOMERS = 'customers';
@@ -14,6 +14,7 @@ const STORE_NAME_UNITS = 'units';
 const STORE_NAME_SALESMEN = 'salesmen';
 const STORE_NAME_SUPPLIERS = 'suppliers';
 const STORE_NAME_DASHBOARDS = 'dashboards';
+const STORE_NAME_COA = 'coaAccounts';
 
 // Initialize IndexedDB database
 function initIndexedDB(callback) {
@@ -72,6 +73,12 @@ function initIndexedDB(callback) {
         if (!db.objectStoreNames.contains(STORE_NAME_SUPPLIERS)) {
             const store = db.createObjectStore(STORE_NAME_SUPPLIERS, { keyPath: 'code' });
             store.createIndex('code', 'code', { unique: true });
+        }
+        
+        // Create object store for COA accounts if it doesn't exist
+        if (!db.objectStoreNames.contains(STORE_NAME_COA)) {
+            const store = db.createObjectStore(STORE_NAME_COA, { keyPath: 'acCode' });
+            store.createIndex('acCode', 'acCode', { unique: true });
         }
     };
     
@@ -921,6 +928,106 @@ function clearSuppliersFromDB() {
 }
 
 // ============================================
+// COA ACCOUNTS CACHING
+// ============================================
+
+// Save COA accounts to IndexedDB
+function saveCOAAccountsToDB(accounts) {
+    if (!accounts || accounts.length === 0) return;
+    
+    initIndexedDB(function(db) {
+        if (!db) return;
+        
+        try {
+            const transaction = db.transaction([STORE_NAME_COA], 'readwrite');
+            const store = transaction.objectStore(STORE_NAME_COA);
+            
+            // Clear existing data first
+            store.clear();
+            
+            // Add each account
+            accounts.forEach(function(account) {
+                store.put(account);
+            });
+            
+            transaction.oncomplete = function() {
+                db.close();
+            };
+            
+            transaction.onerror = function(event) {
+                console.error('Error saving COA accounts to IndexedDB:', event.target.error);
+                db.close();
+            };
+        } catch (error) {
+            console.error('Error in saveCOAAccountsToDB:', error);
+            db.close();
+        }
+    });
+}
+
+// Get all COA accounts from IndexedDB
+function getCOAAccountsFromDB(callback) {
+    initIndexedDB(function(db) {
+        if (!db) {
+            if (callback) callback(null);
+            return;
+        }
+        
+        try {
+            const transaction = db.transaction([STORE_NAME_COA], 'readonly');
+            const store = transaction.objectStore(STORE_NAME_COA);
+            const request = store.getAll();
+            
+            request.onsuccess = function(event) {
+                const result = event.target.result;
+                db.close();
+                
+                if (result && result.length > 0) {
+                    if (callback) callback(result);
+                } else {
+                    if (callback) callback(null);
+                }
+            };
+            
+            request.onerror = function(event) {
+                console.error('Error reading COA accounts from IndexedDB:', event.target.error);
+                db.close();
+                if (callback) callback(null);
+            };
+        } catch (error) {
+            console.error('Error in getCOAAccountsFromDB:', error);
+            db.close();
+            if (callback) callback(null);
+        }
+    });
+}
+
+// Clear COA accounts from IndexedDB
+function clearCOAAccountsFromDB() {
+    initIndexedDB(function(db) {
+        if (!db) return;
+        
+        try {
+            const transaction = db.transaction([STORE_NAME_COA], 'readwrite');
+            const store = transaction.objectStore(STORE_NAME_COA);
+            store.clear();
+            
+            transaction.oncomplete = function() {
+                db.close();
+            };
+            
+            transaction.onerror = function(event) {
+                console.error('Error clearing COA accounts from IndexedDB:', event.target.error);
+                db.close();
+            };
+        } catch (error) {
+            console.error('Error in clearCOAAccountsFromDB:', error);
+            db.close();
+        }
+    });
+}
+
+// ============================================
 // MASTER DATA REFRESH
 // Clears all cached master data and re-fetches from server
 // ============================================
@@ -938,9 +1045,10 @@ function refreshMasterDataFromServer(callback) {
     clearUnitsFromDB();
     clearSalesmenFromDB();
     clearSuppliersFromDB();
+    clearCOAAccountsFromDB();
     
     let completed = 0;
-    let total = 5;
+    let total = 6;
     let hasError = false;
     
     function checkComplete() {
@@ -996,6 +1104,16 @@ function refreshMasterDataFromServer(callback) {
     apiGetSuppliers(function(response) {
         if (response.status === 'success' && response.suppliers) {
             saveSuppliersToDB(response.suppliers);
+        } else {
+            hasError = true;
+        }
+        checkComplete();
+    });
+    
+    // Re-fetch COA accounts
+    apiGetCOA(function(response) {
+        if (response.status === 'success' && response.accounts) {
+            saveCOAAccountsToDB(response.accounts);
         } else {
             hasError = true;
         }

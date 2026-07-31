@@ -960,6 +960,24 @@ function doGet(e) {
     return handleUpdateCOAGet(e);
   } else if (action === "deleteCOA") {
     return handleDeleteCOAGet(e);
+  } else if (action === "getJournalVouchers") {
+    return handleGetJournalVouchersGet(e);
+  } else if (action === "getJournalVoucherByDocNo") {
+    return handleGetJournalVoucherByDocNoGet(e);
+  } else if (action === "createJournalVoucher") {
+    return handleCreateJournalVoucherGet(e);
+  } else if (action === "updateJournalVoucher") {
+    return handleUpdateJournalVoucherGet(e);
+  } else if (action === "deleteJournalVoucher") {
+    return handleDeleteJournalVoucherGet(e);
+  } else if (action === "postJVToAccountTransaction") {
+    return handlePostJVToAccountTransactionGet(e);
+  } else if (action === "cancelJVAccountTransactionPost") {
+    return handleCancelJVAccountTransactionPostGet(e);
+  } else if (action === "getJournalVoucherReport") {
+    return handleGetJournalVoucherReportGet(e);
+  } else if (action === "getStatementOfAccount") {
+    return handleGetStatementOfAccountGet(e);
   } else {
     var errorResult = { status: "error", message: "Invalid action" };
     var callback = e.parameter.callback;
@@ -9795,6 +9813,1134 @@ function handleCancelADJStockTransactionPostGet(e) {
   headerSheet.getRange(headerRow + 1, 9).setValue('');
   
   var result = { status: "success", message: "ADJ stock transaction post cancelled successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// ============================================
+// JOURNAL VOUCHER MANAGEMENT HANDLERS
+// ============================================
+
+// Get all journal vouchers (with server-side pagination)
+function handleGetJournalVouchersGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Read pagination and search parameters
+  var page = parseInt(e.parameter.page) || 1;
+  var pageSize = parseInt(e.parameter.pageSize) || 10;
+  var search = (e.parameter.search || '').toLowerCase();
+  
+  // Get all vouchers from JournalVoucherHeader sheet
+  var headerSheet = ss.getSheetByName("JournalVoucherHeader");
+  if (!headerSheet) {
+    // Create sheet if it doesn't exist
+    headerSheet = ss.insertSheet("JournalVoucherHeader");
+    headerSheet.appendRow(["DocType", "DocNo", "Date", "Narration", "Debit", "Credit", "RefNo", "RefDate", "CreatedBy", "CreatedTime", "PostedBy", "PostedTime"]);
+    var emptyResult = { status: "success", jv: [], totalRecords: 0, totalPages: 0, currentPage: page, pageSize: pageSize };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(emptyResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(emptyResult);
+  }
+  
+  var headerData = headerSheet.getDataRange().getValues();
+  var allVouchers = [];
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1]) { // Check if DocNo exists
+      var docNo = headerData[i][1].toString();
+      var narration = headerData[i][3] || '';
+      var date = headerData[i][2] ? Utilities.formatDate(new Date(headerData[i][2]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '';
+      
+      // Apply search filter if search term is provided
+      if (search) {
+        if (docNo.toLowerCase().indexOf(search) === -1 &&
+            narration.toLowerCase().indexOf(search) === -1 &&
+            date.toLowerCase().indexOf(search) === -1) {
+          continue;
+        }
+      }
+      
+      allVouchers.push({
+        docType: headerData[i][0] || '',
+        docNo: docNo,
+        date: date,
+        narration: narration,
+        debit: parseFloat(headerData[i][4]) || 0,
+        credit: parseFloat(headerData[i][5]) || 0,
+        refNo: headerData[i][6] || '',
+        refDate: headerData[i][7] ? Utilities.formatDate(new Date(headerData[i][7]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
+        createdBy: headerData[i][8] || '',
+        createdTime: headerData[i][9] || '',
+        postedBy: headerData[i][10] || '',
+        postedTime: headerData[i][11] || ''
+      });
+    }
+  }
+  
+  // Sort descending by DocNo (most recent/last document first)
+  allVouchers.sort(function(a, b) {
+    return b.docNo.localeCompare(a.docNo);
+  });
+  
+  var totalRecords = allVouchers.length;
+  var totalPages = Math.ceil(totalRecords / pageSize);
+  
+  var startIndex = (page - 1) * pageSize;
+  var endIndex = Math.min(startIndex + pageSize, totalRecords);
+  var vouchers = allVouchers.slice(startIndex, endIndex);
+  
+  var result = { 
+    status: "success", 
+    jv: vouchers, 
+    totalRecords: totalRecords,
+    totalPages: totalPages,
+    currentPage: page,
+    pageSize: pageSize
+  };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Get single journal voucher by DocNo
+function handleGetJournalVoucherByDocNoGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var docNo = e.parameter.docNo;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get voucher header
+  var headerSheet = ss.getSheetByName("JournalVoucherHeader");
+  if (!headerSheet) {
+    var errorResult = { status: "error", message: "Journal voucher not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  var headerData = headerSheet.getDataRange().getValues();
+  var header = null;
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1] == docNo) {
+      header = {
+        docType: headerData[i][0] || '',
+        docNo: headerData[i][1],
+        date: headerData[i][2] ? Utilities.formatDate(new Date(headerData[i][2]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
+        narration: headerData[i][3] || '',
+        debit: parseFloat(headerData[i][4]) || 0,
+        credit: parseFloat(headerData[i][5]) || 0,
+        refNo: headerData[i][6] || '',
+        refDate: headerData[i][7] ? Utilities.formatDate(new Date(headerData[i][7]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
+        createdBy: headerData[i][8] || '',
+        createdTime: headerData[i][9] || '',
+        postedBy: headerData[i][10] || '',
+        postedTime: headerData[i][11] || ''
+      };
+      break;
+    }
+  }
+  
+  if (!header) {
+    var errorResult = { status: "error", message: "Journal voucher not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get voucher details
+  var detailsSheet = ss.getSheetByName("JournalVoucherDetails");
+  var detailsData = detailsSheet ? detailsSheet.getDataRange().getValues() : [];
+  var details = [];
+  
+  for (var i = 1; i < detailsData.length; i++) {
+    if (detailsData[i][1] == docNo) {
+      details.push({
+        docType: detailsData[i][0] || '',
+        docNo: detailsData[i][1],
+        docSrNo: detailsData[i][2] || 0,
+        acCode: detailsData[i][3] || '',
+        acDescription: detailsData[i][4] || '',
+        subledger: detailsData[i][5] || '',
+        amount: parseFloat(detailsData[i][6]) || 0,
+        narration: detailsData[i][7] || '',
+        mode: detailsData[i][8] || '',
+        bank: detailsData[i][9] || '',
+        instrumentNo: detailsData[i][10] || '',
+        instrumentDate: detailsData[i][11] ? Utilities.formatDate(new Date(detailsData[i][11]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : ''
+      });
+    }
+  }
+  
+  var result = { status: "success", jv: { header: header, details: details } };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Create new journal voucher
+function handleCreateJournalVoucherGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var jvDataJson = e.parameter.jvData;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Parse journal voucher data
+  var jvData;
+  try {
+    jvData = JSON.parse(jvDataJson);
+  } catch (error) {
+    var errorResult = { status: "error", message: "Invalid journal voucher data format" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!jvData.header || !jvData.details || jvData.details.length === 0) {
+    var errorResult = { status: "error", message: "Header and at least one detail line are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate debit = credit balance
+  var totalDebit = 0;
+  var totalCredit = 0;
+  for (var d = 0; d < jvData.details.length; d++) {
+    var amt = parseFloat(jvData.details[d].amount) || 0;
+    if (amt < 0) {
+      totalDebit += Math.abs(amt);
+    } else {
+      totalCredit += amt;
+    }
+  }
+  
+  if (Math.abs(totalDebit - totalCredit) > 0.01) {
+    var errorResult = { status: "error", message: "Voucher is not balanced! Total Debit must equal Total Credit." };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get or create JournalVoucherHeader sheet
+  var headerSheet = ss.getSheetByName("JournalVoucherHeader");
+  if (!headerSheet) {
+    headerSheet = ss.insertSheet("JournalVoucherHeader");
+    headerSheet.appendRow(["DocType", "DocNo", "Date", "Narration", "Debit", "Credit", "RefNo", "RefDate", "CreatedBy", "CreatedTime", "PostedBy", "PostedTime"]);
+  }
+  
+  // Generate DocNo - starting from 1000 per sample
+  var headerData = headerSheet.getDataRange().getValues();
+  var maxNum = 1000; // Starting number
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1]) {
+      var docNo = headerData[i][1].toString();
+      if (docNo.startsWith('JV')) {
+        var num = parseInt(docNo.substring(2));
+        if (num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+  }
+  
+  var newDocNo = 'JV' + (maxNum + 1);
+  
+  // Add header
+  var header = jvData.header;
+  var now = new Date();
+  var createdTime = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+  
+  headerSheet.appendRow([
+    'JV', // DocType
+    newDocNo,
+    header.date,
+    header.narration || '',
+    totalDebit,
+    totalCredit,
+    header.refNo || '',
+    header.refDate || '',
+    validation.userName,
+    createdTime,
+    '', // PostedBy
+    ''  // PostedTime
+  ]);
+  
+  // Get or create JournalVoucherDetails sheet
+  var detailsSheet = ss.getSheetByName("JournalVoucherDetails");
+  if (!detailsSheet) {
+    detailsSheet = ss.insertSheet("JournalVoucherDetails");
+    detailsSheet.appendRow(["DocType", "DocNo", "DocSrNo", "ACCode", "ACDescription", "Subledger", "Amount", "Narration", "Mode", "Bank", "InstrumentNo", "InstrumentDate"]);
+  }
+  
+  // Add details
+  for (var i = 0; i < jvData.details.length; i++) {
+    var detail = jvData.details[i];
+    detailsSheet.appendRow([
+      'JV', // DocType
+      newDocNo,
+      detail.docSrNo || (i + 1),
+      detail.acCode,
+      detail.acDescription || '',
+      detail.subledger || '',
+      parseFloat(detail.amount) || 0,
+      detail.narration || '',
+      detail.mode || '',
+      detail.bank || '',
+      detail.instrumentNo || '',
+      detail.instrumentDate || ''
+    ]);
+  }
+  
+  var result = { status: "success", message: "Journal Voucher created successfully", docNo: newDocNo };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Update existing journal voucher
+function handleUpdateJournalVoucherGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var jvDataJson = e.parameter.jvData;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Parse journal voucher data
+  var jvData;
+  try {
+    jvData = JSON.parse(jvDataJson);
+  } catch (error) {
+    var errorResult = { status: "error", message: "Invalid journal voucher data format" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!jvData.header || !jvData.header.docNo || !jvData.details || jvData.details.length === 0) {
+    var errorResult = { status: "error", message: "Header with DocNo and at least one detail line are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var docNo = jvData.header.docNo;
+  
+  // Validate debit = credit balance
+  var totalDebit = 0;
+  var totalCredit = 0;
+  for (var d = 0; d < jvData.details.length; d++) {
+    var amt = parseFloat(jvData.details[d].amount) || 0;
+    if (amt < 0) {
+      totalDebit += Math.abs(amt);
+    } else {
+      totalCredit += amt;
+    }
+  }
+  
+  if (Math.abs(totalDebit - totalCredit) > 0.01) {
+    var errorResult = { status: "error", message: "Voucher is not balanced! Total Debit must equal Total Credit." };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Update header
+  var headerSheet = ss.getSheetByName("JournalVoucherHeader");
+  var headerData = headerSheet.getDataRange().getValues();
+  var headerFound = false;
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1] == docNo) {
+      // Check if posted
+      if (headerData[i][10] && headerData[i][10] !== '') {
+        var errorResult = { status: "error", message: "Cannot update a posted journal voucher. Cancel post first." };
+        if (callback) {
+          return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+            .setMimeType(ContentService.MimeType.JAVASCRIPT);
+        }
+        return createJsonResponse(errorResult);
+      }
+      
+      var header = jvData.header;
+      headerSheet.getRange(i + 1, 1, 1, 12).setValues([[
+        'JV', // DocType
+        docNo,
+        header.date,
+        header.narration || '',
+        totalDebit,
+        totalCredit,
+        header.refNo || '',
+        header.refDate || '',
+        headerData[i][8], // Keep original CreatedBy
+        headerData[i][9], // Keep original CreatedTime
+        '', // PostedBy
+        ''  // PostedTime
+      ]]);
+      headerFound = true;
+      break;
+    }
+  }
+  
+  if (!headerFound) {
+    var errorResult = { status: "error", message: "Journal voucher not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Delete existing details
+  var detailsSheet = ss.getSheetByName("JournalVoucherDetails");
+  if (detailsSheet) {
+    var detailsData = detailsSheet.getDataRange().getValues();
+    for (var i = detailsData.length - 1; i >= 1; i--) {
+      if (detailsData[i][1] == docNo) {
+        detailsSheet.deleteRow(i + 1);
+      }
+    }
+  } else {
+    detailsSheet = ss.insertSheet("JournalVoucherDetails");
+    detailsSheet.appendRow(["DocType", "DocNo", "DocSrNo", "ACCode", "ACDescription", "Subledger", "Amount", "Narration", "Mode", "Bank", "InstrumentNo", "InstrumentDate"]);
+  }
+  
+  // Add new details
+  for (var i = 0; i < jvData.details.length; i++) {
+    var detail = jvData.details[i];
+    detailsSheet.appendRow([
+      'JV', // DocType
+      docNo,
+      detail.docSrNo || (i + 1),
+      detail.acCode,
+      detail.acDescription || '',
+      detail.subledger || '',
+      parseFloat(detail.amount) || 0,
+      detail.narration || '',
+      detail.mode || '',
+      detail.bank || '',
+      detail.instrumentNo || '',
+      detail.instrumentDate || ''
+    ]);
+  }
+  
+  var result = { status: "success", message: "Journal Voucher updated successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Delete journal voucher
+function handleDeleteJournalVoucherGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var docNo = e.parameter.docNo;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Delete header
+  var headerSheet = ss.getSheetByName("JournalVoucherHeader");
+  var headerData = headerSheet.getDataRange().getValues();
+  var headerFound = false;
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1] == docNo) {
+      // Check if posted
+      if (headerData[i][10] && headerData[i][10] !== '') {
+        var errorResult = { status: "error", message: "Cannot delete a posted journal voucher. Cancel post first." };
+        if (callback) {
+          return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+            .setMimeType(ContentService.MimeType.JAVASCRIPT);
+        }
+        return createJsonResponse(errorResult);
+      }
+      headerSheet.deleteRow(i + 1);
+      headerFound = true;
+      break;
+    }
+  }
+  
+  if (!headerFound) {
+    var errorResult = { status: "error", message: "Journal voucher not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Delete details
+  var detailsSheet = ss.getSheetByName("JournalVoucherDetails");
+  if (detailsSheet) {
+    var detailsData = detailsSheet.getDataRange().getValues();
+    for (var i = detailsData.length - 1; i >= 1; i--) {
+      if (detailsData[i][1] == docNo) {
+        detailsSheet.deleteRow(i + 1);
+      }
+    }
+  }
+  
+  var result = { status: "success", message: "Journal Voucher deleted successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Post JV to AccountTransaction
+function handlePostJVToAccountTransactionGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var docNo = e.parameter.docNo;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  if (!docNo) {
+    var errorResult = { status: "error", message: "DocNo is required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get voucher header
+  var headerSheet = ss.getSheetByName("JournalVoucherHeader");
+  var headerData = headerSheet.getDataRange().getValues();
+  var headerRow = -1;
+  var headerDate = '';
+  var postedBy = '';
+  var headerRefNo = '';
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1] == docNo) {
+      headerRow = i;
+      headerDate = headerData[i][2] ? Utilities.formatDate(new Date(headerData[i][2]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '';
+      postedBy = headerData[i][10] || '';
+      headerRefNo = headerData[i][6] || '';
+      break;
+    }
+  }
+  
+  if (headerRow === -1) {
+    var errorResult = { status: "error", message: "Journal voucher not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  if (postedBy) {
+    var errorResult = { status: "error", message: "Journal voucher is already posted by " + postedBy };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Check if accounting entries already exist
+  var existingSheet = ss.getSheetByName("AccountTransaction");
+  if (existingSheet) {
+    var existingData = existingSheet.getDataRange().getValues();
+    for (var i = 1; i < existingData.length; i++) {
+      if (existingData[i][0] && existingData[i][0].toString() == 'JV' && existingData[i][1] && existingData[i][1].toString() == docNo.toString()) {
+        var alreadyResult = { status: "error", message: "Accounting entries already exist for this document. Cancel post first." };
+        if (callback) {
+          return ContentService.createTextOutput(callback + "(" + JSON.stringify(alreadyResult) + ")")
+            .setMimeType(ContentService.MimeType.JAVASCRIPT);
+        }
+        return createJsonResponse(alreadyResult);
+      }
+    }
+  }
+  
+  // Get voucher details
+  var detailsSheet = ss.getSheetByName("JournalVoucherDetails");
+  var detailsData = detailsSheet.getDataRange().getValues();
+  var jvDetails = [];
+  
+  for (var i = 1; i < detailsData.length; i++) {
+    if (detailsData[i][1] == docNo) {
+      jvDetails.push({
+        docSrNo: detailsData[i][2] || 0,
+        acCode: detailsData[i][3] || '',
+        subledger: detailsData[i][5] || '',
+        amount: parseFloat(detailsData[i][6]) || 0,
+        narration: detailsData[i][7] || ''
+      });
+    }
+  }
+  
+  if (jvDetails.length === 0) {
+    var errorResult = { status: "error", message: "No details found for this document" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Ensure AccountTransaction sheet exists
+  var accountTransactionSheet = ensureAccountTransactionSheet(ss);
+  
+  var now = new Date();
+  var postedTime = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+  
+  // Post each detail line to AccountTransaction
+  for (var d = 0; d < jvDetails.length; d++) {
+    var detail = jvDetails[d];
+    var amount = detail.amount;
+    
+    accountTransactionSheet.appendRow([
+      'JV',                    // DOCTYPE
+      docNo,                   // DOCNO
+      detail.docSrNo,          // DOCSRNO
+      detail.acCode,           // AC_DOCNO
+      detail.subledger,        // SUBLEDGER_DOCNO
+      headerDate,              // DOCDATE
+      headerDate,              // VALDATE
+      detail.narration || 'Journal Voucher ' + docNo, // NARRATION
+      amount,                  // AMOUNT (negative = debit, positive = credit)
+      amount,                  // BAL_AMOUNT
+      headerRefNo,             // REF_NO
+      headerDate,              // REF_DATE
+      validation.userName,     // CREATED_BY
+      postedTime               // CREATED_TS
+    ]);
+  }
+  
+  // Update JournalVoucherHeader with PostedBy and PostedTime
+  headerSheet.getRange(headerRow + 1, 11).setValue(validation.userName);
+  headerSheet.getRange(headerRow + 1, 12).setValue(postedTime);
+  
+  var result = { status: "success", message: "Journal Voucher posted to accounting successfully", postedBy: validation.userName, postedTime: postedTime };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Cancel JV AccountTransaction Post (Delete entries)
+function handleCancelJVAccountTransactionPostGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var docNo = e.parameter.docNo;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  if (!docNo) {
+    var errorResult = { status: "error", message: "DocNo is required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Find header row for clearing posted status
+  var headerSheet = ss.getSheetByName("JournalVoucherHeader");
+  var headerRow = -1;
+  if (headerSheet) {
+    var headerData = headerSheet.getDataRange().getValues();
+    for (var i = 1; i < headerData.length; i++) {
+      if (headerData[i][1] == docNo) {
+        headerRow = i;
+        break;
+      }
+    }
+  }
+  
+  // Delete from AccountTransaction sheet
+  var accountTransactionSheet = ss.getSheetByName("AccountTransaction");
+  if (accountTransactionSheet) {
+    var data = accountTransactionSheet.getDataRange().getValues();
+    var deleted = false;
+    
+    for (var i = data.length - 1; i >= 1; i--) {
+      if (data[i][0] && data[i][0].toString() == 'JV' && data[i][1] && data[i][1].toString() == docNo.toString()) {
+        accountTransactionSheet.deleteRow(i + 1);
+        deleted = true;
+      }
+    }
+    
+    // Clear PostedBy and PostedTime in JournalVoucherHeader
+    if (headerRow !== -1 && deleted) {
+      headerSheet.getRange(headerRow + 1, 11).setValue('');
+      headerSheet.getRange(headerRow + 1, 12).setValue('');
+    }
+    
+    var result = { status: "success", message: deleted ? "Accounting entries cancelled successfully" : "No accounting entries found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(result);
+  }
+  
+  var result = { status: "success", message: "No accounting entries found" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// ============================================
+// JOURNAL VOUCHER REPORT HANDLER
+// ============================================
+
+// Get journal voucher report with date range filters
+function handleGetJournalVoucherReportGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Read filter parameters
+  var fromDate = e.parameter.fromDate || '';
+  var toDate = e.parameter.toDate || '';
+  var reportType = (e.parameter.reportType || 'headerwise').toLowerCase();
+  
+  // Get all journal vouchers from JournalVoucherHeader sheet
+  var headerSheet = ss.getSheetByName("JournalVoucherHeader");
+  if (!headerSheet) {
+    var emptyResult = { status: "success", jv: [], summary: { totalCount: 0, totalDebit: 0, totalCredit: 0 } };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(emptyResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(emptyResult);
+  }
+  
+  var headerData = headerSheet.getDataRange().getValues();
+  var allVouchers = [];
+  var totalDebit = 0;
+  var totalCredit = 0;
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1]) { // Check if DocNo exists
+      var docNo = headerData[i][1].toString();
+      var dateObj = headerData[i][2] ? new Date(headerData[i][2]) : null;
+      var dateStr = dateObj ? Utilities.formatDate(dateObj, Session.getScriptTimeZone(), 'yyyy-MM-dd') : '';
+      
+      // Apply date range filter
+      if (fromDate && dateStr < fromDate) continue;
+      if (toDate && dateStr > toDate) continue;
+      
+      var debit = parseFloat(headerData[i][4]) || 0;
+      var credit = parseFloat(headerData[i][5]) || 0;
+      totalDebit += debit;
+      totalCredit += credit;
+      
+      var voucher = {
+        docType: headerData[i][0] || '',
+        docNo: docNo,
+        date: dateStr,
+        narration: headerData[i][3] || '',
+        debit: debit,
+        credit: credit,
+        refNo: headerData[i][6] || '',
+        refDate: headerData[i][7] ? Utilities.formatDate(new Date(headerData[i][7]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
+        createdBy: headerData[i][8] || '',
+        createdTime: headerData[i][9] || '',
+        postedBy: headerData[i][10] || '',
+        postedTime: headerData[i][11] || ''
+      };
+      
+      allVouchers.push(voucher);
+    }
+  }
+  
+  // Sort by date descending, then by DocNo descending
+  allVouchers.sort(function(a, b) {
+    if (a.date !== b.date) return b.date.localeCompare(a.date);
+    return b.docNo.localeCompare(a.docNo);
+  });
+  
+  // If reportType is linewise, fetch detail lines for each voucher
+  if (reportType === 'linewise') {
+    var detailsSheet = ss.getSheetByName("JournalVoucherDetails");
+    if (detailsSheet) {
+      var detailsData = detailsSheet.getDataRange().getValues();
+      
+      // Build a map of docNo -> details array
+      var detailsMap = {};
+      for (var d = 1; d < detailsData.length; d++) {
+        var detailDocNo = detailsData[d][1];
+        if (detailDocNo) {
+          if (!detailsMap[detailDocNo]) {
+            detailsMap[detailDocNo] = [];
+          }
+          var amount = parseFloat(detailsData[d][6]) || 0;
+          detailsMap[detailDocNo].push({
+            docSrNo: detailsData[d][2] || 0,
+            acCode: detailsData[d][3] || '',
+            acDescription: detailsData[d][4] || '',
+            subledger: detailsData[d][5] || '',
+            amount: amount,
+            debit: amount < 0 ? Math.abs(amount) : 0,
+            credit: amount > 0 ? amount : 0,
+            narration: detailsData[d][7] || '',
+            mode: detailsData[d][8] || ''
+          });
+        }
+      }
+      
+      // Attach details to each voucher
+      for (var vi = 0; vi < allVouchers.length; vi++) {
+        allVouchers[vi].details = detailsMap[allVouchers[vi].docNo] || [];
+      }
+    }
+  }
+  
+  var result = { 
+    status: "success", 
+    jv: allVouchers,
+    reportType: reportType,
+    summary: {
+      totalCount: allVouchers.length,
+      totalDebit: Math.round(totalDebit * 100) / 100,
+      totalCredit: Math.round(totalCredit * 100) / 100
+    }
+  };
+  
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// ============================================
+// STATEMENT OF ACCOUNT HANDLER
+// ============================================
+
+// Get ledger/statement of account (by GL account, optionally filtered by party for AR/AP)
+function handleGetStatementOfAccountGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var acCode = e.parameter.acCode || '';
+  var partyType = e.parameter.partyType || '';
+  var partyCode = e.parameter.partyCode || '';
+  var fromDate = e.parameter.fromDate || '';
+  var toDate = e.parameter.toDate || '';
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  if (!acCode) {
+    var errorResult = { status: "error", message: "Account code is required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Look up account description from COA
+  var accountDescription = acCode;
+  var coaSheet = ss.getSheetByName("COA");
+  var coaDescMap = {};
+  if (coaSheet) {
+    var coaData = coaSheet.getDataRange().getValues();
+    for (var i = 1; i < coaData.length; i++) {
+      var acType = String(coaData[i][1] || '');
+      var accountCode = String(coaData[i][0] || '');
+      var desc = coaData[i][2] || '';
+      if (accountCode) {
+        coaDescMap[accountCode] = desc;
+        if (accountCode === acCode) {
+          accountDescription = desc;
+        }
+      }
+    }
+  }
+  
+  // Look up party name from CustomerMaster or SupplierMaster (if partyCode provided)
+  var partyName = partyCode;
+  if (partyCode) {
+    if (partyType === 'Customer') {
+      var customerSheet = ss.getSheetByName("CustomerMaster");
+      if (customerSheet) {
+        var customerData = customerSheet.getDataRange().getValues();
+        for (var c = 1; c < customerData.length; c++) {
+          if (customerData[c][0] && String(customerData[c][0]).toUpperCase() == String(partyCode).toUpperCase()) {
+            partyName = customerData[c][1] || partyCode;
+            break;
+          }
+        }
+      }
+    } else {
+      var supplierSheet = ss.getSheetByName("SupplierMaster");
+      if (supplierSheet) {
+        var supplierData = supplierSheet.getDataRange().getValues();
+        for (var s = 1; s < supplierData.length; s++) {
+          if (supplierData[s][0] && String(supplierData[s][0]).toUpperCase() == String(partyCode).toUpperCase()) {
+            partyName = supplierData[s][1] || partyCode;
+            break;
+          }
+        }
+      }
+    }
+  }
+  
+  // Get AccountTransaction sheet
+  var accountTransactionSheet = ss.getSheetByName("AccountTransaction");
+  if (!accountTransactionSheet) {
+    var emptyResult = { 
+      status: "success", 
+      account: { code: acCode, description: accountDescription },
+      party: partyCode ? { type: partyType, code: partyCode, name: partyName } : null,
+      entries: [], 
+      summary: { openingBalance: 0, totalDebit: 0, totalCredit: 0, closingBalance: 0 } 
+    };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(emptyResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(emptyResult);
+  }
+  
+  var data = accountTransactionSheet.getDataRange().getValues();
+  var allEntries = [];
+  var openingBalance = 0;
+  var totalDebit = 0;
+  var totalCredit = 0;
+  
+  // Collect all entries for this account (and party if provided) across all dates first
+  for (var i = 1; i < data.length; i++) {
+    var accountCode = String(data[i][3] || '');
+    if (accountCode === acCode) {
+      // If partyCode provided, filter by subledger too
+      if (partyCode) {
+        var subledger = String(data[i][4] || '');
+        if (subledger !== partyCode) {
+          continue;
+        }
+      }
+      
+      var valDate = data[i][6] ? Utilities.formatDate(new Date(data[i][6]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '';
+      var amount = parseFloat(data[i][8]) || 0;
+      var docType = String(data[i][0] || '');
+      var partySubledger = String(data[i][4] || '');
+      
+      // If before fromDate, add to opening balance
+      if (fromDate && valDate < fromDate) {
+        openingBalance += amount;
+        continue;
+      }
+      
+      // Skip entries after toDate
+      if (toDate && valDate > toDate) {
+        continue;
+      }
+      
+      // Add to totals
+      if (amount < 0) {
+        totalDebit += Math.abs(amount);
+      } else {
+        totalCredit += amount;
+      }
+      
+      allEntries.push({
+        docType: docType,
+        docNo: String(data[i][1] || ''),
+        acDocNo: accountCode,
+        accountDescription: coaDescMap[accountCode] || '',
+        subledger: partySubledger,
+        date: valDate,
+        narration: data[i][7] || '',
+        amount: amount,
+        debit: amount < 0 ? Math.abs(amount) : 0,
+        credit: amount > 0 ? amount : 0
+      });
+    }
+  }
+  
+  // Sort by date ascending, then by docNo ascending
+  allEntries.sort(function(a, b) {
+    if (a.date !== b.date) return a.date.localeCompare(b.date);
+    return a.docNo.localeCompare(b.docNo);
+  });
+  
+  // Calculate running balance for each entry
+  var runningBalance = openingBalance;
+  for (var j = 0; j < allEntries.length; j++) {
+    runningBalance += allEntries[j].amount;
+    allEntries[j].runningBalance = Math.round(runningBalance * 100) / 100;
+  }
+  
+  var closingBalance = runningBalance;
+  
+  var result = { 
+    status: "success", 
+    account: { code: acCode, description: accountDescription },
+    party: partyCode ? { type: partyType, code: partyCode, name: partyName } : null,
+    entries: allEntries,
+    summary: {
+      openingBalance: Math.round(openingBalance * 100) / 100,
+      totalDebit: Math.round(totalDebit * 100) / 100,
+      totalCredit: Math.round(totalCredit * 100) / 100,
+      closingBalance: Math.round(closingBalance * 100) / 100
+    }
+  };
+  
   if (callback) {
     return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
       .setMimeType(ContentService.MimeType.JAVASCRIPT);

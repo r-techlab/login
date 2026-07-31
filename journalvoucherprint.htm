@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Journal Voucher Print</title>
+
+<style>
+/* ============================================
+   PRINT STYLES - Journal Voucher Print Page
+   ============================================ */
+
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #f0f0f0;
+    padding: 20px;
+    color: #333;
+}
+
+/* Print toolbar - only visible on screen */
+.print-toolbar {
+    text-align: center;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.print-toolbar button {
+    background: #27ae60;
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    margin: 0 8px;
+    transition: background 0.2s;
+}
+
+.print-toolbar button:hover {
+    background: #229954;
+}
+
+.print-toolbar button.btn-close {
+    background: #95a5a6;
+}
+
+.print-toolbar button.btn-close:hover {
+    background: #7f8c8d;
+}
+
+.print-toolbar .hint {
+    display: block;
+    margin-top: 8px;
+    font-size: 13px;
+    color: #888;
+}
+
+/* Loading indicator */
+.loading {
+    text-align: center;
+    padding: 60px 20px;
+    font-size: 18px;
+    color: #666;
+}
+
+.loading::after {
+    content: '...';
+    animation: dots 1.5s steps(4, end) infinite;
+}
+
+@keyframes dots {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    60%, 100% { content: '...'; }
+}
+
+/* Error message */
+.error-message {
+    text-align: center;
+    padding: 40px;
+    color: #e74c3c;
+    font-size: 16px;
+}
+
+/* ============================================
+   VOUCHER LAYOUT
+   ============================================ */
+.voucher {
+    max-width: 210mm;
+    margin: 0 auto;
+    background: white;
+    padding: 30px 35px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    border-radius: 5px;
+}
+
+/* Header section with logo and company info */
+.voucher-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 25px;
+    padding-bottom: 20px;
+    border-bottom: 3px double #333;
+}
+
+.company-section {
+    flex: 1;
+}
+
+.company-logo {
+    max-width: 120px;
+    max-height: 100px;
+    object-fit: contain;
+    margin-bottom: 10px;
+}
+
+.company-name {
+    font-size: 22px;
+    font-weight: bold;
+    color: #2c3e50;
+    margin-bottom: 4px;
+}
+
+.company-details {
+    font-size: 12px;
+    color: #555;
+    line-height: 1.5;
+}
+
+.company-details div {
+    margin-bottom: 2px;
+}
+
+.voucher-title-section {
+    text-align: right;
+    min-width: 180px;
+}
+
+.voucher-title {
+    font-size: 26px;
+    font-weight: bold;
+    color: #2c3e50;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.voucher-subtitle {
+    font-size: 13px;
+    color: #666;
+    margin-top: 5px;
+}
+
+/* Document info section */
+.doc-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 5px;
+    border-left: 4px solid #667eea;
+}
+
+.doc-info-left, .doc-info-right {
+    font-size: 13px;
+    line-height: 1.8;
+}
+
+.doc-info .label {
+    font-weight: bold;
+    color: #555;
+}
+
+.doc-info .value {
+    color: #333;
+}
+
+/* Voucher details table */
+.items-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+    font-size: 12px;
+}
+
+.items-table thead {
+    background: #2c3e50;
+    color: white;
+}
+
+.items-table th {
+    padding: 10px 8px;
+    text-align: left;
+    font-weight: bold;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #ffffff !important;
+}
+
+.items-table th.amount {
+    text-align: right;
+}
+
+.items-table td {
+    padding: 8px;
+    border-bottom: 1px solid #e0e0e0;
+    vertical-align: top;
+}
+
+.items-table td.amount {
+    text-align: right;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+}
+
+.items-table tbody tr:nth-child(even) {
+    background: #fafafa;
+}
+
+.items-table .item-sr {
+    width: 30px;
+    text-align: center;
+    color: #888;
+}
+
+.items-table .item-code {
+    width: 100px;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+.items-table .item-desc {
+    color: #555;
+}
+
+.items-table .item-subledger {
+    width: 90px;
+}
+
+.items-table .item-amount {
+    width: 110px;
+}
+
+/* Summary section */
+.summary-section {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 20px;
+}
+
+.summary-table {
+    width: 350px;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.summary-table td {
+    padding: 6px 12px;
+}
+
+.summary-table .summary-label {
+    text-align: right;
+    font-weight: bold;
+    color: #555;
+}
+
+.summary-table .summary-value {
+    text-align: right;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    width: 120px;
+}
+
+.summary-table .summary-row {
+    border-bottom: 1px solid #eee;
+}
+
+.summary-table .summary-total td {
+    padding: 10px 12px;
+    font-size: 16px;
+    font-weight: bold;
+    border-top: 2px solid #2c3e50;
+    color: #2c3e50;
+}
+
+.summary-table .summary-total .summary-value {
+    font-size: 18px;
+}
+
+/* Amount in words */
+.amount-words {
+    margin-bottom: 20px;
+    padding: 12px 15px;
+    background: #fff8e1;
+    border-radius: 5px;
+    border-left: 4px solid #f39c12;
+    font-size: 13px;
+    color: #555;
+}
+
+.amount-words .words-label {
+    font-weight: bold;
+    color: #333;
+}
+
+.amount-words .words-value {
+    font-style: italic;
+    color: #2c3e50;
+    font-weight: bold;
+}
+
+/* Narration section */
+.narration-section {
+    margin-bottom: 20px;
+    padding: 12px 15px;
+    background: #f8f9fa;
+    border-radius: 5px;
+    font-size: 12px;
+    color: #555;
+}
+
+.narration-section .narration-label {
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 4px;
+}
+
+/* Footer */
+.voucher-footer {
+    text-align: center;
+    padding-top: 15px;
+    border-top: 1px solid #ddd;
+    font-size: 11px;
+    color: #999;
+}
+
+.voucher-footer .footer-line {
+    margin-bottom: 3px;
+}
+
+/* Signature section */
+.signature-section {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 30px;
+    padding-top: 20px;
+}
+
+.signature-box {
+    text-align: center;
+    min-width: 150px;
+}
+
+.signature-box .sig-line {
+    width: 180px;
+    border-top: 1px solid #333;
+    margin: 30px auto 5px;
+}
+
+.signature-box .sig-label {
+    font-size: 12px;
+    color: #888;
+}
+
+/* ============================================
+   PRINT-ONLY STYLES
+   ============================================ */
+@media print {
+    body {
+        background: white;
+        padding: 0;
+        margin: 0;
+    }
+    
+    .print-toolbar {
+        display: none !important;
+    }
+    
+    .voucher {
+        max-width: 100%;
+        box-shadow: none;
+        border-radius: 0;
+        padding: 20px 25px;
+        margin: 0;
+    }
+    
+    .items-table tbody tr:hover {
+        background: inherit;
+    }
+    
+    .items-table tbody tr:nth-child(even) {
+        background: #fafafa;
+    }
+    
+    @page {
+        margin: 15mm 10mm;
+        size: A4 portrait;
+    }
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media screen and (max-width: 768px) {
+    .voucher {
+        padding: 15px;
+    }
+    
+    .voucher-header {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .voucher-title-section {
+        text-align: center;
+        margin-top: 15px;
+        min-width: auto;
+    }
+    
+    .doc-info {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .summary-table {
+        width: 100%;
+    }
+    
+    .signature-section {
+        flex-direction: column;
+        gap: 20px;
+    }
+    
+    .items-table {
+        font-size: 11px;
+    }
+    
+    .items-table th,
+    .items-table td {
+        padding: 6px 4px;
+    }
+}
+</style>
+</head>
+<body>
+
+<!-- Print Toolbar (visible only on screen) -->
+<div class="print-toolbar" id="printToolbar">
+    <button onclick="window.print()">🖨️ Print / Save as PDF</button>
+    <button class="btn-close" onclick="window.close()">✖ Close</button>
+    <span class="hint">💡 Tip: Use browser's Print dialog to save as PDF or print on paper</span>
+</div>
+
+<!-- Loading Indicator -->
+<div id="loadingIndicator" class="loading">Loading journal voucher data</div>
+
+<!-- Error Message -->
+<div id="errorMessage" class="error-message" style="display: none;"></div>
+
+<!-- Voucher Content -->
+<div id="voucherContent" class="voucher" style="display: none;">
+    
+    <!-- Header: Logo + Company Info + Voucher Title -->
+    <div class="voucher-header">
+        <div class="company-section">
+            <img id="companyLogo" class="company-logo" src="" alt="Company Logo" style="display: none;">
+            <div class="company-name" id="companyName">Company Name</div>
+            <div class="company-details">
+                <div id="companyAddress"></div>
+                <div id="companyTrn"></div>
+                <div id="companyPhone"></div>
+                <div id="companyEmail"></div>
+            </div>
+        </div>
+        <div class="voucher-title-section">
+            <div class="voucher-title">JOURNAL VOUCHER</div>
+            <div class="voucher-subtitle" id="voucherDocType">Journal Voucher</div>
+        </div>
+    </div>
+    
+    <!-- Document Info -->
+    <div class="doc-info">
+        <div class="doc-info-left">
+            <div><span class="label">Voucher No:</span> <span class="value" id="printDocNo"></span></div>
+            <div><span class="label">Voucher Date:</span> <span class="value" id="printDate"></span></div>
+            <div><span class="label">Reference No:</span> <span class="value" id="printRefNo"></span></div>
+            <div><span class="label">Reference Date:</span> <span class="value" id="printRefDate"></span></div>
+        </div>
+        <div class="doc-info-right">
+            <div><span class="label">Created By:</span> <span class="value" id="printCreatedBy"></span></div>
+            <div><span class="label">Created Time:</span> <span class="value" id="printCreatedTime"></span></div>
+            <div><span class="label">Posted By:</span> <span class="value" id="printPostedBy"></span></div>
+            <div><span class="label">Posted Time:</span> <span class="value" id="printPostedTime"></span></div>
+        </div>
+    </div>
+    
+    <!-- Voucher Entries Table -->
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th class="item-sr">#</th>
+                <th class="item-code">AC Code</th>
+                <th class="item-desc">Description</th>
+                <th class="item-subledger">Subledger</th>
+                <th class="item-amount">Mode</th>
+                <th class="item-amount">Bank</th>
+                <th class="item-amount">Instr No</th>
+                <th class="item-sr">Narration</th>
+                <th class="item-amount amount">Debit</th>
+                <th class="item-amount amount">Credit</th>
+            </tr>
+        </thead>
+        <tbody id="itemsTableBody">
+        </tbody>
+    </table>
+    
+    <!-- Summary -->
+    <div class="summary-section">
+        <table class="summary-table">
+            <tr class="summary-row">
+                <td class="summary-label">Total Debit:</td>
+                <td class="summary-value" id="printTotalDebit" style="color: #e74c3c;">0.00</td>
+            </tr>
+            <tr class="summary-row">
+                <td class="summary-label">Total Credit:</td>
+                <td class="summary-value" id="printTotalCredit" style="color: #27ae60;">0.00</td>
+            </tr>
+            <tr class="summary-total">
+                <td class="summary-label">Total Amount:</td>
+                <td class="summary-value" id="printTotal">0.00</td>
+            </tr>
+        </table>
+    </div>
+    
+    <!-- Amount in Words -->
+    <div class="amount-words">
+        <span class="words-label">Amount in Words:</span>
+        <span class="words-value" id="printAmountWords">Zero</span>
+    </div>
+    
+    <!-- Narration -->
+    <div class="narration-section" id="narrationSection" style="display: none;">
+        <div class="narration-label">📝 Narration / Notes:</div>
+        <div id="printNarration"></div>
+    </div>
+    
+    <!-- Signature -->
+    <div class="signature-section">
+        <div class="signature-box">
+            <div class="sig-line"></div>
+            <div class="sig-label">Prepared By</div>
+        </div>
+        <div class="signature-box">
+            <div class="sig-line"></div>
+            <div class="sig-label">Approved By</div>
+        </div>
+        <div class="signature-box">
+            <div class="sig-line"></div>
+            <div class="sig-label">Posted By</div>
+        </div>
+    </div>
+    
+    <!-- Footer -->
+    <div class="voucher-footer">
+        <div class="footer-line" id="footerCompanyName"></div>
+        <div class="footer-line">This is a computer-generated voucher</div>
+    </div>
+</div>
+
+<script src="api.js"></script>
+<script src="indexedDB.js"></script>
+<script src="session.js"></script>
+<script src="systemConfig.js"></script>
+<script>
+// ============================================
+// JOURNAL VOUCHER PRINT PAGE
+// ============================================
+
+// Global variables
+let voucherData = null;
+let companyLogoUrl = '';
+let companyParams = {};
+
+// Get docNo from URL
+const urlParams = new URLSearchParams(window.location.search);
+const docNo = urlParams.get('docno');
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    if (!docNo) {
+        showError('No document number provided. Please close and try again.');
+        return;
+    }
+    
+    loadCompanyInfo();
+    loadVoucherForPrint(docNo);
+});
+
+// Load company info from system parameters and logo
+function loadCompanyInfo() {
+    loadSystemParameters(function(params) {
+        companyParams = params;
+        
+        const companyName = params['CompanyName'] || 'Company Name';
+        document.getElementById('companyName').textContent = companyName;
+        document.getElementById('footerCompanyName').textContent = companyName;
+        
+        const address = params['CompanyAddress'] || '';
+        const trn = params['CompanyTRN'] || '';
+        const phone = params['CompanyPhone'] || '';
+        const email = params['CompanyEmail'] || '';
+        
+        if (address) document.getElementById('companyAddress').textContent = '📍 ' + address;
+        if (trn) document.getElementById('companyTrn').textContent = 'TRN: ' + trn;
+        if (phone) document.getElementById('companyPhone').textContent = '📞 ' + phone;
+        if (email) document.getElementById('companyEmail').textContent = '✉ ' + email;
+    });
+    
+    loadCompanyLogo();
+}
+
+// Load company logo
+function loadCompanyLogo() {
+    apiGetLogos(function(response) {
+        if (response.status === 'success' && response.logos && response.logos.length > 0) {
+            const logo = response.logos[0];
+            const logoPath = logo.logoPath || (logo.logoData ? 'data:image/jpeg;base64,' + logo.logoData : '');
+            
+            if (logoPath) {
+                const logoImg = document.getElementById('companyLogo');
+                logoImg.src = logoPath;
+                logoImg.style.display = 'block';
+                logoImg.onerror = function() {
+                    this.style.display = 'none';
+                };
+            }
+        }
+    });
+}
+
+// Load voucher data for printing
+function loadVoucherForPrint(docNo) {
+    apiGetJournalVoucherByDocNo(docNo, function(response) {
+        if (response.status === 'success') {
+            voucherData = response.jv;
+            renderVoucher(voucherData);
+        } else {
+            showError('Error loading journal voucher: ' + response.message);
+        }
+    });
+}
+
+// Render the voucher with data
+function renderVoucher(jv) {
+    const header = jv.header;
+    const details = jv.details || [];
+    
+    document.getElementById('loadingIndicator').style.display = 'none';
+    document.getElementById('voucherContent').style.display = 'block';
+    
+    // Set document info
+    document.getElementById('printDocNo').textContent = header.docNo || '-';
+    document.getElementById('printDate').textContent = formatDate(header.date);
+    document.getElementById('printRefNo').textContent = header.refNo || '-';
+    document.getElementById('printRefDate').textContent = header.refDate ? formatDate(header.refDate) : '-';
+    
+    // Set created/posted info
+    document.getElementById('printCreatedBy').textContent = header.createdBy || '-';
+    document.getElementById('printCreatedTime').textContent = header.createdTime || '-';
+    document.getElementById('printPostedBy').textContent = header.postedBy || '-';
+    document.getElementById('printPostedTime').textContent = header.postedTime || '-';
+    
+    // Render details table
+    const tbody = document.getElementById('itemsTableBody');
+    tbody.innerHTML = '';
+    
+    let totalDebit = 0;
+    let totalCredit = 0;
+    
+    if (details.length === 0) {
+        const row = tbody.insertRow();
+        row.innerHTML = '<td colspan="10" style="text-align:center;padding:20px;color:#999;">No entries found</td>';
+    } else {
+        details.forEach(function(item, index) {
+            const row = tbody.insertRow();
+            const amount = parseFloat(item.amount) || 0;
+            const debit = amount < 0 ? Math.abs(amount) : 0;
+            const credit = amount > 0 ? amount : 0;
+            
+            totalDebit += debit;
+            totalCredit += credit;
+            
+            row.innerHTML = `
+                <td class="item-sr">${index + 1}</td>
+                <td class="item-code">${escapeHtml(item.acCode)}</td>
+                <td class="item-desc">${escapeHtml(item.acDescription || '')}</td>
+                <td class="item-subledger">${escapeHtml(item.subledger || '-')}</td>
+                <td class="item-amount">${escapeHtml(item.mode || '-')}</td>
+                <td class="item-amount">${escapeHtml(item.bank || '-')}</td>
+                <td class="item-amount">${escapeHtml(item.instrumentNo || '-')}</td>
+                <td class="item-sr">${escapeHtml(item.narration || '-')}</td>
+                <td class="item-amount amount" style="color: #e74c3c;">${debit > 0 ? formatAmount(debit) : ''}</td>
+                <td class="item-amount amount" style="color: #27ae60;">${credit > 0 ? formatAmount(credit) : ''}</td>
+            `;
+        });
+    }
+    
+    // Set summary
+    document.getElementById('printTotalDebit').textContent = formatAmount(totalDebit);
+    document.getElementById('printTotalCredit').textContent = formatAmount(totalCredit);
+    document.getElementById('printTotal').textContent = formatAmount(totalDebit);
+    
+    // Set amount in words
+    document.getElementById('printAmountWords').textContent = numberToWords(totalDebit);
+    
+    // Set narration
+    if (header.narration) {
+        document.getElementById('printNarration').textContent = header.narration;
+        document.getElementById('narrationSection').style.display = 'block';
+    }
+    
+    // Auto-trigger print after a short delay
+    setTimeout(function() {
+        const logoImg = document.getElementById('companyLogo');
+        if (logoImg.src && !logoImg.complete) {
+            logoImg.onload = function() {
+                window.print();
+            };
+        } else {
+            window.print();
+        }
+    }, 1000);
+}
+
+// ============================================
+// UTILITY FUNCTIONS
+// ============================================
+
+// Format date
+function formatDate(dateStr) {
+    if (!dateStr) return '-';
+    try {
+        const date = new Date(dateStr);
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return day + '/' + month + '/' + year;
+    } catch (e) {
+        return dateStr;
+    }
+}
+
+// Format amount
+function formatAmount(amount) {
+    if (amount === null || amount === undefined) return '0.00';
+    return parseFloat(amount).toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+}
+
+// Escape HTML
+function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Show error
+function showError(message) {
+    document.getElementById('loadingIndicator').style.display = 'none';
+    const errorDiv = document.getElementById('errorMessage');
+    errorDiv.textContent = message;
+    errorDiv.style.display = 'block';
+}
+
+// ============================================
+// NUMBER TO WORDS CONVERSION
+// ============================================
+function numberToWords(num) {
+    if (num === null || num === undefined || isNaN(num)) return 'Zero';
+    
+    num = parseFloat(num);
+    
+    if (num === 0) return 'Zero';
+    
+    const wholePart = Math.floor(num);
+    const decimalPart = Math.round((num - wholePart) * 100);
+    
+    let words = convertHundreds(wholePart);
+    
+    if (decimalPart > 0) {
+        words += ' and ' + decimalPart.toString().padStart(2, '0') + '/100';
+    }
+    
+    return words;
+}
+
+function convertHundreds(n) {
+    const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
+                  'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 
+                  'Seventeen', 'Eighteen', 'Nineteen'];
+    const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+    
+    if (n === 0) return '';
+    
+    if (n < 20) {
+        return ones[n];
+    }
+    
+    if (n < 100) {
+        return tens[Math.floor(n / 10)] + (n % 10 > 0 ? ' ' + ones[n % 10] : '');
+    }
+    
+    if (n < 1000) {
+        return ones[Math.floor(n / 100)] + ' Hundred' + (n % 100 > 0 ? ' ' + convertHundreds(n % 100) : '');
+    }
+    
+    if (n < 100000) {
+        return convertHundreds(Math.floor(n / 1000)) + ' Thousand' + (n % 1000 > 0 ? ' ' + convertHundreds(n % 1000) : '');
+    }
+    
+    if (n < 10000000) {
+        return convertHundreds(Math.floor(n / 100000)) + ' Lakh' + (n % 100000 > 0 ? ' ' + convertHundreds(n % 100000) : '');
+    }
+    
+    return convertHundreds(Math.floor(n / 10000000)) + ' Crore' + (n % 10000000 > 0 ? ' ' + convertHundreds(n % 10000000) : '');
+}
+</script>
+
+</body>
+</html>
