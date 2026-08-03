@@ -277,6 +277,10 @@ td.amount-cell {
     min-width: 100px;
 }
 
+td:has(.stock-search) {
+    position: relative;
+}
+
 td.amount-cell input {
     text-align: right;
     font-weight: bold;
@@ -656,6 +660,9 @@ protectPageWithMenuAccess(function(isValid) {
     if (isValid) {
         renderBreadcrumb('breadcrumbContainer');
         
+        // Load VAT percentage from system parameters
+        loadVatSystemParameters();
+        
         // Check URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         viewDocNo = urlParams.get('view');
@@ -798,6 +805,8 @@ function loadStocks(callback) {
                         if (typeof saveStocksToDB === 'function') {
                             saveStocksToDB(allStocks);
                         }
+                    } else {
+                        showMessage('Error loading stocks: ' + (response.message || 'Unknown error') + '. Click "Refresh Data" to retry.', 'warning');
                     }
                     if (typeof callback === 'function') callback();
                 });
@@ -807,6 +816,8 @@ function loadStocks(callback) {
         apiGetStocks(function(response) {
             if (response.status === 'success') {
                 allStocks = response.stocks || [];
+            } else {
+                showMessage('Error loading stocks: ' + (response.message || 'Unknown error') + '. Click "Refresh Data" to retry.', 'warning');
             }
             if (typeof callback === 'function') callback();
         });
@@ -814,9 +825,40 @@ function loadStocks(callback) {
 }
 
 // Load VAT percentage from system parameters
-function loadVatPercentage() {
-    const vatParam = getSystemParameter('VATPercentage', '5');
-    vatPercentage = parseFloat(vatParam) || 5;
+function loadVatSystemParameters() {
+    // Try IndexedDB first
+    getSystemParamsFromDB(function(cachedParams) {
+        if (cachedParams) {
+            // cachedParams is now an object like {CompanyName: '...', VATPercentage: '5', ...}
+            const vatValue = cachedParams['VATPercentage'];
+            if (vatValue) {
+                vatPercentage = parseFloat(vatValue) || 5;
+            }
+        }
+    });
+    
+    // Also fetch from API to ensure latest values
+    apiGetSystemParameters(function(response) {
+        if (response.status === 'success') {
+            const params = response.parameters || [];
+            const vatParam = params.find(p => p.code === 'VATPercentage');
+            if (vatParam) {
+                vatPercentage = parseFloat(vatParam.value) || 5;
+            }
+            // Save to IndexedDB (convert array to object format)
+            const paramsObj = {};
+            params.forEach(function(p) {
+                if (p.code) {
+                    paramsObj[p.code] = p.value;
+                }
+            });
+            saveSystemParamsToDB(paramsObj);
+            // Also save to localStorage as backup
+            try {
+                localStorage.setItem('systemParams', JSON.stringify(paramsObj));
+            } catch (e) {}
+        }
+    });
 }
 
 // ============================================
@@ -957,7 +999,7 @@ function addDetailLine(data = null) {
     
     row.innerHTML = `
         <td>${srNo}</td>
-        <td>
+        <td style="position: relative;">
             <input type="text" class="stock-search" data-row="${detailLineCounter}" 
                    placeholder="Search..." value="${data ? data.stockCode : ''}" required>
             <input type="hidden" class="stock-code" value="${data ? data.stockCode : ''}">
@@ -1006,14 +1048,39 @@ function setupStockSearch(rowId) {
     const searchInput = row.querySelector('.stock-search');
     
     let dropdown = null;
+    let repositionHandler = null;
     
-    searchInput.addEventListener('input', function() {
-        const searchTerm = this.value.toLowerCase();
-        
+    // Position dropdown below the input using fixed positioning (escapes overflow clipping)
+    function positionDropdown() {
+        if (!dropdown) return;
+        const rect = searchInput.getBoundingClientRect();
+        dropdown.style.position = 'fixed';
+        dropdown.style.top = (rect.bottom + 2) + 'px';
+        dropdown.style.left = rect.left + 'px';
+        dropdown.style.width = rect.width + 'px';
+        dropdown.style.maxHeight = '200px';
+        dropdown.style.overflowY = 'auto';
+        dropdown.style.zIndex = '10000';
+        dropdown.style.display = 'block';
+    }
+    
+    // Close and clean up dropdown
+    function closeDropdown() {
         if (dropdown) {
             dropdown.remove();
             dropdown = null;
         }
+        if (repositionHandler) {
+            window.removeEventListener('scroll', repositionHandler, true);
+            window.removeEventListener('resize', repositionHandler);
+            repositionHandler = null;
+        }
+    }
+    
+    searchInput.addEventListener('input', function() {
+        closeDropdown();
+        
+        const searchTerm = this.value.toLowerCase();
         
         if (searchTerm.length < 1) return;
         
@@ -1025,8 +1092,6 @@ function setupStockSearch(rowId) {
         if (filtered.length > 0) {
             dropdown = document.createElement('div');
             dropdown.className = 'searchable-dropdown active';
-            dropdown.style.position = 'absolute';
-            dropdown.style.zIndex = '1001';
             
             dropdown.innerHTML = filtered.map(s => 
                 `<div class="dropdown-item" onclick="selectStock(${rowId}, '${s.code}', '${escapeHtml(s.description)}', '${s.unitCode}')">
@@ -1034,16 +1099,22 @@ function setupStockSearch(rowId) {
                 </div>`
             ).join('');
             
-            searchInput.parentElement.appendChild(dropdown);
+            // Append to body to escape overflow clipping from the table container
+            document.body.appendChild(dropdown);
+            positionDropdown();
+            
+            // Reposition on scroll/resize while open
+            repositionHandler = function() {
+                positionDropdown();
+            };
+            window.addEventListener('scroll', repositionHandler, true);
+            window.addEventListener('resize', repositionHandler);
         }
     });
     
     searchInput.addEventListener('blur', function() {
         setTimeout(() => {
-            if (dropdown) {
-                dropdown.remove();
-                dropdown = null;
-            }
+            closeDropdown();
         }, 200);
     });
 }

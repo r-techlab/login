@@ -24,7 +24,7 @@ The system will auto-create a sheet named **"COA"** with the following columns:
 | Column | Header | Description |
 |--------|--------|-------------|
 | A | AC_CODE | Account Code (e.g., 1010101) |
-| B | AC_TYPE | Account Type (ASSET, LIABILITY, EQUITY, INCOME, EXPENSE) |
+| B | AC_TYPE | Account Type (GL = Ledger/Posting account, blank = Group/Header account) |
 | C | DESCRIPTION | Account Name/Description |
 | D | LEVEL | Hierarchy Level (1-5) |
 | E | PARENT | Parent DOCNO (0 = root) |
@@ -77,7 +77,7 @@ GET ?action=deleteCOA&sessionId={sessionId}&userId={userId}&srno={srno}&callback
 ### Tree View
 - Hierarchical display with expand/collapse
 - Color-coded by hierarchy level
-- Type badges (ASSET=blue, LIABILITY=red, EQUITY=green, INCOME=cyan, EXPENSE=yellow)
+- Type badges (Ledger vs Group, colored by FIRST_LEVEL classification)
 - Subledger badges (GL, AR, AP, BK)
 
 ### Filter Tabs

@@ -628,7 +628,7 @@ h1 {
                 <div class="search-box">
                     <input type="text" id="searchInput" placeholder="🔍 Search by Code, Description, or Type..." onkeyup="filterAccounts()">
                 </div>
-                <button class="btn btn-success" onclick="openAddAccountModal()">➕ Add New Account</button>
+                <button class="btn btn-success" id="addAccountBtn" onclick="openAddAccountModal()" disabled>➕ Add New Account</button>
             </div>
 
             <!-- Filter tabs -->
@@ -680,18 +680,16 @@ h1 {
                     <div class="form-group">
                         <label for="acCode">Account Code</label>
                         <input type="text" id="acCode" maxlength="50" placeholder="e.g., 1010101">
-                        <small>Leave blank for group/header accounts</small>
+                        <small>Required for GL accounts, blank for group/header accounts</small>
                     </div>
                     <div class="form-group">
                         <label for="acType">Account Type *</label>
-                        <select id="acType" required>
+                        <select id="acType" required onchange="onAcTypeChange()">
                             <option value="">-- Select Type --</option>
-                            <option value="ASSET">ASSET</option>
-                            <option value="LIABILITY">LIABILITY</option>
-                            <option value="EQUITY">EQUITY</option>
-                            <option value="INCOME">INCOME</option>
-                            <option value="EXPENSE">EXPENSE</option>
+                            <option value="GL">GL - Ledger (Posting Account)</option>
+                            <option value="GROUP">GROUP - Header (Group Account)</option>
                         </select>
+                        <small>GL = Ledger account, GROUP = Group/header account</small>
                     </div>
                 </div>
                 <div class="form-row single">
@@ -841,6 +839,9 @@ function loadAccounts() {
     document.getElementById('treeView').style.display = 'none';
     document.getElementById('emptyState').style.display = 'none';
     document.getElementById('statsCard').style.display = 'none';
+    // Add button stays disabled until the account data is fully loaded
+    // so the duplicate account code check is always reliable
+    document.getElementById('addAccountBtn').disabled = true;
     
     apiGetCOA(function(response) {
         document.getElementById('loadingIndicator').style.display = 'none';
@@ -849,9 +850,13 @@ function loadAccounts() {
             allAccounts = response.accounts || [];
             processAndDisplay();
             updateStats();
+            // Enable Add only after the full account list is available
+            document.getElementById('addAccountBtn').disabled = false;
         } else {
             showMessage('Error loading accounts: ' + response.message, 'error');
             document.getElementById('emptyState').style.display = 'block';
+            // Keep Add disabled because allAccounts is incomplete -> duplicate check would be unreliable
+            document.getElementById('addAccountBtn').disabled = true;
         }
     });
 }
@@ -891,28 +896,9 @@ function getFilteredAccounts() {
     const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
     
     return allAccounts.filter(account => {
-        // Apply type filter
-        if (currentFilter !== 'all') {
-            // For INCOME and EXPENSE, they are stored as their actual types
-            // Level 1 items: ASSET, LIABILITY, EQUITY, GROSS PROFIT, ADMINISTRATIVE EXPENSES
-            // Map filter to actual types
-            const acType = (account.acType || '').toUpperCase();
-            let matchesFilter = false;
-            
-            if (currentFilter === 'ASSET' && acType === 'ASSET') matchesFilter = true;
-            else if (currentFilter === 'LIABILITY' && acType === 'LIABILITY') matchesFilter = true;
-            else if (currentFilter === 'EQUITY' && acType === 'EQUITY') matchesFilter = true;
-            else if (currentFilter === 'INCOME') {
-                // Income accounts: type could be GROSS PROFIT or INCOME
-                // Also accounts under GROSS PROFIT parent
-                if (acType === 'GROSS PROFIT' || acType === 'INCOME') matchesFilter = true;
-            }
-            else if (currentFilter === 'EXPENSE') {
-                // Expense accounts: ADMINISTRATIVE EXPENSES or EXPENSE
-                if (acType === 'ADMINISTRATIVE EXPENSES' || acType === 'EXPENSE') matchesFilter = true;
-            }
-            
-            if (!matchesFilter) return false;
+        // Apply type filter (based on the FIRST_LEVEL classification of the top-level ancestor)
+        if (currentFilter !== 'all' && !accountMatchesFilter(account, currentFilter)) {
+            return false;
         }
         
         // Apply search filter
@@ -935,6 +921,34 @@ function getFilteredAccounts() {
         
         return true;
     });
+}
+
+// Get the FIRST_LEVEL classification of an account by walking up the parent chain
+// to the top-level account that actually carries the classification.
+function getAccountFirstLevel(account) {
+    let current = account;
+    let steps = 0;
+    while (current && steps < 50) {
+        steps++;
+        if (current.firstLevel) return parseInt(current.firstLevel);
+        if (!current.parent || current.parent == 0) {
+            return current.firstLevel ? parseInt(current.firstLevel) : 0;
+        }
+        current = allAccounts.find(a => a.docno == current.parent);
+    }
+    return (current && current.firstLevel) ? parseInt(current.firstLevel) : (account.firstLevel ? parseInt(account.firstLevel) : 0);
+}
+
+// Check if an account belongs to a category filter (ASSET/LIABILITY/EQUITY/INCOME/EXPENSE)
+// Category is derived from FIRST_LEVEL: 1=ASSET, 2=LIABILITY, 3=EQUITY, 4=INCOME, 5=EXPENSE
+function accountMatchesFilter(account, filter) {
+    const fl = getAccountFirstLevel(account);
+    if (filter === 'ASSET' && fl == 1) return true;
+    if (filter === 'LIABILITY' && fl == 2) return true;
+    if (filter === 'EQUITY' && fl == 3) return true;
+    if (filter === 'INCOME' && fl == 4) return true;
+    if (filter === 'EXPENSE' && fl == 5) return true;
+    return false;
 }
 
 function setFilter(filter) {
@@ -1038,19 +1052,20 @@ function buildTreeNode(node, depth) {
         subledgerHtml = '<span style="color:#ccc;">-</span>';
     }
     
-    // Type badge
+    // Type badge (GL = Ledger, blank = Group) colored by FIRST_LEVEL classification
     let typeHtml = '';
     const acType = (node.acType || '').toUpperCase();
+    const typeLabel = acType === 'GL' ? 'Ledger' : 'Group';
     let typeClass = '';
-    if (acType === 'ASSET') typeClass = 'type-asset';
-    else if (acType === 'LIABILITY') typeClass = 'type-liability';
-    else if (acType === 'EQUITY') typeClass = 'type-equity';
-    else if (acType === 'GROSS PROFIT' || acType === 'INCOME') typeClass = 'type-income';
-    else if (acType === 'ADMINISTRATIVE EXPENSES' || acType === 'EXPENSE') typeClass = 'type-expense';
+    const rootFl = getAccountFirstLevel(node);
+    if (rootFl == 1) typeClass = 'type-asset';
+    else if (rootFl == 2) typeClass = 'type-liability';
+    else if (rootFl == 3) typeClass = 'type-equity';
+    else if (rootFl == 4) typeClass = 'type-income';
+    else if (rootFl == 5) typeClass = 'type-expense';
+    else typeClass = 'type-asset';
     
-    if (acType) {
-        typeHtml = `<span class="type-badge ${typeClass}">${acType}</span>`;
-    }
+    typeHtml = `<span class="type-badge ${typeClass}">${typeLabel}</span>`;
     
     // Toggle button
     const toggleBtn = hasChildren 
@@ -1116,6 +1131,9 @@ function openAddAccountModal() {
     document.getElementById('modalTitle').textContent = 'Add New Account';
     document.getElementById('accountForm').reset();
     document.getElementById('saveButton').textContent = 'Save Account';
+    // Account Type and Account Code are editable only when adding a new account
+    document.getElementById('acType').disabled = false;
+    document.getElementById('acCode').disabled = false;
     
     // Populate parent dropdown
     populateParentDropdown(0);
@@ -1135,7 +1153,11 @@ function openEditAccountModal(srno) {
     document.getElementById('modalTitle').textContent = 'Edit Account';
     
     document.getElementById('acCode').value = account.acCode || '';
-    document.getElementById('acType').value = account.acType || '';
+    // Map stored AC_TYPE (GL = ledger, blank = group) back to the dropdown options
+    document.getElementById('acType').value = (account.acType || '').toUpperCase() === 'GL' ? 'GL' : 'GROUP';
+    // Account Type and Account Code cannot be changed when editing an existing account
+    document.getElementById('acType').disabled = true;
+    document.getElementById('acCode').disabled = true;
     document.getElementById('description').value = account.description || '';
     document.getElementById('level').value = account.level || '';
     document.getElementById('firstLevel').value = account.firstLevel || '';
@@ -1156,7 +1178,21 @@ function openEditAccountModal(srno) {
 function closeAccountModal() {
     document.getElementById('accountModal').style.display = 'none';
     document.getElementById('accountForm').reset();
+    document.getElementById('acType').disabled = false;
+    document.getElementById('acCode').disabled = false;
     editingSrno = null;
+}
+
+// When Account Type changes in Add mode: GROUP hides/locks Account Code, GL allows it
+function onAcTypeChange() {
+    const acTypeRaw = document.getElementById('acType').value;
+    const acCodeInput = document.getElementById('acCode');
+    if (acTypeRaw === 'GROUP') {
+        acCodeInput.disabled = true;
+        acCodeInput.value = '';
+    } else {
+        acCodeInput.disabled = false;
+    }
 }
 
 // Populate parent dropdown
@@ -1197,8 +1233,18 @@ function onLevelChange() {
 function saveAccount(event) {
     event.preventDefault();
     
-    const acCode = document.getElementById('acCode').value.trim();
-    const acType = document.getElementById('acType').value;
+    // Account Type and Account Code are locked when editing - preserve original values from the loaded record
+    let acCode = document.getElementById('acCode').value.trim();
+    // AC_TYPE in Gsheet: GL = Ledger, blank = Group (GROUP option maps to blank)
+    let acTypeRaw = document.getElementById('acType').value;
+    if (editingSrno) {
+        const original = allAccounts.find(a => a.srno == editingSrno);
+        if (original) {
+            acCode = original.acCode || '';
+            acTypeRaw = (original.acType || '').toUpperCase() === 'GL' ? 'GL' : 'GROUP';
+        }
+    }
+    const acType = acTypeRaw === 'GL' ? 'GL' : '';
     const description = document.getElementById('description').value.trim();
     const level = parseInt(document.getElementById('level').value);
     const parent = parseInt(document.getElementById('parent').value) || 0;
@@ -1209,10 +1255,28 @@ function saveAccount(event) {
     const actypeDocno = document.getElementById('actypeDocno').value;
     const remarks = document.getElementById('remarks').value.trim();
     
-    // Validation
-    if (!acType) {
+    // Validation (check the raw dropdown value: GL or GROUP both valid; blank = not selected)
+    if (!acTypeRaw) {
         showMessage('Please select an Account Type', 'error');
         return;
+    }
+    
+    // GL (Ledger) accounts must have an Account Code
+    if (acTypeRaw === 'GL' && !acCode) {
+        showMessage('Account Code is required for Ledger (GL) accounts', 'error');
+        return;
+    }
+    
+    // Account Code must not be duplicated (allow the account itself when editing)
+    if (acCode) {
+        const duplicate = allAccounts.find(a =>
+            a.acCode && String(a.acCode).toUpperCase() === acCode.toUpperCase() &&
+            a.srno != editingSrno
+        );
+        if (duplicate) {
+            showMessage('Account Code "' + acCode + '" already exists', 'error');
+            return;
+        }
     }
     
     if (!description) {
@@ -1339,7 +1403,7 @@ function viewAccount(srno) {
             <table style="width: 100%; border-collapse: collapse;">
                 <tr><td style="padding: 8px 15px; font-weight: bold; color: #555; width: 150px;">Account Code</td><td style="padding: 8px 15px;"><code>${escapeHtml(account.acCode || '-')}</code></td></tr>
                 <tr style="background: #f8f9fa;"><td style="padding: 8px 15px; font-weight: bold; color: #555;">Description</td><td style="padding: 8px 15px;"><strong>${escapeHtml(account.description || '')}</strong></td></tr>
-                <tr><td style="padding: 8px 15px; font-weight: bold; color: #555;">Account Type</td><td style="padding: 8px 15px;">${escapeHtml(account.acType || '-')}</td></tr>
+                <tr><td style="padding: 8px 15px; font-weight: bold; color: #555;">Account Type</td><td style="padding: 8px 15px;">${escapeHtml((account.acType || '').toUpperCase() === 'GL' ? 'Ledger' : 'Group')}</td></tr>
                 <tr style="background: #f8f9fa;"><td style="padding: 8px 15px; font-weight: bold; color: #555;">Level</td><td style="padding: 8px 15px;">${account.level || '-'}</td></tr>
                 <tr><td style="padding: 8px 15px; font-weight: bold; color: #555;">Parent</td><td style="padding: 8px 15px;">${escapeHtml(parentDesc)}</td></tr>
                 <tr style="background: #f8f9fa;"><td style="padding: 8px 15px; font-weight: bold; color: #555;">First Level</td><td style="padding: 8px 15px;">${escapeHtml(firstLevelDesc)}</td></tr>

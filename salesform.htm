@@ -245,6 +245,10 @@ h2 {
     text-align: right;
 }
 
+.details-table td:has(.stock-search) {
+    position: relative;
+}
+
 .btn-icon {
     padding: 6px 10px;
     font-size: 12px;
@@ -1036,7 +1040,7 @@ function addDetailLine(data = null) {
     
     row.innerHTML = `
         <td>${srNo}</td>
-        <td>
+        <td style="position: relative;">
             <input type="text" class="stock-search" data-row="${detailLineCounter}" 
                    placeholder="Search..." value="${data ? data.stockCode : ''}" required>
             <input type="hidden" class="stock-code" value="${data ? data.stockCode : ''}">
@@ -1085,15 +1089,39 @@ function setupStockSearch(rowId) {
     const searchInput = row.querySelector('.stock-search');
     
     let dropdown = null;
+    let repositionHandler = null;
     
-    searchInput.addEventListener('input', function() {
-        const searchTerm = this.value.toLowerCase();
-        
-        // Remove existing dropdown
+    // Position dropdown below the input using fixed positioning (escapes overflow clipping)
+    function positionDropdown() {
+        if (!dropdown) return;
+        const rect = searchInput.getBoundingClientRect();
+        dropdown.style.position = 'fixed';
+        dropdown.style.top = (rect.bottom + 2) + 'px';
+        dropdown.style.left = rect.left + 'px';
+        dropdown.style.width = rect.width + 'px';
+        dropdown.style.maxHeight = '200px';
+        dropdown.style.overflowY = 'auto';
+        dropdown.style.zIndex = '10000';
+        dropdown.style.display = 'block';
+    }
+    
+    // Close and clean up dropdown
+    function closeDropdown() {
         if (dropdown) {
             dropdown.remove();
             dropdown = null;
         }
+        if (repositionHandler) {
+            window.removeEventListener('scroll', repositionHandler, true);
+            window.removeEventListener('resize', repositionHandler);
+            repositionHandler = null;
+        }
+    }
+    
+    searchInput.addEventListener('input', function() {
+        closeDropdown();
+        
+        const searchTerm = this.value.toLowerCase();
         
         if (searchTerm.length < 1) return;
         
@@ -1105,8 +1133,6 @@ function setupStockSearch(rowId) {
         if (filtered.length > 0) {
             dropdown = document.createElement('div');
             dropdown.className = 'searchable-dropdown active';
-            dropdown.style.position = 'absolute';
-            dropdown.style.zIndex = '1001';
             
             dropdown.innerHTML = filtered.map(s => 
                 `<div class="dropdown-item" onclick="selectStock(${rowId}, '${s.code}', '${escapeHtml(s.description)}', '${s.unitCode}')">
@@ -1114,16 +1140,22 @@ function setupStockSearch(rowId) {
                 </div>`
             ).join('');
             
-            searchInput.parentElement.appendChild(dropdown);
+            // Append to body to escape overflow clipping from the table container
+            document.body.appendChild(dropdown);
+            positionDropdown();
+            
+            // Reposition on scroll/resize while open
+            repositionHandler = function() {
+                positionDropdown();
+            };
+            window.addEventListener('scroll', repositionHandler, true);
+            window.addEventListener('resize', repositionHandler);
         }
     });
     
     searchInput.addEventListener('blur', function() {
         setTimeout(() => {
-            if (dropdown) {
-                dropdown.remove();
-                dropdown = null;
-            }
+            closeDropdown();
         }, 200);
     });
 }

@@ -448,9 +448,20 @@ function handleCreateCOAGet(e) {
     return createJsonResponse(errorResult);
   }
   
-  // Validate input
-  if (!accountData.description || !accountData.acType || !accountData.level) {
-    var errorResult = { status: "error", message: "Description, Account Type, and Level are required" };
+  // Validate input (AC_TYPE is optional: GL = ledger, blank = group/header)
+  if (!accountData.description || !accountData.level) {
+    var errorResult = { status: "error", message: "Description and Level are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // GL (Ledger) accounts must have an Account Code
+  var newAcType = accountData.acType || '';
+  if (String(newAcType).toUpperCase() === 'GL' && !accountData.acCode) {
+    var errorResult = { status: "error", message: "Account Code is required for Ledger (GL) accounts" };
     if (callback) {
       return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
         .setMimeType(ContentService.MimeType.JAVASCRIPT);
@@ -469,6 +480,21 @@ function handleCreateCOAGet(e) {
   var coaData = coaSheet.getDataRange().getValues();
   var maxDocno = 0;
   var maxSrno = 0;
+  
+  // Validate account code is not duplicated
+  if (accountData.acCode) {
+    var acCodeUpper = String(accountData.acCode).toString().toUpperCase();
+    for (var ci = 1; ci < coaData.length; ci++) {
+      if (coaData[ci][0] && String(coaData[ci][0]).toString().toUpperCase() == acCodeUpper) {
+        var errorResult = { status: "error", message: "Account Code already exists" };
+        if (callback) {
+          return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+            .setMimeType(ContentService.MimeType.JAVASCRIPT);
+        }
+        return createJsonResponse(errorResult);
+      }
+    }
+  }
   
   for (var i = 1; i < coaData.length; i++) {
     if (coaData[i][5]) {
@@ -617,10 +643,38 @@ function handleUpdateCOAGet(e) {
   var originalCreatedBy = coaData[rowIndex - 1][10];
   var originalCreatedTs = coaData[rowIndex - 1][11];
   
+  // GL (Ledger) accounts must have an Account Code
+  var acTypeToSave = accountData.hasOwnProperty('acType') ? (accountData.acType || '') : (coaData[rowIndex - 1][1] || '');
+  if (String(acTypeToSave).toUpperCase() === 'GL' && !accountData.acCode) {
+    var errorResult = { status: "error", message: "Account Code is required for Ledger (GL) accounts" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate account code is not duplicated (excluding this account itself)
+  if (accountData.acCode) {
+    var acCodeUpper = String(accountData.acCode).toString().toUpperCase();
+    for (var ci = 1; ci < coaData.length; ci++) {
+      if (coaData[ci][0] && String(coaData[ci][0]).toString().toUpperCase() == acCodeUpper &&
+          parseInt(coaData[ci][15]) != parseInt(accountData.srno)) {
+        var errorResult = { status: "error", message: "Account Code already exists" };
+        if (callback) {
+          return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+            .setMimeType(ContentService.MimeType.JAVASCRIPT);
+        }
+        return createJsonResponse(errorResult);
+      }
+    }
+  }
+  
   // Update the row
   coaSheet.getRange(rowIndex, 1, 1, 16).setValues([[
     accountData.acCode || '',
-    accountData.acType || coaData[rowIndex - 1][1],
+    // AC_TYPE: GL = ledger, blank = group. Allow clearing to blank (hasOwnProperty check).
+    accountData.hasOwnProperty('acType') ? accountData.acType : coaData[rowIndex - 1][1],
     accountData.description || coaData[rowIndex - 1][2],
     parseInt(accountData.level) || parseInt(coaData[rowIndex - 1][3]) || 1,
     parseInt(accountData.parent) || parseInt(coaData[rowIndex - 1][4]) || 0,
