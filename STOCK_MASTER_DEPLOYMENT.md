@@ -155,6 +155,13 @@ function updateStock(code, description, unitCode) {
 
 /**
  * Delete stock from StockMaster sheet
+ * 
+ * SAFE DELETE POLICY:
+ * 1. Checks all transaction/history sheets for references to this stock code.
+ * 2. If references exist, the delete is BLOCKED and an error message listing
+ *    the reference counts is returned. NOTHING is deleted in this case.
+ * 3. If no references exist, the stock's UnitMaster rows are auto-deleted
+ *    (cascade), then the StockMaster row is deleted.
  */
 function deleteStock(code) {
   try {
@@ -165,18 +172,126 @@ function deleteStock(code) {
     const sheet = getSheet('StockMaster');
     const data = sheet.getDataRange().getValues();
     
-    // Find and delete stock
+    // Find the stock first
+    let found = false;
+    let stockRowIndex = -1;
     for (let i = 1; i < data.length; i++) {
       if (data[i][0] && data[i][0].toString() === code.toString()) {
-        sheet.deleteRow(i + 1);
-        return createResponse('success', 'Stock deleted successfully');
+        stockRowIndex = i + 1;
+        found = true;
+        break;
       }
     }
     
-    return createResponse('error', 'Stock not found');
+    if (!found) {
+      return createResponse('error', 'Stock not found');
+    }
+    
+    // ---- Dependency check: block if referenced in any transaction/history ----
+    const refParts = [];
+    const refs = countStockReferences(code);
+    
+    if (refs.stockTransactions > 0) refParts.push(refs.stockTransactions + ' stock transaction(s)');
+    if (refs.openingStockDetails > 0) refParts.push(refs.openingStockDetails + ' opening stock detail(s)');
+    if (refs.salesDetails > 0) refParts.push(refs.salesDetails + ' sales detail(s)');
+    if (refs.purchaseDetails > 0) refParts.push(refs.purchaseDetails + ' purchase detail(s)');
+    if (refs.adjDetails > 0) refParts.push(refs.adjDetails + ' adjustment detail(s)');
+    
+    if (refParts.length > 0) {
+      return createResponse('error', 'Cannot delete: Stock \'' + code + '\' is referenced in ' + refParts.join(', ') + '. Delete or unlink these records first.');
+    }
+    
+    // ---- No references: cascade delete stock units, then delete the stock ----
+    const unitSheet = getSheet('StockUnit');
+    if (unitSheet) {
+      const unitData = unitSheet.getDataRange().getValues();
+      for (let u = unitData.length - 1; u >= 1; u--) {
+        if (unitData[u][0] && unitData[u][0].toString().toUpperCase() === code.toString().toUpperCase()) {
+          unitSheet.deleteRow(u + 1);
+        }
+      }
+    }
+    
+    // Delete the stock from StockMaster
+    sheet.deleteRow(stockRowIndex);
+    
+    return createResponse('success', 'Stock deleted successfully');
   } catch (error) {
     return createResponse('error', 'Error deleting stock: ' + error.message);
   }
+}
+
+/**
+ * Count references to a stock code across transaction/history sheets.
+ * Returns a counts object; all 0 means the stock is safe to delete.
+ */
+function countStockReferences(code) {
+  const refs = {
+    stockTransactions: 0,
+    openingStockDetails: 0,
+    salesDetails: 0,
+    purchaseDetails: 0,
+    adjDetails: 0
+  };
+  
+  if (!code) return refs;
+  
+  // StockTransaction sheet - stock code at index 7
+  const stockTransactionSheet = getSheet('StockTransaction');
+  if (stockTransactionSheet) {
+    const txData = stockTransactionSheet.getDataRange().getValues();
+    for (let i = 1; i < txData.length; i++) {
+      if (txData[i][7] && txData[i][7].toString().toUpperCase() === code.toString().toUpperCase()) {
+        refs.stockTransactions++;
+      }
+    }
+  }
+  
+  // SOPDetails sheet - stock code at index 3
+  const sopDetailsSheet = getSheet('SOPDetails');
+  if (sopDetailsSheet) {
+    const sopData = sopDetailsSheet.getDataRange().getValues();
+    for (let i = 1; i < sopData.length; i++) {
+      if (sopData[i][3] && sopData[i][3].toString().toUpperCase() === code.toString().toUpperCase()) {
+        refs.openingStockDetails++;
+      }
+    }
+  }
+  
+  // SalesDetails sheet - stock code at index 3
+  const salesDetailsSheet = getSheet('SalesDetails');
+  if (salesDetailsSheet) {
+    const salesData = salesDetailsSheet.getDataRange().getValues();
+    for (let i = 1; i < salesData.length; i++) {
+      if (salesData[i][3] && salesData[i][3].toString().toUpperCase() === code.toString().toUpperCase()) {
+        refs.salesDetails++;
+      }
+    }
+  }
+  
+  // PurchaseDetails sheet - stock code at index 3
+  const purchaseDetailsSheet = getSheet('PurchaseDetails');
+  if (purchaseDetailsSheet) {
+    const purchaseData = purchaseDetailsSheet.getDataRange().getValues();
+    for (let i = 1; i < purchaseData.length; i++) {
+      if (purchaseData[i][3] && purchaseData[i][3].toString().toUpperCase() === code.toString().toUpperCase()) {
+        refs.purchaseDetails++;
+      }
+    }
+  }
+  
+  // ADJDetails sheet - stock code at index 3
+  const adjDetailsSheet = getSheet('ADJDetails');
+  if (adjDetailsSheet) {
+    const adjData = adjDetailsSheet.getDataRange().getValues();
+    for (let i = 1; i < adjData.length; i++) {
+      if (adjData[i][3] && adjData[i][3].toString().toUpperCase() === code.toString().toUpperCase()) {
+        refs.adjDetails++;
+      }
+    }
+  }
+  
+  return refs;
 }
 ```
 
@@ -279,6 +394,12 @@ To make Stock Master accessible from the navigation menu:
 3. **UnitCode**: Required, must exist in UnitMaster sheet
 4. **Duplicate Prevention**: Cannot create stock with existing code
 5. **Foreign Key Validation**: UnitCode must reference valid unit
+6. **Safe Delete (Dependency Check)**: Cannot delete a stock that is referenced in any transaction/history sheet (StockTransaction, SOPDetails, SalesDetails, PurchaseDetails, ADJDetails)
+7. **Cascade Unit Cleanup**: When a stock is deleted (no references), its StockUnit rows are automatically removed
+
+### Delete Behavior:
+- **If stock is referenced**: Delete is BLOCKED. Error message lists the exact reference counts (e.g., "3 stock transaction(s), 2 sales detail(s)"). NOTHING is deleted.
+- **If stock is NOT referenced**: The stock's StockUnit rows are auto-deleted first, then the StockMaster row is deleted.
 
 ## Testing Checklist
 
@@ -290,7 +411,9 @@ To make Stock Master accessible from the navigation menu:
 - [ ] Cannot create stock with invalid unit code
 - [ ] Cannot create duplicate stock code
 - [ ] Can edit existing stock
-- [ ] Can delete stock
+- [ ] Can delete stock with no transaction history (units auto-deleted)
+- [ ] **Cannot delete stock that has sales/purchase/opening/adjustment/transaction references (blocked with detailed error)**
+- [ ] **Stock and its units remain intact when delete is blocked**
 - [ ] Search functionality works
 - [ ] Unit dropdown populates from Unit Master
 - [ ] Menu access configured

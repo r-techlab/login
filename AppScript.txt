@@ -3496,11 +3496,12 @@ function handleDeleteUnitGet(e) {
   var unitSheet = ss.getSheetByName("UnitMaster");
   var unitData = unitSheet.getDataRange().getValues();
   
-  // Find and delete unit
+  // Find the unit first
   var found = false;
+  var unitRowIndex = -1;
   for (var i = 1; i < unitData.length; i++) {
-    if (unitData[i][0] == unitCode) {
-      unitSheet.deleteRow(i + 1);
+    if (unitData[i][0] && unitData[i][0].toString().toUpperCase() == unitCode.toString().toUpperCase()) {
+      unitRowIndex = i + 1;
       found = true;
       break;
     }
@@ -3515,12 +3516,134 @@ function handleDeleteUnitGet(e) {
     return createJsonResponse(errorResult);
   }
   
+  // Check for references before deleting.
+  // If references exist, block the delete completely to avoid orphaned data.
+  var refs = countUnitReferences(ss, unitCode);
+  var refParts = [];
+  if (refs.stockMaster > 0) refParts.push(refs.stockMaster + " stock item(s)");
+  if (refs.stockUnits > 0) refParts.push(refs.stockUnits + " stock unit conversion(s)");
+  if (refs.stockTransactions > 0) refParts.push(refs.stockTransactions + " stock transaction(s)");
+  if (refs.openingStockDetails > 0) refParts.push(refs.openingStockDetails + " opening stock detail(s)");
+  if (refs.salesDetails > 0) refParts.push(refs.salesDetails + " sales detail(s)");
+  if (refs.purchaseDetails > 0) refParts.push(refs.purchaseDetails + " purchase detail(s)");
+  if (refs.adjDetails > 0) refParts.push(refs.adjDetails + " adjustment detail(s)");
+  
+  if (refParts.length > 0) {
+    var msg = "Cannot delete: Unit '" + unitCode + "' is in use by " + refParts.join(", ") + ". Delete or unlink these records first.";
+    var errorResult = { status: "error", message: msg };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // No references found - delete the unit from UnitMaster
+  unitSheet.deleteRow(unitRowIndex);
+  
   var result = { status: "success", message: "Unit deleted successfully" };
   if (callback) {
     return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
       .setMimeType(ContentService.MimeType.JAVASCRIPT);
   }
   return createJsonResponse(result);
+}
+
+// Count references to a unit code across stock master, stock unit conversions,
+// posted stock transactions, and transaction detail sheets
+function countUnitReferences(ss, unitCode) {
+  var refs = {
+    stockMaster: 0,
+    stockUnits: 0,
+    stockTransactions: 0,
+    openingStockDetails: 0,
+    salesDetails: 0,
+    purchaseDetails: 0,
+    adjDetails: 0
+  };
+  
+  if (!unitCode) return refs;
+  
+  var unitUpper = unitCode.toString().toUpperCase();
+  
+  // StockMaster sheet - unit code at index 2 (base unit)
+  var stockSheet = ss.getSheetByName("StockMaster");
+  if (stockSheet) {
+    var stockData = stockSheet.getDataRange().getValues();
+    for (var i = 1; i < stockData.length; i++) {
+      if (stockData[i][2] && stockData[i][2].toString().toUpperCase() == unitUpper) {
+        refs.stockMaster++;
+      }
+    }
+  }
+  
+  // StockUnit sheet - unit at index 1 (conversion units)
+  var stockUnitSheet = ss.getSheetByName("StockUnit");
+  if (stockUnitSheet) {
+    var stockUnitData = stockUnitSheet.getDataRange().getValues();
+    for (var i = 1; i < stockUnitData.length; i++) {
+      if (stockUnitData[i][1] && stockUnitData[i][1].toString().toUpperCase() == unitUpper) {
+        refs.stockUnits++;
+      }
+    }
+  }
+  
+  // StockTransaction sheet - BaseUnit at index 10
+  var stockTransactionSheet = ss.getSheetByName("StockTransaction");
+  if (stockTransactionSheet) {
+    var txData = stockTransactionSheet.getDataRange().getValues();
+    for (var i = 1; i < txData.length; i++) {
+      if (txData[i][10] && txData[i][10].toString().toUpperCase() == unitUpper) {
+        refs.stockTransactions++;
+      }
+    }
+  }
+  
+  // SOPDetails sheet - unit at index 6
+  var sopDetailsSheet = ss.getSheetByName("SOPDetails");
+  if (sopDetailsSheet) {
+    var sopData = sopDetailsSheet.getDataRange().getValues();
+    for (var i = 1; i < sopData.length; i++) {
+      if (sopData[i][6] && sopData[i][6].toString().toUpperCase() == unitUpper) {
+        refs.openingStockDetails++;
+      }
+    }
+  }
+  
+  // SalesDetails sheet - unit at index 6
+  var salesDetailsSheet = ss.getSheetByName("SalesDetails");
+  if (salesDetailsSheet) {
+    var salesData = salesDetailsSheet.getDataRange().getValues();
+    for (var i = 1; i < salesData.length; i++) {
+      if (salesData[i][6] && salesData[i][6].toString().toUpperCase() == unitUpper) {
+        refs.salesDetails++;
+      }
+    }
+  }
+  
+  // PurchaseDetails sheet - unit at index 6
+  var purchaseDetailsSheet = ss.getSheetByName("PurchaseDetails");
+  if (purchaseDetailsSheet) {
+    var purchaseData = purchaseDetailsSheet.getDataRange().getValues();
+    for (var i = 1; i < purchaseData.length; i++) {
+      if (purchaseData[i][6] && purchaseData[i][6].toString().toUpperCase() == unitUpper) {
+        refs.purchaseDetails++;
+      }
+    }
+  }
+  
+  // ADJDetails sheet - unit at index 6
+  var adjDetailsSheet = ss.getSheetByName("ADJDetails");
+  if (adjDetailsSheet) {
+    var adjData = adjDetailsSheet.getDataRange().getValues();
+    for (var i = 1; i < adjData.length; i++) {
+      if (adjData[i][6] && adjData[i][6].toString().toUpperCase() == unitUpper) {
+        refs.adjDetails++;
+      }
+    }
+  }
+  
+  return refs;
 }
 
 // ============================================
@@ -3704,11 +3827,21 @@ function handleUpdateStockGet(e) {
   
   var stockSheet = ss.getSheetByName("StockMaster");
   var stockData = stockSheet.getDataRange().getValues();
-  
+
   // Find and update stock
   var found = false;
   for (var i = 1; i < stockData.length; i++) {
     if (stockData[i][0] && stockData[i][0].toString() == code.toString()) {
+      // Base unit cannot be changed for an existing stock item - protect conversion integrity
+      var existingUnitCode = stockData[i][2] ? stockData[i][2].toString() : '';
+      if (existingUnitCode != unitCode.toString()) {
+        var errorResult = { status: "error", message: "Base unit cannot be changed for an existing stock item." };
+        if (callback) {
+          return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+            .setMimeType(ContentService.MimeType.JAVASCRIPT);
+        }
+        return createJsonResponse(errorResult);
+      }
       stockSheet.getRange(i + 1, 1, 1, 3).setValues([[code, description, unitCode]]);
       found = true;
       break;
@@ -3756,11 +3889,12 @@ function handleDeleteStockGet(e) {
   var stockSheet = ss.getSheetByName("StockMaster");
   var stockData = stockSheet.getDataRange().getValues();
   
-  // Find and delete stock
+  // Find the stock first
   var found = false;
+  var stockRowIndex = -1;
   for (var i = 1; i < stockData.length; i++) {
     if (stockData[i][0] && stockData[i][0].toString() == code.toString()) {
-      stockSheet.deleteRow(i + 1);
+      stockRowIndex = i + 1;
       found = true;
       break;
     }
@@ -3775,12 +3909,116 @@ function handleDeleteStockGet(e) {
     return createJsonResponse(errorResult);
   }
   
+  // Check for transaction/history references before deleting.
+  // If references exist, block the delete completely - do NOT delete units or the stock.
+  var refs = countStockReferences(ss, code);
+  var refParts = [];
+  if (refs.stockTransactions > 0) refParts.push(refs.stockTransactions + " stock transaction(s)");
+  if (refs.openingStockDetails > 0) refParts.push(refs.openingStockDetails + " opening stock detail(s)");
+  if (refs.salesDetails > 0) refParts.push(refs.salesDetails + " sales detail(s)");
+  if (refs.purchaseDetails > 0) refParts.push(refs.purchaseDetails + " purchase detail(s)");
+  if (refs.adjDetails > 0) refParts.push(refs.adjDetails + " adjustment detail(s)");
+  
+  if (refParts.length > 0) {
+    var msg = "Cannot delete: Stock '" + code + "' is referenced in " + refParts.join(", ") + ". Delete or unlink these records first.";
+    var errorResult = { status: "error", message: msg };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // No references found - cascade delete stock units for this stock code
+  var stockUnitSheet = ss.getSheetByName("StockUnit");
+  if (stockUnitSheet) {
+    var unitData = stockUnitSheet.getDataRange().getValues();
+    for (var u = unitData.length - 1; u >= 1; u--) {
+      if (unitData[u][0] && unitData[u][0].toString().toUpperCase() == code.toString().toUpperCase()) {
+        stockUnitSheet.deleteRow(u + 1);
+      }
+    }
+  }
+  
+  // Delete the stock from StockMaster
+  stockSheet.deleteRow(stockRowIndex);
+  
   var result = { status: "success", message: "Stock deleted successfully" };
   if (callback) {
     return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
       .setMimeType(ContentService.MimeType.JAVASCRIPT);
   }
   return createJsonResponse(result);
+}
+
+// Count references to a stock code across transaction/history sheets
+function countStockReferences(ss, code) {
+  var refs = {
+    stockTransactions: 0,
+    openingStockDetails: 0,
+    salesDetails: 0,
+    purchaseDetails: 0,
+    adjDetails: 0
+  };
+  
+  if (!code) return refs;
+  
+  // StockTransaction sheet - stock code at index 7
+  var stockTransactionSheet = ss.getSheetByName("StockTransaction");
+  if (stockTransactionSheet) {
+    var txData = stockTransactionSheet.getDataRange().getValues();
+    for (var i = 1; i < txData.length; i++) {
+      if (txData[i][7] && txData[i][7].toString().toUpperCase() == code.toString().toUpperCase()) {
+        refs.stockTransactions++;
+      }
+    }
+  }
+  
+  // SOPDetails sheet - stock code at index 3
+  var sopDetailsSheet = ss.getSheetByName("SOPDetails");
+  if (sopDetailsSheet) {
+    var sopData = sopDetailsSheet.getDataRange().getValues();
+    for (var i = 1; i < sopData.length; i++) {
+      if (sopData[i][3] && sopData[i][3].toString().toUpperCase() == code.toString().toUpperCase()) {
+        refs.openingStockDetails++;
+      }
+    }
+  }
+  
+  // SalesDetails sheet - stock code at index 3
+  var salesDetailsSheet = ss.getSheetByName("SalesDetails");
+  if (salesDetailsSheet) {
+    var salesData = salesDetailsSheet.getDataRange().getValues();
+    for (var i = 1; i < salesData.length; i++) {
+      if (salesData[i][3] && salesData[i][3].toString().toUpperCase() == code.toString().toUpperCase()) {
+        refs.salesDetails++;
+      }
+    }
+  }
+  
+  // PurchaseDetails sheet - stock code at index 3
+  var purchaseDetailsSheet = ss.getSheetByName("PurchaseDetails");
+  if (purchaseDetailsSheet) {
+    var purchaseData = purchaseDetailsSheet.getDataRange().getValues();
+    for (var i = 1; i < purchaseData.length; i++) {
+      if (purchaseData[i][3] && purchaseData[i][3].toString().toUpperCase() == code.toString().toUpperCase()) {
+        refs.purchaseDetails++;
+      }
+    }
+  }
+  
+  // ADJDetails sheet - stock code at index 3
+  var adjDetailsSheet = ss.getSheetByName("ADJDetails");
+  if (adjDetailsSheet) {
+    var adjData = adjDetailsSheet.getDataRange().getValues();
+    for (var i = 1; i < adjData.length; i++) {
+      if (adjData[i][3] && adjData[i][3].toString().toUpperCase() == code.toString().toUpperCase()) {
+        refs.adjDetails++;
+      }
+    }
+  }
+  
+  return refs;
 }
 
 // ============================================
@@ -4348,11 +4586,12 @@ function handleDeleteCustomerGet(e) {
   var customerSheet = ss.getSheetByName("CustomerMaster");
   var customerData = customerSheet.getDataRange().getValues();
   
-  // Find and delete customer
+  // Find the customer first
   var found = false;
+  var customerRowIndex = -1;
   for (var i = 1; i < customerData.length; i++) {
     if (customerData[i][0] && customerData[i][0].toString().toUpperCase() == code.toString().toUpperCase()) {
-      customerSheet.deleteRow(i + 1);
+      customerRowIndex = i + 1;
       found = true;
       break;
     }
@@ -4367,12 +4606,81 @@ function handleDeleteCustomerGet(e) {
     return createJsonResponse(errorResult);
   }
   
+  // Check for transaction/history references before deleting.
+  // If references exist, block the delete to preserve financial/audit history.
+  var refs = countCustomerReferences(ss, code);
+  var refParts = [];
+  if (refs.salesHeaders > 0) refParts.push(refs.salesHeaders + (refs.salesHeaders === 1 ? " sale" : " sales"));
+  if (refs.accountTransactions > 0) refParts.push(refs.accountTransactions + (refs.accountTransactions === 1 ? " accounting entry" : " accounting entries"));
+  if (refs.journalVoucherDetails > 0) refParts.push(refs.journalVoucherDetails + (refs.journalVoucherDetails === 1 ? " journal voucher line" : " journal voucher lines"));
+  
+  if (refParts.length > 0) {
+    var msg = "Cannot delete: Customer '" + code + "' is referenced in " + refParts.join(", ") + ". Delete or unlink these records first.";
+    var errorResult = { status: "error", message: msg };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // No references found - delete the customer
+  customerSheet.deleteRow(customerRowIndex);
+  
   var result = { status: "success", message: "Customer deleted successfully" };
   if (callback) {
     return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
       .setMimeType(ContentService.MimeType.JAVASCRIPT);
   }
   return createJsonResponse(result);
+}
+
+// Count references to a customer code across transaction/history sheets
+function countCustomerReferences(ss, code) {
+  var refs = {
+    salesHeaders: 0,
+    accountTransactions: 0,
+    journalVoucherDetails: 0
+  };
+  
+  if (!code) return refs;
+  
+  var codeUpper = code.toString().toUpperCase();
+  
+  // SalesHeader sheet - customer at index 3
+  var salesHeaderSheet = ss.getSheetByName("SalesHeader");
+  if (salesHeaderSheet) {
+    var salesData = salesHeaderSheet.getDataRange().getValues();
+    for (var i = 1; i < salesData.length; i++) {
+      if (salesData[i][3] && salesData[i][3].toString().toUpperCase() == codeUpper) {
+        refs.salesHeaders++;
+      }
+    }
+  }
+  
+  // AccountTransaction sheet - subledger (SUBLEDGER_DOCNO) at index 4
+  var accountTransactionSheet = ss.getSheetByName("AccountTransaction");
+  if (accountTransactionSheet) {
+    var txData = accountTransactionSheet.getDataRange().getValues();
+    for (var i = 1; i < txData.length; i++) {
+      if (txData[i][4] && txData[i][4].toString().toUpperCase() == codeUpper) {
+        refs.accountTransactions++;
+      }
+    }
+  }
+  
+  // JournalVoucherDetails sheet - Subledger at index 5
+  var jvDetailsSheet = ss.getSheetByName("JournalVoucherDetails");
+  if (jvDetailsSheet) {
+    var jvData = jvDetailsSheet.getDataRange().getValues();
+    for (var i = 1; i < jvData.length; i++) {
+      if (jvData[i][5] && jvData[i][5].toString().toUpperCase() == codeUpper) {
+        refs.journalVoucherDetails++;
+      }
+    }
+  }
+  
+  return refs;
 }
 
 // ============================================
@@ -4642,11 +4950,12 @@ function handleDeleteSupplierGet(e) {
   var supplierSheet = ss.getSheetByName("SupplierMaster");
   var supplierData = supplierSheet.getDataRange().getValues();
   
-  // Find and delete supplier
+  // Find the supplier first
   var found = false;
+  var supplierRowIndex = -1;
   for (var i = 1; i < supplierData.length; i++) {
     if (supplierData[i][0] && supplierData[i][0].toString().toUpperCase() == code.toString().toUpperCase()) {
-      supplierSheet.deleteRow(i + 1);
+      supplierRowIndex = i + 1;
       found = true;
       break;
     }
@@ -4661,12 +4970,81 @@ function handleDeleteSupplierGet(e) {
     return createJsonResponse(errorResult);
   }
   
+  // Check for transaction/history references before deleting.
+  // If references exist, block the delete to preserve financial/audit history.
+  var refs = countSupplierReferences(ss, code);
+  var refParts = [];
+  if (refs.purchaseHeaders > 0) refParts.push(refs.purchaseHeaders + (refs.purchaseHeaders === 1 ? " purchase" : " purchases"));
+  if (refs.accountTransactions > 0) refParts.push(refs.accountTransactions + (refs.accountTransactions === 1 ? " accounting entry" : " accounting entries"));
+  if (refs.journalVoucherDetails > 0) refParts.push(refs.journalVoucherDetails + (refs.journalVoucherDetails === 1 ? " journal voucher line" : " journal voucher lines"));
+  
+  if (refParts.length > 0) {
+    var msg = "Cannot delete: Supplier '" + code + "' is referenced in " + refParts.join(", ") + ". Delete or unlink these records first.";
+    var errorResult = { status: "error", message: msg };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // No references found - delete the supplier
+  supplierSheet.deleteRow(supplierRowIndex);
+  
   var result = { status: "success", message: "Supplier deleted successfully" };
   if (callback) {
     return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
       .setMimeType(ContentService.MimeType.JAVASCRIPT);
   }
   return createJsonResponse(result);
+}
+
+// Count references to a supplier code across transaction/history sheets
+function countSupplierReferences(ss, code) {
+  var refs = {
+    purchaseHeaders: 0,
+    accountTransactions: 0,
+    journalVoucherDetails: 0
+  };
+  
+  if (!code) return refs;
+  
+  var codeUpper = code.toString().toUpperCase();
+  
+  // PurchaseHeader sheet - supplier at index 3
+  var purchaseHeaderSheet = ss.getSheetByName("PurchaseHeader");
+  if (purchaseHeaderSheet) {
+    var purchaseData = purchaseHeaderSheet.getDataRange().getValues();
+    for (var i = 1; i < purchaseData.length; i++) {
+      if (purchaseData[i][3] && purchaseData[i][3].toString().toUpperCase() == codeUpper) {
+        refs.purchaseHeaders++;
+      }
+    }
+  }
+  
+  // AccountTransaction sheet - subledger (SUBLEDGER_DOCNO) at index 4
+  var accountTransactionSheet = ss.getSheetByName("AccountTransaction");
+  if (accountTransactionSheet) {
+    var txData = accountTransactionSheet.getDataRange().getValues();
+    for (var i = 1; i < txData.length; i++) {
+      if (txData[i][4] && txData[i][4].toString().toUpperCase() == codeUpper) {
+        refs.accountTransactions++;
+      }
+    }
+  }
+  
+  // JournalVoucherDetails sheet - Subledger at index 5
+  var jvDetailsSheet = ss.getSheetByName("JournalVoucherDetails");
+  if (jvDetailsSheet) {
+    var jvData = jvDetailsSheet.getDataRange().getValues();
+    for (var i = 1; i < jvData.length; i++) {
+      if (jvData[i][5] && jvData[i][5].toString().toUpperCase() == codeUpper) {
+        refs.journalVoucherDetails++;
+      }
+    }
+  }
+  
+  return refs;
 }
 
 // ============================================

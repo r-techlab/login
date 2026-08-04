@@ -657,6 +657,7 @@ function deleteUnit(unitCode) {
     
     let confirmMsg = `Are you sure you want to delete unit "${unit.unitDescription}" (Code: ${unitCode})?`;
     confirmMsg += '\n\nThis action cannot be undone.';
+    confirmMsg += '\nNote: Deletion will be blocked if this unit is in use by any stock item or transaction.';
     
     if (!confirm(confirmMsg)) {
         return;
