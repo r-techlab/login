@@ -741,9 +741,35 @@ function handleDeleteCOAGet(e) {
   
   var coaData = coaSheet.getDataRange().getValues();
   var found = false;
+  var accountCode = '';
+  var accountType = '';
+  var accountDesc = '';
   
   for (var i = 1; i < coaData.length; i++) {
     if (parseInt(coaData[i][15]) == parseInt(srno)) {
+      accountCode = String(coaData[i][0] || '');
+      accountType = String(coaData[i][1] || '').toUpperCase();
+      accountDesc = coaData[i][2] || '';
+      
+      // If this is a GL (posting) account, validate it is not referenced anywhere
+      if (accountType === 'GL') {
+        var refs = countCOAReferences(ss, accountCode);
+        var refParts = [];
+        if (refs.journalVoucherDetails > 0) refParts.push(refs.journalVoucherDetails + (refs.journalVoucherDetails === 1 ? " journal voucher line" : " journal voucher lines"));
+        if (refs.accountTransactions > 0) refParts.push(refs.accountTransactions + (refs.accountTransactions === 1 ? " accounting entry" : " accounting entries"));
+        if (refs.systemParameters > 0) refParts.push(refs.systemParameters + " system parameter(s) (" + refs.systemParamCodes.join(", ") + ")");
+        
+        if (refParts.length > 0) {
+          var msg = "Cannot delete: Account '" + accountCode + (accountDesc ? ' - ' + accountDesc : '') + "' is referenced in " + refParts.join(", ") + ". Delete or unlink these records first.";
+          var errorResult = { status: "error", message: msg };
+          if (callback) {
+            return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+              .setMimeType(ContentService.MimeType.JAVASCRIPT);
+          }
+          return createJsonResponse(errorResult);
+        }
+      }
+      
       coaSheet.deleteRow(i + 1);
       found = true;
       break;
@@ -765,6 +791,56 @@ function handleDeleteCOAGet(e) {
       .setMimeType(ContentService.MimeType.JAVASCRIPT);
   }
   return createJsonResponse(result);
+}
+
+// Count references to a COA account code across transaction/history/config sheets
+function countCOAReferences(ss, acCode) {
+  var refs = {
+    journalVoucherDetails: 0,
+    accountTransactions: 0,
+    systemParameters: 0,
+    systemParamCodes: []
+  };
+  
+  if (!acCode) return refs;
+  
+  var codeUpper = acCode.toString().toUpperCase();
+  
+  // JournalVoucherDetails sheet - ACCode at index 3
+  var jvDetailsSheet = ss.getSheetByName("JournalVoucherDetails");
+  if (jvDetailsSheet) {
+    var jvData = jvDetailsSheet.getDataRange().getValues();
+    for (var i = 1; i < jvData.length; i++) {
+      if (jvData[i][3] && String(jvData[i][3]).toUpperCase() == codeUpper) {
+        refs.journalVoucherDetails++;
+      }
+    }
+  }
+  
+  // AccountTransaction sheet - AC_DOCNO at index 3
+  var accountTransactionSheet = ss.getSheetByName("AccountTransaction");
+  if (accountTransactionSheet) {
+    var txData = accountTransactionSheet.getDataRange().getValues();
+    for (var i = 1; i < txData.length; i++) {
+      if (txData[i][3] && String(txData[i][3]).toUpperCase() == codeUpper) {
+        refs.accountTransactions++;
+      }
+    }
+  }
+  
+  // SystemParameters sheet - Value at index 1 (default posting account codes)
+  var systemParamSheet = ss.getSheetByName("SystemParameters");
+  if (systemParamSheet) {
+    var paramData = systemParamSheet.getDataRange().getValues();
+    for (var i = 1; i < paramData.length; i++) {
+      if (paramData[i][1] && String(paramData[i][1]).toUpperCase() == codeUpper) {
+        refs.systemParameters++;
+        refs.systemParamCodes.push(paramData[i][0] || 'UNKNOWN');
+      }
+    }
+  }
+  
+  return refs;
 }
 // MAIN ENDPOINTS
 // ============================================
@@ -5237,11 +5313,12 @@ function handleDeleteSalesmanGet(e) {
   var salesmanSheet = ss.getSheetByName("Salesman");
   var salesmanData = salesmanSheet.getDataRange().getValues();
   
-  // Find and delete salesman
+  // Find the salesman first
   var found = false;
+  var salesmanRowIndex = -1;
   for (var i = 1; i < salesmanData.length; i++) {
     if (salesmanData[i][0] && salesmanData[i][0].toString().toUpperCase() == code.toString().toUpperCase()) {
-      salesmanSheet.deleteRow(i + 1);
+      salesmanRowIndex = i + 1;
       found = true;
       break;
     }
@@ -5256,12 +5333,68 @@ function handleDeleteSalesmanGet(e) {
     return createJsonResponse(errorResult);
   }
   
+  // Check for transaction/history references before deleting.
+  // If references exist, block the delete to preserve financial/audit history.
+  var refs = countSalesmanReferences(ss, code);
+  var refParts = [];
+  if (refs.salesHeaders > 0) refParts.push(refs.salesHeaders + (refs.salesHeaders === 1 ? " sale" : " sales"));
+  if (refs.purchaseHeaders > 0) refParts.push(refs.purchaseHeaders + (refs.purchaseHeaders === 1 ? " purchase" : " purchases"));
+  
+  if (refParts.length > 0) {
+    var msg = "Cannot delete: Salesman '" + code + "' is referenced in " + refParts.join(", ") + ". Delete or unlink these records first.";
+    var errorResult = { status: "error", message: msg };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // No references found - delete the salesman
+  salesmanSheet.deleteRow(salesmanRowIndex);
+  
   var result = { status: "success", message: "Salesman deleted successfully" };
   if (callback) {
     return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
       .setMimeType(ContentService.MimeType.JAVASCRIPT);
   }
   return createJsonResponse(result);
+}
+
+// Count references to a salesman code across transaction/history sheets
+function countSalesmanReferences(ss, code) {
+  var refs = {
+    salesHeaders: 0,
+    purchaseHeaders: 0
+  };
+  
+  if (!code) return refs;
+  
+  var codeUpper = code.toString().toUpperCase();
+  
+  // SalesHeader sheet - salesman at index 18
+  var salesHeaderSheet = ss.getSheetByName("SalesHeader");
+  if (salesHeaderSheet) {
+    var salesData = salesHeaderSheet.getDataRange().getValues();
+    for (var i = 1; i < salesData.length; i++) {
+      if (salesData[i][18] && salesData[i][18].toString().toUpperCase() == codeUpper) {
+        refs.salesHeaders++;
+      }
+    }
+  }
+  
+  // PurchaseHeader sheet - salesman at index 18
+  var purchaseHeaderSheet = ss.getSheetByName("PurchaseHeader");
+  if (purchaseHeaderSheet) {
+    var purchaseData = purchaseHeaderSheet.getDataRange().getValues();
+    for (var i = 1; i < purchaseData.length; i++) {
+      if (purchaseData[i][18] && purchaseData[i][18].toString().toUpperCase() == codeUpper) {
+        refs.purchaseHeaders++;
+      }
+    }
+  }
+  
+  return refs;
 }
 
 // ============================================

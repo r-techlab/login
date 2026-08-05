@@ -1339,10 +1339,32 @@ function saveAccount(event) {
     }
 }
 
+// Check if a group account has any GL (posting) account anywhere in its descendant tree
+function hasGLDescendant(docno) {
+    const children = allAccounts.filter(a => a.parent == docno);
+    for (const child of children) {
+        if ((child.acType || '').toUpperCase() === 'GL') {
+            return true;
+        }
+        if (hasGLDescendant(child.docno)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 // Delete account
 function deleteAccount(srno) {
     const account = allAccounts.find(a => a.srno == srno);
     if (!account) return;
+    
+    const isGroup = (account.acType || '').toUpperCase() !== 'GL';
+    
+    // Group accounts cannot be deleted if they contain any GL (posting) accounts anywhere in their tree
+    if (isGroup && hasGLDescendant(account.docno)) {
+        showMessage('Cannot delete group "' + account.description + '": it contains GL account(s). Delete or move the GL accounts under this group first.', 'error');
+        return;
+    }
     
     // Check if account has children
     const hasChildren = allAccounts.some(a => a.parent == account.docno);
