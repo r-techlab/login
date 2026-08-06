@@ -492,9 +492,9 @@ tbody tr:hover {
                 <h3>📋 Basic Information</h3>
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="customerCode">Code *</label>
-                        <input type="text" id="customerCode" required maxlength="50" placeholder="e.g., CUST001" style="text-transform: uppercase;">
-                        <small>Format: CUST + numbers (e.g., CUST001)</small>
+                        <label for="customerCode">Code</label>
+                        <input type="text" id="customerCode" maxlength="50" readonly placeholder="Auto-generated" style="text-transform: uppercase; background: #f0f0f0;">
+                        <small>Auto-generated sequential customer code (format: CUST + numbers)</small>
                     </div>
                     <div class="form-group">
                         <label for="customerDescription">Description *</label>
@@ -704,18 +704,23 @@ function openAddCustomerModal() {
     document.getElementById('modalTitle').textContent = 'Add New Customer';
     document.getElementById('customerForm').reset();
     
-    // Auto-generate next customer code
-    let maxNum = 10000;
-    allCustomers.forEach(c => {
-        const code = c.code.toString();
-        if (code.startsWith('CUST')) {
-            const num = parseInt(code.substring(4));
-            if (num > maxNum) maxNum = num;
+    // Fetch the next customer code from the server
+    document.getElementById('customerCode').value = '⏳ Generating...';
+    document.getElementById('customerCode').disabled = true;
+    
+    // Disable Save button while the code is being fetched
+    const saveButton = document.getElementById('saveButton');
+    saveButton.disabled = true;
+    
+    apiGetNextCustomerCode(function(response) {
+        saveButton.disabled = false;
+        if (response.status === 'success') {
+            document.getElementById('customerCode').value = response.nextCode;
+        } else {
+            // If server call fails, leave the field empty - the server will auto-generate on save
+            document.getElementById('customerCode').value = '';
         }
     });
-    const nextCode = 'CUST' + (maxNum + 1);
-    document.getElementById('customerCode').value = nextCode;
-    document.getElementById('customerCode').disabled = true; // Read-only for auto-generated code
     
     document.getElementById('saveButton').textContent = 'Save Customer';
     document.getElementById('customerModal').style.display = 'block';
@@ -798,12 +803,13 @@ function saveCustomer(event) {
     const customerAddressCountry = document.getElementById('customerAddressCountry').value.trim();
     
     // Validation
-    if (!customerCode || !customerDescription) {
-        showMessage('Please fill in all required fields (Code and Description)', 'error');
+    if (!customerDescription) {
+        showMessage('Please fill in all required fields', 'error');
         return;
     }
     
-    if (!validateCustomerCode(customerCode)) {
+    // Validate code format only if a code was provided (server auto-generates when empty)
+    if (customerCode && !validateCustomerCode(customerCode)) {
         showMessage('Customer Code must follow the format: CUST + numbers (e.g., CUST001)', 'error');
         return;
     }
@@ -823,8 +829,8 @@ function saveCustomer(event) {
         return;
     }
     
-    // Check for duplicate customer code when adding
-    if (!editingCustomerCode) {
+    // Check for duplicate customer code when adding (only if a code was pre-filled)
+    if (!editingCustomerCode && customerCode) {
         const duplicate = allCustomers.find(c => c.code == customerCode);
         if (duplicate) {
             showMessage('Customer Code already exists. Please use a different code.', 'error');
@@ -836,8 +842,8 @@ function saveCustomer(event) {
     saveButton.disabled = true;
     saveButton.textContent = editingCustomerCode ? 'Updating...' : 'Saving...';
     
+    // For new customers, if code is empty, omit it so the server auto-generates it
     const customerData = {
-        code: customerCode,
         description: customerDescription,
         trn: customerTRN,
         tel1: customerTel1,
@@ -852,6 +858,9 @@ function saveCustomer(event) {
         addressPO: customerAddressPO,
         addressCountry: customerAddressCountry
     };
+    if (customerCode) {
+        customerData.code = customerCode;
+    }
     
     if (editingCustomerCode) {
         // Update existing customer

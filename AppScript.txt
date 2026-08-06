@@ -948,12 +948,16 @@ function doGet(e) {
     return handleDeleteUnitGet(e);
   } else if (action === "getStocks") {
     return handleGetStocksGet(e);
+  } else if (action === "getNextStockCode") {
+    return handleGetNextStockCodeGet(e);
   } else if (action === "createStock") {
     return handleCreateStockGet(e);
   } else if (action === "updateStock") {
     return handleUpdateStockGet(e);
   } else if (action === "deleteStock") {
     return handleDeleteStockGet(e);
+  } else if (action === "getNextCustomerCode") {
+    return handleGetNextCustomerCodeGet(e);
   } else if (action === "getCustomers") {
     return handleGetCustomersGet(e);
   } else if (action === "createCustomer") {
@@ -962,6 +966,8 @@ function doGet(e) {
     return handleUpdateCustomerGet(e);
   } else if (action === "deleteCustomer") {
     return handleDeleteCustomerGet(e);
+  } else if (action === "getNextSupplierCode") {
+    return handleGetNextSupplierCodeGet(e);
   } else if (action === "getSuppliers") {
     return handleGetSuppliersGet(e);
   } else if (action === "createSupplier") {
@@ -970,6 +976,8 @@ function doGet(e) {
     return handleUpdateSupplierGet(e);
   } else if (action === "deleteSupplier") {
     return handleDeleteSupplierGet(e);
+  } else if (action === "getNextSalesmanCode") {
+    return handleGetNextSalesmanCodeGet(e);
   } else if (action === "getSalesmen") {
     return handleGetSalesmenGet(e);
   } else if (action === "createSalesman") {
@@ -1108,6 +1116,8 @@ function doGet(e) {
     return handleGetJournalVoucherReportGet(e);
   } else if (action === "getStatementOfAccount") {
     return handleGetStatementOfAccountGet(e);
+  } else if (action === "getTrialBalance") {
+    return handleGetTrialBalanceGet(e);
   } else {
     var errorResult = { status: "error", message: "Invalid action" };
     var callback = e.parameter.callback;
@@ -3769,6 +3779,65 @@ function handleGetStocksGet(e) {
   return createJsonResponse(result);
 }
 
+// Get the next auto-generated stock code
+function handleGetNextStockCodeGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Read the full StockMaster sheet to find the maximum numeric code
+  var stockSheet = ss.getSheetByName("StockMaster");
+  var stockData = stockSheet.getDataRange().getValues();
+  var maxNum = 0;
+  
+  for (var i = 1; i < stockData.length; i++) {
+    if (stockData[i][0]) {
+      var code = stockData[i][0].toString();
+      // Try to parse the code as a number (or extract trailing numeric portion)
+      var num = parseInt(code, 10);
+      if (isNaN(num)) {
+        // If code has non-numeric prefix, try to extract trailing digits
+        var match = code.match(/(\d+)$/);
+        if (match) {
+          num = parseInt(match[1], 10);
+        }
+      }
+      if (!isNaN(num) && num > maxNum) {
+        maxNum = num;
+      }
+    }
+  }
+  
+  // Next number is maxNum + 1, zero-padded to 4 digits
+  var nextNum = maxNum + 1;
+  var nextCode = nextNum.toString();
+  // Pad to at least 4 digits
+  while (nextCode.length < 4) {
+    nextCode = '0' + nextCode;
+  }
+  
+  var result = { status: "success", nextCode: nextCode };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
 // Create new stock
 function handleCreateStockGet(e) {
   var sessionId = e.parameter.sessionId;
@@ -3792,9 +3861,9 @@ function handleCreateStockGet(e) {
     return createJsonResponse(errorResult);
   }
   
-  // Validate input
-  if (!code || !description || !unitCode) {
-    var errorResult = { status: "error", message: "Code, Description, and UnitCode are required" };
+  // Validate input - description and unitCode are required
+  if (!description || !unitCode) {
+    var errorResult = { status: "error", message: "Description and UnitCode are required" };
     if (callback) {
       return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
         .setMimeType(ContentService.MimeType.JAVASCRIPT);
@@ -3804,6 +3873,30 @@ function handleCreateStockGet(e) {
   
   var stockSheet = ss.getSheetByName("StockMaster");
   var stockData = stockSheet.getDataRange().getValues();
+  
+  // If code is not provided, auto-generate it from the full StockMaster sheet
+  if (!code) {
+    var maxNum = 0;
+    for (var i = 1; i < stockData.length; i++) {
+      if (stockData[i][0]) {
+        var existingCode = stockData[i][0].toString();
+        var num = parseInt(existingCode, 10);
+        if (isNaN(num)) {
+          var match = existingCode.match(/(\d+)$/);
+          if (match) {
+            num = parseInt(match[1], 10);
+          }
+        }
+        if (!isNaN(num) && num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+    code = (maxNum + 1).toString();
+    while (code.length < 4) {
+      code = '0' + code;
+    }
+  }
   
   // Check if stock code already exists
   for (var i = 1; i < stockData.length; i++) {
@@ -4453,6 +4546,54 @@ function handleGetCustomersGet(e) {
   return createJsonResponse(result);
 }
 
+// Get the next auto-generated customer code
+function handleGetNextCustomerCodeGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Read the full CustomerMaster sheet to find the maximum CUST numeric code
+  var customerSheet = ss.getSheetByName("CustomerMaster");
+  var customerData = customerSheet.getDataRange().getValues();
+  var maxNum = 10000; // Starting number (matches existing CUST001+ format)
+  
+  for (var i = 1; i < customerData.length; i++) {
+    if (customerData[i][0]) {
+      var code = customerData[i][0].toString();
+      if (code.toUpperCase().startsWith('CUST')) {
+        var num = parseInt(code.substring(4));
+        if (!isNaN(num) && num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+  }
+  
+  // Next number is maxNum + 1
+  var nextCode = 'CUST' + (maxNum + 1);
+  
+  var result = { status: "success", nextCode: nextCode };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
 // Create new customer
 function handleCreateCustomerGet(e) {
   var sessionId = e.parameter.sessionId;
@@ -4488,13 +4629,33 @@ function handleCreateCustomerGet(e) {
   }
   
   // Validate input
-  if (!code || !description) {
-    var errorResult = { status: "error", message: "Code and Description are required" };
+  if (!description) {
+    var errorResult = { status: "error", message: "Description is required" };
     if (callback) {
       return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
         .setMimeType(ContentService.MimeType.JAVASCRIPT);
     }
     return createJsonResponse(errorResult);
+  }
+  
+  var customerSheet = ss.getSheetByName("CustomerMaster");
+  var customerData = customerSheet.getDataRange().getValues();
+  
+  // If code is not provided, auto-generate it from the full CustomerMaster sheet
+  if (!code) {
+    var maxNum = 10000; // Starting number
+    for (var i = 1; i < customerData.length; i++) {
+      if (customerData[i][0]) {
+        var existingCode = customerData[i][0].toString();
+        if (existingCode.toUpperCase().startsWith('CUST')) {
+          var num = parseInt(existingCode.substring(4));
+          if (!isNaN(num) && num > maxNum) {
+            maxNum = num;
+          }
+        }
+      }
+    }
+    code = 'CUST' + (maxNum + 1);
   }
   
   // Validate code format (CUST + numbers)
@@ -4507,9 +4668,6 @@ function handleCreateCustomerGet(e) {
     }
     return createJsonResponse(errorResult);
   }
-  
-  var customerSheet = ss.getSheetByName("CustomerMaster");
-  var customerData = customerSheet.getDataRange().getValues();
   
   // Check if customer code already exists
   for (var i = 1; i < customerData.length; i++) {
@@ -4817,6 +4975,54 @@ function handleGetSuppliersGet(e) {
   return createJsonResponse(result);
 }
 
+// Get the next auto-generated supplier code
+function handleGetNextSupplierCodeGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Read the full SupplierMaster sheet to find the maximum SUPP numeric code
+  var supplierSheet = ss.getSheetByName("SupplierMaster");
+  var supplierData = supplierSheet.getDataRange().getValues();
+  var maxNum = 10000; // Starting number (matches existing SUPP001+ format)
+  
+  for (var i = 1; i < supplierData.length; i++) {
+    if (supplierData[i][0]) {
+      var code = supplierData[i][0].toString();
+      if (code.toUpperCase().startsWith('SUPP')) {
+        var num = parseInt(code.substring(4));
+        if (!isNaN(num) && num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+  }
+  
+  // Next number is maxNum + 1
+  var nextCode = 'SUPP' + (maxNum + 1);
+  
+  var result = { status: "success", nextCode: nextCode };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
 // Create new supplier
 function handleCreateSupplierGet(e) {
   var sessionId = e.parameter.sessionId;
@@ -4852,13 +5058,33 @@ function handleCreateSupplierGet(e) {
   }
   
   // Validate input
-  if (!code || !description) {
-    var errorResult = { status: "error", message: "Code and Description are required" };
+  if (!description) {
+    var errorResult = { status: "error", message: "Description is required" };
     if (callback) {
       return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
         .setMimeType(ContentService.MimeType.JAVASCRIPT);
     }
     return createJsonResponse(errorResult);
+  }
+  
+  var supplierSheet = ss.getSheetByName("SupplierMaster");
+  var supplierData = supplierSheet.getDataRange().getValues();
+  
+  // If code is not provided, auto-generate it from the full SupplierMaster sheet
+  if (!code) {
+    var maxNum = 10000; // Starting number
+    for (var i = 1; i < supplierData.length; i++) {
+      if (supplierData[i][0]) {
+        var existingCode = supplierData[i][0].toString();
+        if (existingCode.toUpperCase().startsWith('SUPP')) {
+          var num = parseInt(existingCode.substring(4));
+          if (!isNaN(num) && num > maxNum) {
+            maxNum = num;
+          }
+        }
+      }
+    }
+    code = 'SUPP' + (maxNum + 1);
   }
   
   // Validate code format (SUPP + numbers)
@@ -4871,9 +5097,6 @@ function handleCreateSupplierGet(e) {
     }
     return createJsonResponse(errorResult);
   }
-  
-  var supplierSheet = ss.getSheetByName("SupplierMaster");
-  var supplierData = supplierSheet.getDataRange().getValues();
   
   // Check if supplier code already exists
   for (var i = 1; i < supplierData.length; i++) {
@@ -5169,6 +5392,54 @@ function handleGetSalesmenGet(e) {
   return createJsonResponse(result);
 }
 
+// Get the next auto-generated salesman code
+function handleGetNextSalesmanCodeGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Read the full Salesman sheet to find the maximum SM numeric code
+  var salesmanSheet = ss.getSheetByName("Salesman");
+  var salesmanData = salesmanSheet.getDataRange().getValues();
+  var maxNum = 10000; // Starting number (high enough to avoid collisions with existing SM001-format codes)
+  
+  for (var i = 1; i < salesmanData.length; i++) {
+    if (salesmanData[i][0]) {
+      var code = salesmanData[i][0].toString();
+      if (code.toUpperCase().startsWith('SM')) {
+        var num = parseInt(code.substring(2));
+        if (!isNaN(num) && num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+  }
+  
+  // Next number is maxNum + 1
+  var nextCode = 'SM' + (maxNum + 1);
+  
+  var result = { status: "success", nextCode: nextCode };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
 // Create new salesman
 function handleCreateSalesmanGet(e) {
   var sessionId = e.parameter.sessionId;
@@ -5192,8 +5463,8 @@ function handleCreateSalesmanGet(e) {
   }
   
   // Validate input
-  if (!code || !description) {
-    var errorResult = { status: "error", message: "Code and Description are required" };
+  if (!description) {
+    var errorResult = { status: "error", message: "Description is required" };
     if (callback) {
       return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
         .setMimeType(ContentService.MimeType.JAVASCRIPT);
@@ -5203,6 +5474,23 @@ function handleCreateSalesmanGet(e) {
   
   var salesmanSheet = ss.getSheetByName("Salesman");
   var salesmanData = salesmanSheet.getDataRange().getValues();
+  
+  // If code is not provided, auto-generate it from the full Salesman sheet
+  if (!code) {
+    var maxNum = 10000; // Starting number
+    for (var i = 1; i < salesmanData.length; i++) {
+      if (salesmanData[i][0]) {
+        var existingCode = salesmanData[i][0].toString();
+        if (existingCode.toUpperCase().startsWith('SM')) {
+          var num = parseInt(existingCode.substring(2));
+          if (!isNaN(num) && num > maxNum) {
+            maxNum = num;
+          }
+        }
+      }
+    }
+    code = 'SM' + (maxNum + 1);
+  }
   
   // Check if salesman code already exists
   for (var i = 1; i < salesmanData.length; i++) {
@@ -11504,6 +11792,171 @@ function handleGetStatementOfAccountGet(e) {
       totalCredit: Math.round(totalCredit * 100) / 100,
       closingBalance: Math.round(closingBalance * 100) / 100
     }
+  };
+  
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// ============================================
+// TRIAL BALANCE HANDLER
+// ============================================
+
+// Get trial balance (GL accounts with total debits and credits for a date range)
+function handleGetTrialBalanceGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var fromDate = e.parameter.fromDate || '';
+  var toDate = e.parameter.toDate || '';
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Build COA lookup map - only GL (posting) accounts
+  var coaSheet = ss.getSheetByName("COA");
+  var coaMap = {}; // acCode -> { description, acType }
+  var allGlCodes = {}; // track all GL account codes in COA
+  if (coaSheet) {
+    var coaData = coaSheet.getDataRange().getValues();
+    for (var i = 1; i < coaData.length; i++) {
+      var acCode = String(coaData[i][0] || '');
+      var acType = String(coaData[i][1] || '');
+      var desc = coaData[i][2] || '';
+      if (acCode) {
+        coaMap[acCode] = { description: desc, acType: acType };
+        if (acType === 'GL') {
+          allGlCodes[acCode] = { description: desc, acType: acType };
+        }
+      }
+    }
+  }
+  
+  // Get AccountTransaction sheet
+  var accountTransactionSheet = ss.getSheetByName("AccountTransaction");
+  var totalsMap = {}; // acCode -> { totalDebit, totalCredit }
+  
+  if (accountTransactionSheet) {
+    var data = accountTransactionSheet.getDataRange().getValues();
+    
+    for (var i = 1; i < data.length; i++) {
+      var acDocNo = String(data[i][3] || '');
+      if (!acDocNo) continue;
+      
+      // Apply date range filter on VALDATE (index 6)
+      var valDate = '';
+      if (data[i][6]) {
+        try {
+          valDate = Utilities.formatDate(new Date(data[i][6]), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+        } catch (e) {
+          valDate = '';
+        }
+      }
+      if (fromDate && valDate < fromDate) continue;
+      if (toDate && valDate > toDate) continue;
+      
+      var amount = parseFloat(data[i][8]) || 0;
+      
+      // Only include accounts that exist in COA as GL accounts
+      var coaInfo = coaMap[acDocNo];
+      if (!coaInfo || coaInfo.acType !== 'GL') continue;
+      
+      if (!totalsMap[acDocNo]) {
+        totalsMap[acDocNo] = { totalDebit: 0, totalCredit: 0 };
+      }
+      
+      if (amount < 0) {
+        totalsMap[acDocNo].totalDebit += Math.abs(amount);
+      } else {
+        totalsMap[acDocNo].totalCredit += amount;
+      }
+    }
+  }
+  
+  // Also include GL accounts that have no transactions (zero balances)
+  var allCodes = {};
+  for (var code in allGlCodes) {
+    if (allGlCodes.hasOwnProperty(code)) {
+      allCodes[code] = true;
+    }
+  }
+  for (var code2 in totalsMap) {
+    if (totalsMap.hasOwnProperty(code2)) {
+      allCodes[code2] = true;
+    }
+  }
+  
+  // Build rows
+  var rows = [];
+  for (var ac in allCodes) {
+    if (allCodes.hasOwnProperty(ac)) {
+      var t = totalsMap[ac] || { totalDebit: 0, totalCredit: 0 };
+      var info = coaMap[ac] || { description: '', acType: '' };
+      var netDebit = 0;
+      var netCredit = 0;
+      var net = t.totalDebit - t.totalCredit;
+      if (net > 0) {
+        netDebit = net;
+      } else {
+        netCredit = Math.abs(net);
+      }
+      
+      rows.push({
+        acCode: ac,
+        description: info.description,
+        totalDebit: Math.round(t.totalDebit * 100) / 100,
+        totalCredit: Math.round(t.totalCredit * 100) / 100,
+        netDebit: Math.round(netDebit * 100) / 100,
+        netCredit: Math.round(netCredit * 100) / 100
+      });
+    }
+  }
+  
+  // Sort by account code ascending
+  rows.sort(function(a, b) {
+    return a.acCode.localeCompare(b.acCode);
+  });
+  
+  // Calculate summary
+  var totalDebit = 0;
+  var totalCredit = 0;
+  var totalNetDebit = 0;
+  var totalNetCredit = 0;
+  for (var r = 0; r < rows.length; r++) {
+    totalDebit += rows[r].totalDebit;
+    totalCredit += rows[r].totalCredit;
+    totalNetDebit += rows[r].netDebit;
+    totalNetCredit += rows[r].netCredit;
+  }
+  
+  var result = {
+    status: "success",
+    rows: rows,
+    summary: {
+      totalAccounts: rows.length,
+      totalDebit: Math.round(totalDebit * 100) / 100,
+      totalCredit: Math.round(totalCredit * 100) / 100,
+      totalNetDebit: Math.round(totalNetDebit * 100) / 100,
+      totalNetCredit: Math.round(totalNetCredit * 100) / 100,
+      difference: Math.round((totalDebit - totalCredit) * 100) / 100,
+      balanced: Math.abs(totalDebit - totalCredit) < 0.01
+    },
+    fromDate: fromDate,
+    toDate: toDate
   };
   
   if (callback) {

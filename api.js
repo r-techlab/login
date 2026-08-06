@@ -3,7 +3,7 @@
 // Centralized API calls with session validation
 // ============================================
 
-const API_URL = "https://script.google.com/macros/s/AKfycbzbUlPSf_qCi2gXM1PrkIU4odbyfw4PAO10KJ86-35G4-r5nEB-IVctwNHkeboveJY/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbxa-VgUfEdO5a14msDxpfnTQ3pFEI8Cu-jhUwDZfAN7wEIOpwlQ8YbGSenOWArT1pA/exec";
 
 const API_TIMEOUT = 15000; // 15 seconds
 
@@ -2078,6 +2078,49 @@ function apiGetCustomers(callback) {
     document.body.appendChild(script);
 }
 
+// Get the next auto-generated customer code from the server
+function apiGetNextCustomerCode(callback) {
+    const callbackName = 'apiGetNextCustomerCodeCallback_' + Date.now();
+    const session = getSession();
+    
+    const timeoutId = setTimeout(function() {
+        if (window[callbackName]) {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+                document.body.removeChild(script);
+            }
+            callback({
+                status: "error",
+                message: "Request timeout"
+            });
+        }
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=getNextCustomerCode&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
 // Create new customer
 function apiCreateCustomer(customerData, callback) {
     const callbackName = 'apiCreateCustomerCallback_' + Date.now();
@@ -2105,8 +2148,14 @@ function apiCreateCustomer(customerData, callback) {
         callback(data);
     };
     
+    // Only include the code parameter if it is provided (server auto-generates when absent)
+    var url = `${API_URL}?action=createCustomer&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&description=${encodeURIComponent(customerData.description)}&trn=${encodeURIComponent(customerData.trn || '')}&tel1=${encodeURIComponent(customerData.tel1 || '')}&tel2=${encodeURIComponent(customerData.tel2 || '')}&mobile=${encodeURIComponent(customerData.mobile || '')}&email1=${encodeURIComponent(customerData.email1 || '')}&email2=${encodeURIComponent(customerData.email2 || '')}&homePage=${encodeURIComponent(customerData.homePage || '')}&addressStreet=${encodeURIComponent(customerData.addressStreet || '')}&addressCity=${encodeURIComponent(customerData.addressCity || '')}&addressEmirate=${encodeURIComponent(customerData.addressEmirate || '')}&addressPO=${encodeURIComponent(customerData.addressPO || '')}&addressCountry=${encodeURIComponent(customerData.addressCountry || '')}&callback=${callbackName}`;
+    if (customerData.code) {
+        url += `&code=${encodeURIComponent(customerData.code)}`;
+    }
+    
     const script = document.createElement('script');
-    script.src = `${API_URL}?action=createCustomer&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&code=${encodeURIComponent(customerData.code)}&description=${encodeURIComponent(customerData.description)}&trn=${encodeURIComponent(customerData.trn || '')}&tel1=${encodeURIComponent(customerData.tel1 || '')}&tel2=${encodeURIComponent(customerData.tel2 || '')}&mobile=${encodeURIComponent(customerData.mobile || '')}&email1=${encodeURIComponent(customerData.email1 || '')}&email2=${encodeURIComponent(customerData.email2 || '')}&homePage=${encodeURIComponent(customerData.homePage || '')}&addressStreet=${encodeURIComponent(customerData.addressStreet || '')}&addressCity=${encodeURIComponent(customerData.addressCity || '')}&addressEmirate=${encodeURIComponent(customerData.addressEmirate || '')}&addressPO=${encodeURIComponent(customerData.addressPO || '')}&addressCountry=${encodeURIComponent(customerData.addressCountry || '')}&callback=${callbackName}`;
+    script.src = url;
     script.onerror = function() {
         clearTimeout(timeoutId);
         delete window[callbackName];
@@ -3023,6 +3072,60 @@ function apiGetStatementOfAccount(filters, callback) {
     document.body.appendChild(script);
 }
 
+// Get trial balance report
+function apiGetTrialBalance(filters, callback) {
+    const callbackName = 'apiGetTrialBalanceCallback_' + Date.now();
+    const session = getSession();
+    if (!session) {
+        callback({ status: "error", message: "No active session" });
+        return;
+    }
+    
+    const timeoutId = setTimeout(function() {
+        if (window[callbackName]) {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+                document.body.removeChild(script);
+            }
+            callback({
+                status: "error",
+                message: "Request timeout"
+            });
+        }
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    var params = 'action=getTrialBalance' +
+        '&sessionId=' + encodeURIComponent(session.sessionId) +
+        '&userId=' + encodeURIComponent(session.userId) +
+        '&fromDate=' + encodeURIComponent(filters.fromDate || '') +
+        '&toDate=' + encodeURIComponent(filters.toDate || '') +
+        '&callback=' + callbackName;
+    
+    const script = document.createElement('script');
+    script.src = API_URL + '?' + params;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
 // ============================================
 // SUPPLIER MASTER MANAGEMENT API
 // ============================================
@@ -3071,6 +3174,49 @@ function apiGetSuppliers(callback) {
     document.body.appendChild(script);
 }
 
+// Get the next auto-generated supplier code from the server
+function apiGetNextSupplierCode(callback) {
+    const callbackName = 'apiGetNextSupplierCodeCallback_' + Date.now();
+    const session = getSession();
+    
+    const timeoutId = setTimeout(function() {
+        if (window[callbackName]) {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+                document.body.removeChild(script);
+            }
+            callback({
+                status: "error",
+                message: "Request timeout"
+            });
+        }
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=getNextSupplierCode&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
 // Create new supplier
 function apiCreateSupplier(supplierData, callback) {
     const callbackName = 'apiCreateSupplierCallback_' + Date.now();
@@ -3098,8 +3244,14 @@ function apiCreateSupplier(supplierData, callback) {
         callback(data);
     };
     
+    // Only include the code parameter if it is provided (server auto-generates when absent)
+    var url = `${API_URL}?action=createSupplier&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&description=${encodeURIComponent(supplierData.description)}&trn=${encodeURIComponent(supplierData.trn || '')}&tel1=${encodeURIComponent(supplierData.tel1 || '')}&tel2=${encodeURIComponent(supplierData.tel2 || '')}&mobile=${encodeURIComponent(supplierData.mobile || '')}&email1=${encodeURIComponent(supplierData.email1 || '')}&email2=${encodeURIComponent(supplierData.email2 || '')}&homePage=${encodeURIComponent(supplierData.homePage || '')}&addressStreet=${encodeURIComponent(supplierData.addressStreet || '')}&addressCity=${encodeURIComponent(supplierData.addressCity || '')}&addressEmirate=${encodeURIComponent(supplierData.addressEmirate || '')}&addressPO=${encodeURIComponent(supplierData.addressPO || '')}&addressCountry=${encodeURIComponent(supplierData.addressCountry || '')}&callback=${callbackName}`;
+    if (supplierData.code) {
+        url += `&code=${encodeURIComponent(supplierData.code)}`;
+    }
+    
     const script = document.createElement('script');
-    script.src = `${API_URL}?action=createSupplier&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&code=${encodeURIComponent(supplierData.code)}&description=${encodeURIComponent(supplierData.description)}&trn=${encodeURIComponent(supplierData.trn || '')}&tel1=${encodeURIComponent(supplierData.tel1 || '')}&tel2=${encodeURIComponent(supplierData.tel2 || '')}&mobile=${encodeURIComponent(supplierData.mobile || '')}&email1=${encodeURIComponent(supplierData.email1 || '')}&email2=${encodeURIComponent(supplierData.email2 || '')}&homePage=${encodeURIComponent(supplierData.homePage || '')}&addressStreet=${encodeURIComponent(supplierData.addressStreet || '')}&addressCity=${encodeURIComponent(supplierData.addressCity || '')}&addressEmirate=${encodeURIComponent(supplierData.addressEmirate || '')}&addressPO=${encodeURIComponent(supplierData.addressPO || '')}&addressCountry=${encodeURIComponent(supplierData.addressCountry || '')}&callback=${callbackName}`;
+    script.src = url;
     script.onerror = function() {
         clearTimeout(timeoutId);
         delete window[callbackName];
@@ -3248,6 +3400,49 @@ function apiGetSalesmen(callback) {
     document.body.appendChild(script);
 }
 
+// Get the next auto-generated salesman code from the server
+function apiGetNextSalesmanCode(callback) {
+    const callbackName = 'apiGetNextSalesmanCodeCallback_' + Date.now();
+    const session = getSession();
+    
+    const timeoutId = setTimeout(function() {
+        if (window[callbackName]) {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+                document.body.removeChild(script);
+            }
+            callback({
+                status: "error",
+                message: "Request timeout"
+            });
+        }
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=getNextSalesmanCode&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
 // Create new salesman
 function apiCreateSalesman(salesmanData, callback) {
     const callbackName = 'apiCreateSalesmanCallback_' + Date.now();
@@ -3275,8 +3470,14 @@ function apiCreateSalesman(salesmanData, callback) {
         callback(data);
     };
     
+    // Only include the code parameter if it is provided (server auto-generates when absent)
+    var url = `${API_URL}?action=createSalesman&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&description=${encodeURIComponent(salesmanData.description)}&callback=${callbackName}`;
+    if (salesmanData.code) {
+        url += `&code=${encodeURIComponent(salesmanData.code)}`;
+    }
+    
     const script = document.createElement('script');
-    script.src = `${API_URL}?action=createSalesman&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&code=${encodeURIComponent(salesmanData.code)}&description=${encodeURIComponent(salesmanData.description)}&callback=${callbackName}`;
+    script.src = url;
     script.onerror = function() {
         clearTimeout(timeoutId);
         delete window[callbackName];
@@ -4394,6 +4595,49 @@ function apiGetStocks(callback) {
     document.body.appendChild(script);
 }
 
+// Get the next auto-generated stock code from the server
+function apiGetNextStockCode(callback) {
+    const callbackName = 'apiGetNextStockCodeCallback_' + Date.now();
+    const session = getSession();
+    
+    const timeoutId = setTimeout(function() {
+        if (window[callbackName]) {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+                document.body.removeChild(script);
+            }
+            callback({
+                status: "error",
+                message: "Request timeout"
+            });
+        }
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    const script = document.createElement('script');
+    script.src = `${API_URL}?action=getNextStockCode&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&callback=${callbackName}`;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
 // Create new stock
 function apiCreateStock(stockData, callback) {
     const callbackName = 'apiCreateStockCallback_' + Date.now();
@@ -4421,8 +4665,14 @@ function apiCreateStock(stockData, callback) {
         callback(data);
     };
     
+    // Only include the code parameter if it is provided (server auto-generates when absent)
+    var url = `${API_URL}?action=createStock&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&description=${encodeURIComponent(stockData.description)}&unitCode=${encodeURIComponent(stockData.unitCode)}&callback=${callbackName}`;
+    if (stockData.code) {
+        url += `&code=${encodeURIComponent(stockData.code)}`;
+    }
+    
     const script = document.createElement('script');
-    script.src = `${API_URL}?action=createStock&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&code=${encodeURIComponent(stockData.code)}&description=${encodeURIComponent(stockData.description)}&unitCode=${encodeURIComponent(stockData.unitCode)}&callback=${callbackName}`;
+    script.src = url;
     script.onerror = function() {
         clearTimeout(timeoutId);
         delete window[callbackName];

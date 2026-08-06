@@ -563,8 +563,8 @@ tbody tr:hover {
         </div>
         <form id="stockForm" onsubmit="saveStock(event)">
             <div class="form-group">
-                <label for="stockCode">Code *</label>
-                <input type="text" id="stockCode" required maxlength="50" readonly style="text-transform: uppercase; background: #f0f0f0;">
+                <label for="stockCode">Code</label>
+                <input type="text" id="stockCode" maxlength="50" readonly style="text-transform: uppercase; background: #f0f0f0;">
                 <small style="color: #666;">Auto-generated sequential stock code</small>
             </div>
             <div class="form-group">
@@ -946,49 +946,31 @@ function openAddStockModal() {
     document.getElementById('modalTitle').textContent = 'Add New Stock';
     document.getElementById('stockForm').reset();
     
-    // Auto-generate the next stock code
-    var nextCode = generateNextStockCode();
-    document.getElementById('stockCode').value = nextCode;
+    // Fetch the next stock code from the server
+    document.getElementById('stockCode').value = '⏳ Generating...';
     document.getElementById('stockCode').disabled = true;
+    
+    // Disable Save button while the code is being fetched
+    const saveButton = document.getElementById('saveButton');
+    saveButton.disabled = true;
+    
+    apiGetNextStockCode(function(response) {
+        saveButton.disabled = false;
+        if (response.status === 'success') {
+            document.getElementById('stockCode').value = response.nextCode;
+        } else {
+            // If server call fails, leave the field empty - the server will auto-generate on save
+            document.getElementById('stockCode').value = '';
+        }
+    });
     
     // Enable unit code selection for new stock
     document.getElementById('stockUnitCode').disabled = false;
     document.getElementById('unitCodeHelp').textContent = 'Select the unit of measurement';
     document.getElementById('unitCodeHelp').style.color = '#666';
     
-    document.getElementById('saveButton').textContent = 'Save Stock';
+    saveButton.textContent = 'Save Stock';
     document.getElementById('stockModal').style.display = 'block';
-}
-
-// Generate the next sequential stock code based on existing stock codes
-function generateNextStockCode() {
-    var maxNum = 0;
-    
-    // Scan all existing stocks to find the maximum numeric code
-    for (var i = 0; i < allStocks.length; i++) {
-        var code = allStocks[i].code;
-        // Try to parse the code as a number (or extract trailing numeric portion)
-        var num = parseInt(code, 10);
-        if (isNaN(num)) {
-            // If code has non-numeric prefix, try to extract trailing digits
-            var match = code.match(/(\d+)$/);
-            if (match) {
-                num = parseInt(match[1], 10);
-            }
-        }
-        if (!isNaN(num) && num > maxNum) {
-            maxNum = num;
-        }
-    }
-    
-    // Next number is maxNum + 1, zero-padded to 4 digits
-    var nextNum = maxNum + 1;
-    var nextCode = nextNum.toString();
-    // Pad to at least 4 digits
-    while (nextCode.length < 4) {
-        nextCode = '0' + nextCode;
-    }
-    return nextCode;
 }
 
 // Open edit stock modal
@@ -1027,13 +1009,18 @@ function saveStock(event) {
     const stockDescription = document.getElementById('stockDescription').value.trim();
     const stockUnitCode = document.getElementById('stockUnitCode').value;
     
-    if (!stockCode || !stockDescription || !stockUnitCode) {
+    if ((!editingStockCode && !stockDescription) || (editingStockCode && (!stockCode || !stockDescription || !stockUnitCode))) {
         showMessage('Please fill in all required fields', 'error');
         return;
     }
     
-    // Check for duplicate stock code when adding
-    if (!editingStockCode) {
+    if (!stockDescription || !stockUnitCode) {
+        showMessage('Please fill in all required fields', 'error');
+        return;
+    }
+    
+    // Check for duplicate stock code when adding (only if a code was pre-filled)
+    if (!editingStockCode && stockCode) {
         const duplicate = allStocks.find(s => s.code == stockCode);
         if (duplicate) {
             showMessage('Stock Code already exists. Please use a different code.', 'error');
@@ -1045,11 +1032,14 @@ function saveStock(event) {
     saveButton.disabled = true;
     saveButton.textContent = editingStockCode ? 'Updating...' : 'Saving...';
     
+    // For new stocks, if code is empty, omit it so the server auto-generates it
     const stockData = {
-        code: stockCode,
         description: stockDescription,
         unitCode: stockUnitCode
     };
+    if (stockCode) {
+        stockData.code = stockCode;
+    }
     
     if (editingStockCode) {
         // Update existing stock

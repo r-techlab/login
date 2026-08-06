@@ -492,9 +492,9 @@ tbody tr:hover {
                 <h3>📋 Basic Information</h3>
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="supplierCode">Code *</label>
-                        <input type="text" id="supplierCode" required maxlength="50" placeholder="e.g., SUPP001" style="text-transform: uppercase;">
-                        <small>Format: SUPP + numbers (e.g., SUPP001)</small>
+                        <label for="supplierCode">Code</label>
+                        <input type="text" id="supplierCode" maxlength="50" readonly placeholder="Auto-generated" style="text-transform: uppercase; background: #f0f0f0;">
+                        <small>Auto-generated sequential supplier code (format: SUPP + numbers)</small>
                     </div>
                     <div class="form-group">
                         <label for="supplierDescription">Description *</label>
@@ -704,18 +704,23 @@ function openAddSupplierModal() {
     document.getElementById('modalTitle').textContent = 'Add New Supplier';
     document.getElementById('supplierForm').reset();
     
-    // Auto-generate next supplier code
-    let maxNum = 10000;
-    allSuppliers.forEach(s => {
-        const code = s.code.toString();
-        if (code.startsWith('SUPP')) {
-            const num = parseInt(code.substring(4));
-            if (num > maxNum) maxNum = num;
+    // Fetch the next supplier code from the server
+    document.getElementById('supplierCode').value = '⏳ Generating...';
+    document.getElementById('supplierCode').disabled = true;
+    
+    // Disable Save button while the code is being fetched
+    const saveButton = document.getElementById('saveButton');
+    saveButton.disabled = true;
+    
+    apiGetNextSupplierCode(function(response) {
+        saveButton.disabled = false;
+        if (response.status === 'success') {
+            document.getElementById('supplierCode').value = response.nextCode;
+        } else {
+            // If server call fails, leave the field empty - the server will auto-generate on save
+            document.getElementById('supplierCode').value = '';
         }
     });
-    const nextCode = 'SUPP' + (maxNum + 1);
-    document.getElementById('supplierCode').value = nextCode;
-    document.getElementById('supplierCode').disabled = true; // Read-only for auto-generated code
     
     document.getElementById('saveButton').textContent = 'Save Supplier';
     document.getElementById('supplierModal').style.display = 'block';
@@ -798,12 +803,13 @@ function saveSupplier(event) {
     const supplierAddressCountry = document.getElementById('supplierAddressCountry').value.trim();
     
     // Validation
-    if (!supplierCode || !supplierDescription) {
-        showMessage('Please fill in all required fields (Code and Description)', 'error');
+    if (!supplierDescription) {
+        showMessage('Please fill in all required fields', 'error');
         return;
     }
     
-    if (!validateSupplierCode(supplierCode)) {
+    // Validate code format only if a code was provided (server auto-generates when empty)
+    if (supplierCode && !validateSupplierCode(supplierCode)) {
         showMessage('Supplier Code must follow the format: SUPP + numbers (e.g., SUPP001)', 'error');
         return;
     }
@@ -823,8 +829,8 @@ function saveSupplier(event) {
         return;
     }
     
-    // Check for duplicate supplier code when adding
-    if (!editingSupplierCode) {
+    // Check for duplicate supplier code when adding (only if a code was pre-filled)
+    if (!editingSupplierCode && supplierCode) {
         const duplicate = allSuppliers.find(s => s.code == supplierCode);
         if (duplicate) {
             showMessage('Supplier Code already exists. Please use a different code.', 'error');
@@ -836,8 +842,8 @@ function saveSupplier(event) {
     saveButton.disabled = true;
     saveButton.textContent = editingSupplierCode ? 'Updating...' : 'Saving...';
     
+    // For new suppliers, if code is empty, omit it so the server auto-generates it
     const supplierData = {
-        code: supplierCode,
         description: supplierDescription,
         trn: supplierTRN,
         tel1: supplierTel1,
@@ -852,6 +858,9 @@ function saveSupplier(event) {
         addressPO: supplierAddressPO,
         addressCountry: supplierAddressCountry
     };
+    if (supplierCode) {
+        supplierData.code = supplierCode;
+    }
     
     if (editingSupplierCode) {
         // Update existing supplier

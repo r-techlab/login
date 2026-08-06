@@ -444,9 +444,9 @@ tbody tr:hover {
         </div>
         <form id="salesmanForm" onsubmit="saveSalesman(event)">
             <div class="form-group">
-                <label for="salesmanCode">Code *</label>
-                <input type="text" id="salesmanCode" required maxlength="50" placeholder="e.g., SM001" style="text-transform: uppercase;">
-                <small style="color: #666;">Enter a unique salesman code</small>
+                <label for="salesmanCode">Code</label>
+                <input type="text" id="salesmanCode" maxlength="50" readonly placeholder="Auto-generated" style="text-transform: uppercase; background: #f0f0f0;">
+                <small style="color: #666;">Auto-generated sequential salesman code (format: SM + numbers)</small>
             </div>
             <div class="form-group">
                 <label for="salesmanDescription">Description *</label>
@@ -563,7 +563,25 @@ function openAddSalesmanModal() {
     editingSalesmanCode = null;
     document.getElementById('modalTitle').textContent = 'Add New Salesman';
     document.getElementById('salesmanForm').reset();
-    document.getElementById('salesmanCode').disabled = false;
+    document.getElementById('salesmanCode').disabled = true;
+    
+    // Fetch the next salesman code from the server
+    document.getElementById('salesmanCode').value = '⏳ Generating...';
+    
+    // Disable Save button while the code is being fetched
+    const saveButton = document.getElementById('saveButton');
+    saveButton.disabled = true;
+    
+    apiGetNextSalesmanCode(function(response) {
+        saveButton.disabled = false;
+        if (response.status === 'success') {
+            document.getElementById('salesmanCode').value = response.nextCode;
+        } else {
+            // If server call fails, leave the field empty - the server will auto-generate on save
+            document.getElementById('salesmanCode').value = '';
+        }
+    });
+    
     document.getElementById('saveButton').textContent = 'Save Salesman';
     document.getElementById('salesmanModal').style.display = 'block';
 }
@@ -596,13 +614,13 @@ function saveSalesman(event) {
     const salesmanCode = document.getElementById('salesmanCode').value.trim().toUpperCase();
     const salesmanDescription = document.getElementById('salesmanDescription').value.trim();
     
-    if (!salesmanCode || !salesmanDescription) {
-        showMessage('Please enter both code and description', 'error');
+    if (!salesmanDescription) {
+        showMessage('Please enter the description', 'error');
         return;
     }
     
-    // Check for duplicate salesman code when adding
-    if (!editingSalesmanCode) {
+    // Check for duplicate salesman code when adding (only if a code was pre-filled)
+    if (!editingSalesmanCode && salesmanCode) {
         const duplicate = allSalesmen.find(s => s.code == salesmanCode);
         if (duplicate) {
             showMessage('Salesman Code already exists. Please use a different code.', 'error');
@@ -614,10 +632,13 @@ function saveSalesman(event) {
     saveButton.disabled = true;
     saveButton.textContent = editingSalesmanCode ? 'Updating...' : 'Saving...';
     
+    // For new salesmen, if code is empty, omit it so the server auto-generates it
     const salesmanData = {
-        code: salesmanCode,
         description: salesmanDescription
     };
+    if (salesmanCode) {
+        salesmanData.code = salesmanCode;
+    }
     
     if (editingSalesmanCode) {
         // Update existing salesman
