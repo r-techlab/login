@@ -315,6 +315,22 @@ h1 {
     border: 1px solid #ffeaa7;
 }
 
+#toastContainer {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    width: 90%;
+    max-width: 500px;
+    pointer-events: none;
+}
+
+#toastContainer .message {
+    margin-bottom: 0;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
 .loading {
     text-align: center;
     padding: 40px;
@@ -426,8 +442,6 @@ h1 {
         </div>
 
         <div class="main-content">
-            <div id="messageContainer"></div>
-
             <div class="control-panel">
                 <div class="form-group">
                     <label for="roleSelect">Manage Role:</label>
@@ -467,6 +481,9 @@ h1 {
         </div>
     </div>
 </div>
+
+<!-- Toast notification container -->
+<div id="toastContainer"></div>
 
 <!-- Copy from Role Modal -->
 <div id="copyModal" class="modal">
@@ -976,7 +993,7 @@ function saveChanges() {
 
 // Show message
 function showMessage(message, type) {
-    const container = document.getElementById('messageContainer');
+    const container = document.getElementById('toastContainer');
     container.innerHTML = `<div class="message ${type}">${escapeHtml(message)}</div>`;
     
     setTimeout(() => {
