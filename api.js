@@ -3,7 +3,7 @@
 // Centralized API calls with session validation
 // ============================================
 
-const API_URL = "https://script.google.com/macros/s/AKfycbxa-VgUfEdO5a14msDxpfnTQ3pFEI8Cu-jhUwDZfAN7wEIOpwlQ8YbGSenOWArT1pA/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbygJzuMbKn1pFG5utTKBIdubQoh6ENIWy5tOJn2cJfdzg4J44DqvEQfyoPjV_GRoJc/exec";
 
 const API_TIMEOUT = 15000; // 15 seconds
 
@@ -3126,6 +3126,114 @@ function apiGetTrialBalance(filters, callback) {
     document.body.appendChild(script);
 }
 
+// Get Profit and Loss (P&L) report - income and expense accounts for a date range
+function apiGetProfitAndLoss(filters, callback) {
+    const callbackName = 'apiGetProfitAndLossCallback_' + Date.now();
+    const session = getSession();
+    if (!session) {
+        callback({ status: "error", message: "No active session" });
+        return;
+    }
+    
+    const timeoutId = setTimeout(function() {
+        if (window[callbackName]) {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+                document.body.removeChild(script);
+            }
+            callback({
+                status: "error",
+                message: "Request timeout"
+            });
+        }
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    var params = 'action=getProfitAndLoss' +
+        '&sessionId=' + encodeURIComponent(session.sessionId) +
+        '&userId=' + encodeURIComponent(session.userId) +
+        '&fromDate=' + encodeURIComponent(filters.fromDate || '') +
+        '&toDate=' + encodeURIComponent(filters.toDate || '') +
+        '&callback=' + callbackName;
+    
+    const script = document.createElement('script');
+    script.src = API_URL + '?' + params;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// Get Balance Sheet report - asset, liability and equity accounts for a date range
+function apiGetBalanceSheet(filters, callback) {
+    const callbackName = 'apiGetBalanceSheetCallback_' + Date.now();
+    const session = getSession();
+    if (!session) {
+        callback({ status: "error", message: "No active session" });
+        return;
+    }
+    
+    const timeoutId = setTimeout(function() {
+        if (window[callbackName]) {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+                document.body.removeChild(script);
+            }
+            callback({
+                status: "error",
+                message: "Request timeout"
+            });
+        }
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    var params = 'action=getBalanceSheet' +
+        '&sessionId=' + encodeURIComponent(session.sessionId) +
+        '&userId=' + encodeURIComponent(session.userId) +
+        '&fromDate=' + encodeURIComponent(filters.fromDate || '') +
+        '&toDate=' + encodeURIComponent(filters.toDate || '') +
+        '&callback=' + callbackName;
+    
+    const script = document.createElement('script');
+    script.src = API_URL + '?' + params;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
 // ============================================
 // SUPPLIER MASTER MANAGEMENT API
 // ============================================
@@ -4153,47 +4261,65 @@ function apiGetRoleMenuAccess(roleId, callback) {
     document.body.appendChild(script);
 }
 
-// Update role menu access
+// Update role menu access (POST - avoids URL size limits for large menu lists)
 function apiUpdateRoleMenuAccess(roleId, menuIds, callback) {
-    const callbackName = 'apiUpdateRoleMenuAccessCallback_' + Date.now();
     const session = getSession();
+    if (!session) {
+        callback({ status: "error", message: "No active session" });
+        return;
+    }
+    
+    let settled = false;
+    const controller = (typeof AbortController !== 'undefined') ? new AbortController() : null;
     
     const timeoutId = setTimeout(function() {
-        if (window[callbackName]) {
-            delete window[callbackName];
-            if (script && script.parentNode) {
-                document.body.removeChild(script);
-            }
+        if (settled) return;
+        settled = true;
+        if (controller) controller.abort();
+        callback({
+            status: "error",
+            message: "Request timeout"
+        });
+    }, API_TIMEOUT);
+    
+    const params = new URLSearchParams();
+    params.append('action', 'updateRoleMenuAccess');
+    params.append('sessionId', session.sessionId);
+    params.append('userId', session.userId);
+    params.append('roleId', roleId);
+    params.append('menuIds', JSON.stringify(menuIds));
+    
+    fetch(API_URL + '?action=updateRoleMenuAccess', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params.toString(),
+        signal: controller ? controller.signal : undefined
+    })
+    .then(function(response) {
+        return response.json();
+    })
+    .then(function(data) {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeoutId);
+        callback(data);
+    })
+    .catch(function(err) {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeoutId);
+        if (err && err.name === 'AbortError') {
             callback({
                 status: "error",
                 message: "Request timeout"
             });
-        }
-    }, API_TIMEOUT);
-    
-    window[callbackName] = function(data) {
-        clearTimeout(timeoutId);
-        delete window[callbackName];
-        if (script && script.parentNode) {
-            document.body.removeChild(script);
-        }
-        callback(data);
-    };
-    
-    const script = document.createElement('script');
-    script.src = `${API_URL}?action=updateRoleMenuAccess&sessionId=${encodeURIComponent(session.sessionId)}&userId=${encodeURIComponent(session.userId)}&roleId=${encodeURIComponent(roleId)}&menuIds=${encodeURIComponent(JSON.stringify(menuIds))}&callback=${callbackName}`;
-    script.onerror = function() {
-        clearTimeout(timeoutId);
-        delete window[callbackName];
-        if (script && script.parentNode) {
-            document.body.removeChild(script);
+            return;
         }
         callback({
             status: "error",
             message: "Connection error"
         });
-    };
-    document.body.appendChild(script);
+    });
 }
 
 // ============================================

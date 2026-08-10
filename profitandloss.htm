@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Profit and Loss</title>
+<link rel="stylesheet" href="menu.css">
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    margin: 0;
+    padding: 20px;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #667eea;
+    padding-bottom: 20px;
+    margin-bottom: 30px;
+}
+
+h1 {
+    color: #333;
+    margin: 0;
+}
+
+.btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    margin-left: 10px;
+}
+
+.btn:hover {
+    background: #2980b9;
+}
+
+.btn-success {
+    background: #27ae60;
+}
+
+.btn-success:hover {
+    background: #229954;
+}
+
+.btn-danger {
+    background: #e74c3c;
+}
+
+.btn-danger:hover {
+    background: #c0392b;
+}
+
+.btn-warning {
+    background: #f39c12;
+}
+
+.btn-warning:hover {
+    background: #e67e22;
+}
+
+.btn:disabled {
+    background: #95a5a6;
+    cursor: not-allowed;
+}
+
+.layout-with-sidebar {
+    display: flex;
+    gap: 20px;
+}
+
+.sidebar {
+    width: 280px;
+    flex-shrink: 0;
+}
+
+.company-name-sidebar {
+    font-size: 16px;
+    font-weight: bold;
+    color: white;
+    padding: 12px;
+    margin-bottom: 15px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 8px;
+    text-align: center;
+}
+
+.main-content {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+
+/* Filter Section */
+.filter-section {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.filter-row {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.filter-group label {
+    font-size: 12px;
+    font-weight: bold;
+    color: #555;
+    text-transform: uppercase;
+}
+
+.filter-group input,
+.filter-group select {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+    min-width: 180px;
+}
+
+.filter-group input:focus,
+.filter-group select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+.filter-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 13px;
+    font-weight: normal;
+    color: #333;
+    cursor: pointer;
+    min-width: 180px;
+    text-transform: none;
+    box-sizing: border-box;
+}
+
+.filter-checkbox:hover {
+    border-color: #667eea;
+}
+
+.filter-group .filter-checkbox input {
+    margin: 0;
+    min-width: 0;
+    cursor: pointer;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+}
+
+/* Summary Cards */
+.summary-cards {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.summary-card {
+    flex: 1;
+    min-width: 180px;
+    padding: 15px;
+    border-radius: 8px;
+    color: white;
+    text-align: center;
+}
+
+.summary-card .card-label {
+    font-size: 12px;
+    text-transform: uppercase;
+    opacity: 0.85;
+    margin-bottom: 5px;
+}
+
+.summary-card .card-value {
+    font-size: 22px;
+    font-weight: bold;
+    font-family: 'Courier New', monospace;
+}
+
+.card-income {
+    background: linear-gradient(135deg, #27ae60, #229954);
+}
+
+.card-expense {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+}
+
+.card-net {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+}
+
+.card-status {
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+}
+
+.card-status.profit {
+    background: linear-gradient(135deg, #27ae60, #229954);
+}
+
+.card-status.loss {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+}
+
+/* Result Status Banner */
+.balance-status {
+    padding: 12px 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.balance-status.balanced {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.balance-status.unbalanced {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+/* Table */
+.table-container {
+    overflow-x: auto;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    max-width: 100%;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 780px;
+}
+
+thead {
+    background: #667eea;
+    color: white;
+}
+
+th {
+    padding: 12px 15px;
+    text-align: left;
+    font-weight: bold;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+td {
+    padding: 10px 15px;
+    border-bottom: 1px solid #eee;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+tbody tr:hover {
+    background: #f8f9fa;
+}
+
+tfoot {
+    font-weight: bold;
+    background: #e8f0fe;
+}
+
+tfoot td {
+    border-top: 2px solid #667eea;
+    padding: 12px 15px;
+    font-size: 14px;
+}
+
+.amount {
+    text-align: right;
+    font-weight: bold;
+}
+
+.debit-amount {
+    color: #e74c3c;
+}
+
+.credit-amount {
+    color: #27ae60;
+}
+
+.income-amount {
+    color: #27ae60;
+}
+
+.expense-amount {
+    color: #e74c3c;
+}
+
+/* Tree / hierarchy styles for Profit and Loss */
+.pl-toggle {
+    background: #fff;
+    border: 1px solid #c3cbf5;
+    border-radius: 3px;
+    cursor: pointer;
+    padding: 0 4px;
+    margin-right: 8px;
+    font-size: 11px;
+    color: #667eea;
+    width: 22px;
+    text-align: center;
+    line-height: 16px;
+    vertical-align: middle;
+}
+
+.pl-toggle:hover {
+    background: #e6ecff;
+}
+
+.pl-group-row td {
+    font-weight: bold;
+    color: #333;
+    background: #f0f4ff;
+    border-top: 1px solid #d8e0f8;
+}
+
+.pl-group-row.level-1 td {
+    background: #e3eaff;
+    font-size: 14px;
+}
+
+.pl-group-row.level-2 td {
+    background: #eef2ff;
+}
+
+.pl-group-row.level-3 td {
+    background: #f4f7ff;
+}
+
+.pl-group-row.level-4 td,
+.pl-group-row.level-5 td {
+    background: #f8faff;
+}
+
+.pl-group-row.section-income.level-1 td {
+    background: #d4edda;
+    color: #155724;
+}
+
+.pl-group-row.section-expense.level-1 td {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.net-result-row td {
+    font-size: 15px;
+    background: #f0f4ff;
+}
+
+.net-result-value {
+    color: #667eea;
+}
+
+.message {
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    font-weight: bold;
+}
+
+.message.success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.message.error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.message.warning {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+}
+
+.loading::after {
+    content: '...';
+    animation: dots 1.5s steps(4, end) infinite;
+}
+
+@keyframes dots {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    60%, 100% { content: '...'; }
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #999;
+}
+
+.empty-state-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+}
+
+@media (max-width: 992px) {
+    .layout-with-sidebar {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+    }
+    
+    .filter-row {
+        flex-direction: column;
+    }
+    
+    .filter-group input,
+    .filter-group select {
+        min-width: 100%;
+    }
+    
+    .filter-checkbox {
+        min-width: 100%;
+    }
+    
+    .summary-cards {
+        flex-direction: column;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>📊 Profit and Loss</h1>
+        <div>
+            <button class="btn" onclick="window.location.href='home.html'">🏠 Home</button>
+            <button class="btn btn-danger" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div id="breadcrumbContainer" class="breadcrumb-container"></div>
+
+    <div class="layout-with-sidebar">
+        <div class="sidebar">
+            <div id="companyNameSidebar" class="company-name-sidebar"></div>
+            <h3>Navigation Menu</h3>
+            <div id="menuContainer"></div>
+        </div>
+
+        <div class="main-content">
+            <div id="messageContainer"></div>
+
+            <!-- Filter Section -->
+            <div class="filter-section">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label>From Date</label>
+                        <input type="date" id="fromDate">
+                    </div>
+                    <div class="filter-group">
+                        <label>To Date</label>
+                        <input type="date" id="toDate">
+                    </div>
+                    <div class="filter-group">
+                        <label>Zero Balance</label>
+                        <label class="filter-checkbox">
+                            <input type="checkbox" id="hideZeroBalances">
+                            <span>Hide zero balance accounts</span>
+                        </label>
+                    </div>
+                    <div class="filter-group">
+                        <label>Display Mode</label>
+                        <label class="filter-checkbox">
+                            <input type="radio" name="plDisplayMode" value="withGl" id="plModeWithGL" checked>
+                            <span>With GL Account</span>
+                        </label>
+                        <label class="filter-checkbox">
+                            <input type="radio" name="plDisplayMode" value="groupOnly" id="plModeGroupOnly">
+                            <span>Only Group Total (No Ledger Account)</span>
+                        </label>
+                    </div>
+                    <div class="filter-actions">
+                        <button class="btn btn-success" onclick="loadProfitAndLoss()">🔍 Generate</button>
+                        <button class="btn btn-warning" onclick="resetFilters()">↺ Reset</button>
+                        <button class="btn" onclick="exportToCSV()">📥 Export CSV</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profit / Loss Status Banner -->
+            <div id="resultStatus" class="balance-status" style="display: none;"></div>
+
+            <!-- Summary Cards -->
+            <div class="summary-cards" id="summaryCards" style="display: none;">
+                <div class="summary-card card-income">
+                    <div class="card-label">Total Income</div>
+                    <div class="card-value" id="totalIncome">0.00</div>
+                </div>
+                <div class="summary-card card-expense">
+                    <div class="card-label">Total Expenses</div>
+                    <div class="card-value" id="totalExpenses">0.00</div>
+                </div>
+                <div class="summary-card card-net">
+                    <div class="card-label">Net Profit / (Loss)</div>
+                    <div class="card-value" id="netProfit">0.00</div>
+                </div>
+                <div class="summary-card card-status" id="statusCard">
+                    <div class="card-label">Status</div>
+                    <div class="card-value" id="statusValue">-</div>
+                </div>
+            </div>
+
+            <!-- Data Table -->
+            <div class="table-container">
+                <div id="loadingIndicator" class="loading">Loading Profit and Loss...</div>
+                <div id="emptyState" class="empty-state" style="display: none;">
+                    <div class="empty-state-icon">📊</div>
+                    <h3>No Profit and Loss Data</h3>
+                    <p>Select a date range and click "Generate" to view the profit and loss statement.</p>
+                </div>
+                <table id="plTable" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th>Account Code</th>
+                            <th>Account Description</th>
+                            <th class="amount">Debit</th>
+                            <th class="amount">Credit</th>
+                            <th class="amount">Net Income</th>
+                            <th class="amount">Net Expense</th>
+                        </tr>
+                    </thead>
+                    <tbody id="plTableBody">
+                    </tbody>
+                    <tfoot id="plTableFooter" style="display: none;">
+                        <tr>
+                            <td colspan="2" style="text-align: right;">Total Income:</td>
+                            <td class="amount debit-amount"></td>
+                            <td class="amount credit-amount"></td>
+                            <td class="amount income-amount" id="totalIncomeDisplay">0.00</td>
+                            <td class="amount"></td>
+                        </tr>
+                        <tr>
+                            <td colspan="2" style="text-align: right;">Total Expenses:</td>
+                            <td class="amount debit-amount"></td>
+                            <td class="amount credit-amount"></td>
+                            <td class="amount"></td>
+                            <td class="amount expense-amount" id="totalExpensesDisplay">0.00</td>
+                        </tr>
+                        <tr class="net-result-row">
+                            <td colspan="2" style="text-align: right;" id="netResultLabel">Net Profit:</td>
+                            <td colspan="2"></td>
+                            <td class="amount net-result-value" id="netProfitDisplay" colspan="2">0.00</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="api.js"></script>
+<script src="indexedDB.js"></script>
+<script src="session.js"></script>
+<script src="menu.js"></script>
+<script src="systemConfig.js"></script>
+<script src="themeManager.js"></script>
+<script>
+// Global variables
+let plRows = [];
+let plSummary = null;
+
+// Initialize system config with theme
+initPageWithTheme('profitandloss.htm', 'companyNameSidebar');
+
+// Protect this page with menu-based access control
+protectPageWithMenuAccess(function(isValid) {
+    if (isValid) {
+        renderMenu('menuContainer');
+        renderBreadcrumb('breadcrumbContainer');
+    }
+});
+
+// Load profit and loss data
+function loadProfitAndLoss() {
+    document.getElementById('loadingIndicator').style.display = 'block';
+    document.getElementById('plTable').style.display = 'none';
+    document.getElementById('plTableFooter').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('summaryCards').style.display = 'none';
+    document.getElementById('resultStatus').style.display = 'none';
+    
+    var filters = {
+        fromDate: document.getElementById('fromDate').value,
+        toDate: document.getElementById('toDate').value,
+        hideZeroBalances: document.getElementById('hideZeroBalances').checked
+    };
+    
+    apiGetProfitAndLoss(filters, function(response) {
+        document.getElementById('loadingIndicator').style.display = 'none';
+        
+        if (response.status === 'success') {
+            plRows = response.rows || [];
+            plSummary = response.summary || null;
+            
+            if (filters.hideZeroBalances) {
+                plRows = filterZeroBalanceRows(plRows);
+            }
+            
+            // If "Only Group Total" mode is selected, roll amounts up to groups
+            // and hide the individual GL ledger rows.
+            if (getPlDisplayMode() === 'groupOnly') {
+                plRows = buildGroupOnlyRows(plRows);
+            }
+            
+            displayProfitAndLoss(plRows);
+        } else {
+            showMessage('Error loading Profit and Loss: ' + response.message, 'error');
+            document.getElementById('emptyState').style.display = 'block';
+        }
+    });
+}
+
+// Remove zero-balance ledgers and any group headers left without ledgers
+function filterZeroBalanceRows(rows) {
+    if (!rows || rows.length === 0) return rows;
+    
+    // Identify ledgers that have movement
+    var keptLedgers = {}; // docno -> true
+    rows.forEach(function(row) {
+        if (row.type === 'ledger' && (row.totalDebit > 0 || row.totalCredit > 0 || row.pnlAmount !== 0)) {
+            keptLedgers[row.docno] = true;
+        }
+    });
+    
+    // Keep ledgers with movement and groups that still contain at least one kept ledger
+    return rows.filter(function(row) {
+        if (row.type === 'ledger') {
+            return keptLedgers[row.docno] === true;
+        }
+        return hasLedgerDescendant(row.docno, rows, keptLedgers);
+    });
+}
+
+// Check whether a group node has at least one kept ledger somewhere below it
+function hasLedgerDescendant(docno, rows, keptLedgers) {
+    var stack = [docno];
+    while (stack.length > 0) {
+        var current = stack.pop();
+        for (var i = 0; i < rows.length; i++) {
+            var r = rows[i];
+            if (r.parent === current) {
+                if (r.type === 'ledger' && keptLedgers[r.docno] === true) {
+                    return true;
+                }
+                if (r.type === 'group') {
+                    stack.push(r.docno);
+                }
+            }
+        }
+    }
+    return false;
+}
+
+// Get the selected display mode from the radio buttons
+function getPlDisplayMode() {
+    const el = document.querySelector('input[name="plDisplayMode"]:checked');
+    return el ? el.value : 'withGl';
+}
+
+// Roll ledger amounts up to group level and remove ledger rows.
+// Used for "Only Group Total (No Ledger Account)" mode.
+function buildGroupOnlyRows(rows) {
+    if (!rows || rows.length === 0) return rows;
+    
+    // Build docno -> parent map from group rows
+    var parentMap = {}; // docno -> parent docno
+    rows.forEach(function(row) {
+        if (row.type === 'group' && row.docno !== undefined) {
+            parentMap[String(row.docno)] = String(row.parent === undefined ? 0 : row.parent);
+        }
+    });
+    
+    // Sum each ledger's amounts into every ancestor group
+    var groupTotals = {}; // docno -> { totalDebit, totalCredit, netDebit, netCredit, pnlIncome, pnlExpense }
+    rows.forEach(function(row) {
+        if (row.type !== 'ledger') return;
+        
+        var ancestors = getPlAncestorDocnos(row.parent, parentMap);
+        ancestors.forEach(function(docno) {
+            if (!groupTotals[docno]) {
+                groupTotals[docno] = { totalDebit: 0, totalCredit: 0, netDebit: 0, netCredit: 0, pnlIncome: 0, pnlExpense: 0 };
+            }
+            groupTotals[docno].totalDebit += row.totalDebit || 0;
+            groupTotals[docno].totalCredit += row.totalCredit || 0;
+            groupTotals[docno].netDebit += row.netDebit || 0;
+            groupTotals[docno].netCredit += row.netCredit || 0;
+            if (row.section === 'income') {
+                groupTotals[docno].pnlIncome += row.pnlAmount || 0;
+            } else {
+                groupTotals[docno].pnlExpense += row.pnlAmount || 0;
+            }
+        });
+    });
+    
+    // Keep only group rows and attach the rolled-up totals
+    var groupRows = rows.filter(function(row) {
+        return row.type === 'group';
+    });
+    
+    groupRows.forEach(function(row) {
+        var t = groupTotals[String(row.docno)] || { totalDebit: 0, totalCredit: 0, netDebit: 0, netCredit: 0, pnlIncome: 0, pnlExpense: 0 };
+        row.totalDebit = Math.round(t.totalDebit * 100) / 100;
+        row.totalCredit = Math.round(t.totalCredit * 100) / 100;
+        row.netDebit = Math.round(t.netDebit * 100) / 100;
+        row.netCredit = Math.round(t.netCredit * 100) / 100;
+        row.pnlIncome = Math.round(t.pnlIncome * 100) / 100;
+        row.pnlExpense = Math.round(t.pnlExpense * 100) / 100;
+        row.hasTotals = true;
+        
+        // A group only has expandable children if it has group children
+        row.hasChildren = groupRows.some(function(g) {
+            return String(g.parent) === String(row.docno);
+        });
+    });
+    
+    return groupRows;
+}
+
+// Return the docnos of all ancestor groups above a given parent docno
+function getPlAncestorDocnos(parentDocno, parentMap) {
+    var result = [];
+    var current = String(parentDocno === undefined ? 0 : parentDocno);
+    var guard = 0;
+    while (current && current !== '0' && guard < 50) {
+        guard++;
+        result.push(current);
+        if (parentMap[current] === undefined) break;
+        current = String(parentMap[current]);
+    }
+    return result;
+}
+
+// Display the P&L statement
+function displayProfitAndLoss(rows) {
+    const tbody = document.getElementById('plTableBody');
+    tbody.innerHTML = '';
+    
+    // Update summary cards
+    if (plSummary) {
+        document.getElementById('totalIncome').textContent = formatAmount(plSummary.totalIncome);
+        document.getElementById('totalExpenses').textContent = formatAmount(plSummary.totalExpenses);
+        document.getElementById('netProfit').textContent = formatAmount(plSummary.netProfit);
+        
+        const statusCard = document.getElementById('statusCard');
+        const statusValue = document.getElementById('statusValue');
+        if (plSummary.isProfit) {
+            statusCard.className = 'summary-card card-status profit';
+            statusValue.textContent = '✅ Profit';
+        } else {
+            statusCard.className = 'summary-card card-status loss';
+            statusValue.textContent = '❌ Loss';
+        }
+        document.getElementById('summaryCards').style.display = 'flex';
+    }
+    
+    // Show result status banner
+    if (plSummary) {
+        const resultStatus = document.getElementById('resultStatus');
+        if (plSummary.isProfit) {
+            resultStatus.className = 'balance-status balanced';
+            resultStatus.textContent = '✅ Net Profit: ' + formatAmount(plSummary.netProfit) + ' for the selected period.';
+        } else {
+            resultStatus.className = 'balance-status unbalanced';
+            resultStatus.textContent = '❌ Net Loss: ' + formatAmount(Math.abs(plSummary.netProfit)) + ' for the selected period.';
+        }
+        resultStatus.style.display = 'block';
+    }
+    
+    if (rows.length === 0) {
+        document.getElementById('plTable').style.display = 'none';
+        document.getElementById('plTableFooter').style.display = 'none';
+        document.getElementById('emptyState').style.display = 'block';
+        if (document.getElementById('hideZeroBalances') && document.getElementById('hideZeroBalances').checked) {
+            document.getElementById('emptyState').querySelector('p').textContent = 'No accounts with balance in the selected period. Uncheck "Hide zero balance accounts" to see all accounts.';
+        }
+        return;
+    }
+    
+    document.getElementById('plTable').style.display = 'table';
+    document.getElementById('emptyState').style.display = 'none';
+    
+    rows.forEach(function(row) {
+        const tr = document.createElement('tr');
+        const isGroup = row.type === 'group';
+        const level = parseInt(row.level) || 1;
+        const indentSize = (level - 1) * 22;
+        
+        tr.setAttribute('data-docno', row.docno !== undefined ? row.docno : '');
+        tr.setAttribute('data-parent-docno', row.parent !== undefined ? row.parent : 0);
+        if (isGroup) {
+            // Group / sub-group header row - bold, shaded, expandable
+            tr.className = 'pl-group-row level-' + Math.min(level, 5);
+            if (row.section === 'income') tr.className += ' section-income';
+            if (row.section === 'expense') tr.className += ' section-expense';
+            let toggleHtml = '';
+            if (row.hasChildren) {
+                toggleHtml = '<button class="pl-toggle" onclick="togglePlNode(' + row.docno + ')">▾</button>';
+            }
+            
+            if (row.hasTotals) {
+                // "Only Group Total" mode - show rolled-up amounts on group rows
+                tr.innerHTML =
+                    '<td></td>' +
+                    '<td style="padding-left:' + indentSize + 'px;">' + toggleHtml + '<strong>' + escapeHtml(row.description || '-') + '</strong></td>' +
+                    '<td class="amount debit-amount">' + (row.totalDebit > 0 ? formatAmount(row.totalDebit) : '') + '</td>' +
+                    '<td class="amount credit-amount">' + (row.totalCredit > 0 ? formatAmount(row.totalCredit) : '') + '</td>' +
+                    '<td class="amount income-amount">' + (row.pnlIncome !== 0 ? formatAmount(row.pnlIncome) : '') + '</td>' +
+                    '<td class="amount expense-amount">' + (row.pnlExpense !== 0 ? formatAmount(row.pnlExpense) : '') + '</td>';
+            } else {
+                // Normal header row - no amounts
+                tr.innerHTML =
+                    '<td></td>' +
+                    '<td style="padding-left:' + indentSize + 'px;">' + toggleHtml + '<strong>' + escapeHtml(row.description || '-') + '</strong></td>' +
+                    '<td class="amount"></td>' +
+                    '<td class="amount"></td>' +
+                    '<td class="amount"></td>' +
+                    '<td class="amount"></td>';
+            }
+        } else {
+            // Ledger row - account code + indented name + amounts
+            tr.className = 'pl-ledger-row';
+            const hasMovement = (row.totalDebit > 0 || row.totalCredit > 0 || row.pnlAmount !== 0);
+            
+            let incomeCell = '';
+            let expenseCell = '';
+            if (row.section === 'income') {
+                incomeCell = row.pnlAmount !== 0 ? formatAmount(row.pnlAmount) : '';
+            } else {
+                expenseCell = row.pnlAmount !== 0 ? formatAmount(row.pnlAmount) : '';
+            }
+            
+            tr.innerHTML =
+                '<td><strong>' + escapeHtml(row.acCode) + '</strong></td>' +
+                '<td style="padding-left:' + indentSize + 'px;">' + escapeHtml(row.description || '-') + '</td>' +
+                '<td class="amount debit-amount">' + (row.totalDebit > 0 ? formatAmount(row.totalDebit) : '') + '</td>' +
+                '<td class="amount credit-amount">' + (row.totalCredit > 0 ? formatAmount(row.totalCredit) : '') + '</td>' +
+                '<td class="amount income-amount">' + incomeCell + '</td>' +
+                '<td class="amount expense-amount">' + expenseCell + '</td>';
+            
+            if (!hasMovement) {
+                tr.style.color = '#aaa';
+            }
+        }
+        
+        tbody.appendChild(tr);
+    });
+    
+    // Update footer
+    if (plSummary) {
+        document.getElementById('totalIncomeDisplay').textContent = formatAmount(plSummary.totalIncome);
+        document.getElementById('totalExpensesDisplay').textContent = formatAmount(plSummary.totalExpenses);
+        
+        const netResultLabel = document.getElementById('netResultLabel');
+        const netProfitDisplay = document.getElementById('netProfitDisplay');
+        if (plSummary.isProfit) {
+            netResultLabel.textContent = 'Net Profit:';
+            netProfitDisplay.textContent = formatAmount(plSummary.netProfit);
+        } else {
+            netResultLabel.textContent = 'Net Loss:';
+            netProfitDisplay.textContent = '(' + formatAmount(Math.abs(plSummary.netProfit)) + ')';
+        }
+        document.getElementById('plTableFooter').style.display = '';
+    }
+}
+
+// Toggle group expand/collapse in the P&L tree
+function togglePlNode(docno) {
+    const groupRow = document.querySelector('tr.pl-group-row[data-docno="' + docno + '"]');
+    if (!groupRow) return;
+    
+    const toggle = groupRow.querySelector('.pl-toggle');
+    const isCollapsed = groupRow.classList.contains('collapsed');
+    
+    if (isCollapsed) {
+        // Expand - show direct children only
+        plRows.forEach(function(row) {
+            if (String(row.parent) === String(docno)) {
+                const childRow = document.querySelector('tr[data-docno="' + row.docno + '"]');
+                if (childRow) childRow.style.display = '';
+            }
+        });
+        groupRow.classList.remove('collapsed');
+        if (toggle) toggle.textContent = '▾';
+    } else {
+        // Collapse - hide all descendants
+        getPlDescendants(docno).forEach(function(d) {
+            const childRow = document.querySelector('tr[data-docno="' + d + '"]');
+            if (childRow) {
+                childRow.style.display = 'none';
+                childRow.classList.add('collapsed');
+                const childToggle = childRow.querySelector('.pl-toggle');
+                if (childToggle) childToggle.textContent = '▸';
+            }
+        });
+        groupRow.classList.add('collapsed');
+        if (toggle) toggle.textContent = '▸';
+    }
+}
+
+// Return docnos of all rows below a given docno (direct and indirect)
+function getPlDescendants(docno) {
+    const result = [];
+    const stack = [String(docno)];
+    while (stack.length > 0) {
+        const current = stack.pop();
+        plRows.forEach(function(row) {
+            const pid = String(row.parent === undefined ? '' : row.parent);
+            if (pid === current && result.indexOf(String(row.docno)) === -1) {
+                result.push(String(row.docno));
+                stack.push(String(row.docno));
+            }
+        });
+    }
+    return result;
+}
+
+// Reset filters
+function resetFilters() {
+    document.getElementById('fromDate').value = '';
+    document.getElementById('toDate').value = '';
+    document.getElementById('hideZeroBalances').checked = false;
+    document.getElementById('plModeWithGL').checked = true;
+    
+    document.getElementById('plTable').style.display = 'none';
+    document.getElementById('plTableFooter').style.display = 'none';
+    document.getElementById('summaryCards').style.display = 'none';
+    document.getElementById('resultStatus').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'block';
+    document.getElementById('emptyState').querySelector('p').textContent = 'Select a date range and click "Generate" to view the profit and loss statement.';
+}
+
+// Export to CSV
+function exportToCSV() {
+    if (!plRows || plRows.length === 0) {
+        showMessage('No data to export. Please generate a Profit and Loss first.', 'warning');
+        return;
+    }
+    
+    var csv = 'Account Code,Account Description,Debit,Credit,Net Income,Net Expense\n';
+    
+    plRows.forEach(function(row) {
+        if (row.type === 'group') {
+            if (row.hasTotals) {
+                // Group row with rolled-up totals ("Only Group Total" mode)
+                csv += '"",';
+                csv += '"' + (row.description || '') + '",';
+                csv += (row.totalDebit || 0) + ',';
+                csv += (row.totalCredit || 0) + ',';
+                csv += (row.pnlIncome || 0) + ',';
+                csv += (row.pnlExpense || 0) + '\n';
+            } else {
+                // Group / sub-group header row - name only, no amounts
+                csv += '"",';
+                csv += '"' + (row.description || '') + '",';
+                csv += ',,,\n';
+            }
+        } else {
+            csv += '"' + (row.acCode || '') + '",';
+            csv += '"' + (row.description || '') + '",';
+            csv += (row.totalDebit || 0) + ',';
+            csv += (row.totalCredit || 0) + ',';
+            csv += (row.section === 'income' ? (row.pnlAmount || 0) : '') + ',';
+            csv += (row.section === 'expense' ? (row.pnlAmount || 0) : '') + '\n';
+        }
+    });
+    
+    // Add summary rows
+    if (plSummary) {
+        csv += '\n';
+        csv += 'SUMMARY\n';
+        csv += 'Total Income:,' + formatAmount(plSummary.totalIncome) + '\n';
+        csv += 'Total Expenses:,' + formatAmount(plSummary.totalExpenses) + '\n';
+        csv += 'Net Profit:,' + formatAmount(plSummary.netProfit) + '\n';
+        csv += 'Status:,' + (plSummary.isProfit ? 'Profit' : 'Loss') + '\n';
+    }
+    
+    // Create download link
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    var link = document.createElement('a');
+    var url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'ProfitAndLoss_' + new Date().toISOString().slice(0, 10) + '.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showMessage('Profit and Loss exported successfully!', 'success');
+}
+
+// Format amount for display
+function formatAmount(amount) {
+    if (amount === null || amount === undefined) return '0.00';
+    return parseFloat(amount).toFixed(2);
+}
+
+// Show message
+function showMessage(message, type) {
+    const container = document.getElementById('messageContainer');
+    container.innerHTML = '<div class="message ' + type + '">' + escapeHtml(message) + '</div>';
+    
+    setTimeout(function() {
+        container.innerHTML = '';
+    }, 5000);
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Logout function
+function logout() {
+    if (confirm('Are you sure you want to logout?')) {
+        performLogout();
+    }
+}
+</script>
+
+</body>
+</html>
+

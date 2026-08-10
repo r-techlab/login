@@ -1,4 +1,4 @@
-﻿// Configuration
+// Configuration
 
 var SHEET_ID = "1mZlKmBLoLXwYNeIBcqDvE1NZgd1KQ3rXYDh_UfxLApI";
 var SESSION_DURATION = 30 * 60 * 1000; // 30 minutes in milliseconds
@@ -876,6 +876,8 @@ function doPost(e) {
       return handleCreateLogoPost(requestData, e);
     } else if (action === "updateLogo") {
       return handleUpdateLogoPost(requestData, e);
+    } else if (action === "updateRoleMenuAccess") {
+      return handleUpdateRoleMenuAccessPost(requestData, e);
     } else {
       return createJsonResponse({ 
         status: "error", 
@@ -1118,6 +1120,10 @@ function doGet(e) {
     return handleGetStatementOfAccountGet(e);
   } else if (action === "getTrialBalance") {
     return handleGetTrialBalanceGet(e);
+  } else if (action === "getProfitAndLoss") {
+    return handleGetProfitAndLossGet(e);
+  } else if (action === "getBalanceSheet") {
+    return handleGetBalanceSheetGet(e);
   } else {
     var errorResult = { status: "error", message: "Invalid action" };
     var callback = e.parameter.callback;
@@ -2853,6 +2859,83 @@ function handleGetRoleMenuAccessGet(e) {
   return createJsonResponse(result);
 }
 
+// Parse menu IDs from a JSON string or array
+function parseMenuIds(menuIdsValue) {
+  if (menuIdsValue === undefined || menuIdsValue === null) return [];
+  if (Array.isArray(menuIdsValue)) return menuIdsValue;
+  if (typeof menuIdsValue === 'string') {
+    try {
+      var parsed = JSON.parse(menuIdsValue);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      return null;
+    }
+  }
+  return [];
+}
+
+// Rewrite the RoleMenuAccess sheet for a role in a single batch operation.
+// This replaces the old row-by-row delete/append loop which was slow and
+// could time out when a role had many rows or menus assigned.
+function saveRoleMenuAccess(ss, roleId, menuIds) {
+  var roleMenuSheet = ss.getSheetByName("RoleMenuAccess");
+  var roleMenuData = roleMenuSheet.getDataRange().getValues(); // includes header row
+  
+  // Keep header + rows for other roles
+  var newData = [];
+  if (roleMenuData.length > 0) {
+    newData.push(roleMenuData[0]); // header
+  }
+  for (var i = 1; i < roleMenuData.length; i++) {
+    if (roleMenuData[i][0] != roleId) {
+      newData.push(roleMenuData[i]);
+    }
+  }
+  
+  // Add new assignments for this role
+  for (var j = 0; j < menuIds.length; j++) {
+    newData.push([roleId, menuIds[j]]);
+  }
+  
+  // Rewrite the whole sheet in two operations: clear + one setValues
+  roleMenuSheet.clearContents();
+  if (newData.length > 0) {
+    roleMenuSheet.getRange(1, 1, newData.length, 2).setValues(newData);
+  }
+}
+
+// POST endpoint for updating role menu access (avoids URL size limits)
+function handleUpdateRoleMenuAccessPost(requestData, e) {
+  var sessionId = requestData.sessionId;
+  var userId = requestData.userId;
+  var roleId = requestData.roleId;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    return createJsonResponse({ status: "error", message: "Invalid or expired session" });
+  }
+  
+  // Check if user is admin
+  if (validation.roleName !== "Admin") {
+    return createJsonResponse({ status: "error", message: "Access denied: Admin role required" });
+  }
+  
+  // Parse menu IDs (JSON string from form body, or array from JSON body)
+  var menuIds = parseMenuIds(requestData.menuIds);
+  if (menuIds === null) {
+    return createJsonResponse({ status: "error", message: "Invalid menu IDs format" });
+  }
+  
+  // Rewrite the RoleMenuAccess sheet in a single batch (fast, avoids timeouts)
+  saveRoleMenuAccess(ss, roleId, menuIds);
+  
+  return createJsonResponse({ status: "success", message: "Menu access updated successfully" });
+}
+
 // Update role menu access
 function handleUpdateRoleMenuAccessGet(e) {
   var sessionId = e.parameter.sessionId;
@@ -2886,10 +2969,8 @@ function handleUpdateRoleMenuAccessGet(e) {
   }
   
   // Parse menu IDs
-  var menuIds = [];
-  try {
-    menuIds = JSON.parse(menuIdsJson);
-  } catch (error) {
+  var menuIds = parseMenuIds(menuIdsJson);
+  if (menuIds === null) {
     var errorResult = { status: "error", message: "Invalid menu IDs format" };
     if (callback) {
       return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
@@ -2898,20 +2979,8 @@ function handleUpdateRoleMenuAccessGet(e) {
     return createJsonResponse(errorResult);
   }
   
-  var roleMenuSheet = ss.getSheetByName("RoleMenuAccess");
-  var roleMenuData = roleMenuSheet.getDataRange().getValues();
-  
-  // Delete existing assignments for this role (from bottom to top)
-  for (var i = roleMenuData.length - 1; i >= 1; i--) {
-    if (roleMenuData[i][0] == roleId) {
-      roleMenuSheet.deleteRow(i + 1);
-    }
-  }
-  
-  // Add new assignments
-  for (var j = 0; j < menuIds.length; j++) {
-    roleMenuSheet.appendRow([roleId, menuIds[j]]);
-  }
+  // Rewrite the RoleMenuAccess sheet in a single batch (fast, avoids timeouts)
+  saveRoleMenuAccess(ss, roleId, menuIds);
   
   var result = { status: "success", message: "Menu access updated successfully" };
   if (callback) {
@@ -11827,20 +11896,28 @@ function handleGetTrialBalanceGet(e) {
     return createJsonResponse(errorResult);
   }
   
-  // Build COA lookup map - only GL (posting) accounts
+  // Read the full COA hierarchy (groups + GL ledgers)
   var coaSheet = ss.getSheetByName("COA");
-  var coaMap = {}; // acCode -> { description, acType }
-  var allGlCodes = {}; // track all GL account codes in COA
+  var coaByDocno = {}; // docno -> account record
+  var coaMap = {};     // acCode -> account record
+  var allGlCodes = {}; // acCode -> account record (only GL / posting accounts)
   if (coaSheet) {
     var coaData = coaSheet.getDataRange().getValues();
     for (var i = 1; i < coaData.length; i++) {
       var acCode = String(coaData[i][0] || '');
       var acType = String(coaData[i][1] || '');
       var desc = coaData[i][2] || '';
+      var level = parseInt(coaData[i][3]) || 1;
+      var parent = parseInt(coaData[i][4]) || 0;
+      var docno = parseInt(coaData[i][5]) || 0;
+      if (!acCode && !docno) continue;
+      
+      var rec = { acCode: acCode, acType: acType, description: desc, level: level, parent: parent, docno: docno };
+      if (docno) coaByDocno[docno] = rec;
       if (acCode) {
-        coaMap[acCode] = { description: desc, acType: acType };
+        coaMap[acCode] = rec;
         if (acType === 'GL') {
-          allGlCodes[acCode] = { description: desc, acType: acType };
+          allGlCodes[acCode] = rec;
         }
       }
     }
@@ -11885,9 +11962,8 @@ function handleGetTrialBalanceGet(e) {
         totalsMap[acDocNo].totalCredit += amount;
       }
     }
-  }
-  
-  // Also include GL accounts that have no transactions (zero balances)
+  }  
+  // All GL accounts to show: every GL account in COA (including zero balance) plus any with transactions
   var allCodes = {};
   for (var code in allGlCodes) {
     if (allGlCodes.hasOwnProperty(code)) {
@@ -11900,43 +11976,143 @@ function handleGetTrialBalanceGet(e) {
     }
   }
   
-  // Build rows
-  var rows = [];
+  // Compute per-ledger figures
+  var ledgerInfo = {}; // acCode -> ledger figures + hierarchy info
+  var totalAccounts = 0;
   for (var ac in allCodes) {
-    if (allCodes.hasOwnProperty(ac)) {
-      var t = totalsMap[ac] || { totalDebit: 0, totalCredit: 0 };
-      var info = coaMap[ac] || { description: '', acType: '' };
-      var netDebit = 0;
-      var netCredit = 0;
-      var net = t.totalDebit - t.totalCredit;
-      if (net > 0) {
-        netDebit = net;
+    if (!allCodes.hasOwnProperty(ac)) continue;
+    var info = coaMap[ac];
+    if (!info) continue;
+    var t = totalsMap[ac] || { totalDebit: 0, totalCredit: 0 };
+    var netDebit = 0;
+    var netCredit = 0;
+    var net = t.totalDebit - t.totalCredit;
+    if (net > 0) {
+      netDebit = net;
+    } else {
+      netCredit = Math.abs(net);
+    }
+    ledgerInfo[ac] = {
+      acCode: ac,
+      description: info.description,
+      level: info.level,
+      parent: info.parent,
+      docno: info.docno,
+      totalDebit: Math.round(t.totalDebit * 100) / 100,
+      totalCredit: Math.round(t.totalCredit * 100) / 100,
+      netDebit: Math.round(netDebit * 100) / 100,
+      netCredit: Math.round(netCredit * 100) / 100
+    };
+    totalAccounts++;
+  }
+  
+  // Build parent -> children map from the full COA hierarchy
+  var childrenMap = {};
+  for (var d in coaByDocno) {
+    if (coaByDocno.hasOwnProperty(d)) {
+      var rec = coaByDocno[d];
+      var p = rec.parent || 0;
+      if (!childrenMap[p]) childrenMap[p] = [];
+      childrenMap[p].push(rec);
+    }
+  }
+  for (var cm in childrenMap) {
+    if (childrenMap.hasOwnProperty(cm)) {
+      childrenMap[cm].sort(function(a, b) { return a.docno - b.docno; });
+    }
+  }  
+  // Walk the COA tree and emit rows in tree order.
+  // Group rows are headers only (no amounts); only groups that lead to at
+  // least one GL ledger are included.
+  var rows = [];
+  var includedLedgers = {}; // acCode -> true
+  
+  function pushLedgerRow(rec, depth) {
+    var lr = ledgerInfo[rec.acCode];
+    if (!lr) return false;
+    rows.push({
+      type: 'ledger',
+      level: depth,
+      docno: rec.docno,
+      parent: rec.parent,
+      acCode: rec.acCode,
+      description: rec.description,
+      totalDebit: lr.totalDebit,
+      totalCredit: lr.totalCredit,
+      netDebit: lr.netDebit,
+      netCredit: lr.netCredit,
+      hasChildren: false
+    });
+    includedLedgers[rec.acCode] = true;
+    return true;
+  }
+  
+  function buildNode(node, depth) {
+    var kids = childrenMap[node.docno] || [];
+    var startIdx = rows.length;
+    var hasLedger = false;
+    for (var k = 0; k < kids.length; k++) {
+      var child = kids[k];
+      if (child.acType === 'GL' && ledgerInfo[child.acCode]) {
+        if (pushLedgerRow(child, depth + 1)) hasLedger = true;
       } else {
-        netCredit = Math.abs(net);
+        if (buildNode(child, depth + 1)) hasLedger = true;
       }
-      
+    }
+    if (hasLedger && node.acType !== 'GL') {
+      rows.splice(startIdx, 0, {
+        type: 'group',
+        level: depth,
+        docno: node.docno,
+        parent: node.parent,
+        acCode: '',
+        description: node.description,
+        totalDebit: 0,
+        totalCredit: 0,
+        netDebit: 0,
+        netCredit: 0,
+        hasChildren: true
+      });
+    }
+    return hasLedger;
+  }
+  
+  var roots = childrenMap[0] || [];
+  for (var r0 = 0; r0 < roots.length; r0++) {
+    var root = roots[r0];
+    if (root.acType === 'GL' && ledgerInfo[root.acCode]) {
+      pushLedgerRow(root, 1);
+    } else {
+      buildNode(root, 1);
+    }
+  }  
+  // Safety net: include any GL ledger that could not be reached through the tree
+  for (var ac3 in ledgerInfo) {
+    if (ledgerInfo.hasOwnProperty(ac3) && !includedLedgers[ac3]) {
+      var li = ledgerInfo[ac3];
       rows.push({
-        acCode: ac,
-        description: info.description,
-        totalDebit: Math.round(t.totalDebit * 100) / 100,
-        totalCredit: Math.round(t.totalCredit * 100) / 100,
-        netDebit: Math.round(netDebit * 100) / 100,
-        netCredit: Math.round(netCredit * 100) / 100
+        type: 'ledger',
+        level: 1,
+        docno: li.docno,
+        parent: 0,
+        acCode: li.acCode,
+        description: li.description,
+        totalDebit: li.totalDebit,
+        totalCredit: li.totalCredit,
+        netDebit: li.netDebit,
+        netCredit: li.netCredit,
+        hasChildren: false
       });
     }
   }
   
-  // Sort by account code ascending
-  rows.sort(function(a, b) {
-    return a.acCode.localeCompare(b.acCode);
-  });
-  
-  // Calculate summary
+  // Calculate summary over ledger rows only
   var totalDebit = 0;
   var totalCredit = 0;
   var totalNetDebit = 0;
   var totalNetCredit = 0;
   for (var r = 0; r < rows.length; r++) {
+    if (rows[r].type !== 'ledger') continue;
     totalDebit += rows[r].totalDebit;
     totalCredit += rows[r].totalCredit;
     totalNetDebit += rows[r].netDebit;
@@ -11947,13 +12123,647 @@ function handleGetTrialBalanceGet(e) {
     status: "success",
     rows: rows,
     summary: {
-      totalAccounts: rows.length,
+      totalAccounts: totalAccounts,
       totalDebit: Math.round(totalDebit * 100) / 100,
       totalCredit: Math.round(totalCredit * 100) / 100,
       totalNetDebit: Math.round(totalNetDebit * 100) / 100,
       totalNetCredit: Math.round(totalNetCredit * 100) / 100,
       difference: Math.round((totalDebit - totalCredit) * 100) / 100,
       balanced: Math.abs(totalDebit - totalCredit) < 0.01
+    },
+    fromDate: fromDate,
+    toDate: toDate
+  };
+  
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// ============================================
+// PROFIT AND LOSS HANDLER
+// ============================================
+
+// Get Profit and Loss (income & expense GL accounts with totals for a date range)
+function handleGetProfitAndLossGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var fromDate = e.parameter.fromDate || '';
+  var toDate = e.parameter.toDate || '';
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Read the full COA hierarchy (groups + GL ledgers)
+  var coaSheet = ss.getSheetByName("COA");
+  var coaByDocno = {}; // docno -> account record
+  var coaMap = {};     // acCode -> account record
+  if (coaSheet) {
+    var coaData = coaSheet.getDataRange().getValues();
+    for (var i = 1; i < coaData.length; i++) {
+      var acCode = String(coaData[i][0] || '');
+      var acType = String(coaData[i][1] || '');
+      var desc = coaData[i][2] || '';
+      var level = parseInt(coaData[i][3]) || 1;
+      var parent = parseInt(coaData[i][4]) || 0;
+      var docno = parseInt(coaData[i][5]) || 0;
+      var firstLevel = parseInt(coaData[i][6]) || 0;
+      if (!acCode && !docno) continue;
+      
+      var rec = {
+        acCode: acCode, acType: acType, description: desc,
+        level: level, parent: parent, docno: docno, firstLevel: firstLevel
+      };
+      if (docno) coaByDocno[docno] = rec;
+      if (acCode) coaMap[acCode] = rec;
+    }
+  }
+  
+  // Resolve the FIRST_LEVEL classification of an account by walking up the
+  // parent chain to the top-level account that carries it.
+  // 1=ASSET, 2=LIABILITY, 3=EQUITY, 4=INCOME, 5=EXPENSE
+  function getAccountFirstLevel(rec) {
+    var current = rec;
+    var steps = 0;
+    while (current && steps < 50) {
+      steps++;
+      if (current.firstLevel) return current.firstLevel;
+      if (!current.parent || current.parent == 0) {
+        return current.firstLevel || 0;
+      }
+      current = coaByDocno[current.parent];
+    }
+    return (current && current.firstLevel) ? current.firstLevel : (rec.firstLevel || 0);
+  }
+  
+  // Get AccountTransaction sheet
+  var accountTransactionSheet = ss.getSheetByName("AccountTransaction");
+  var totalsMap = {}; // acCode -> { totalDebit, totalCredit }
+  
+  if (accountTransactionSheet) {
+    var data = accountTransactionSheet.getDataRange().getValues();
+    
+    for (var i = 1; i < data.length; i++) {
+      var acDocNo = String(data[i][3] || '');
+      if (!acDocNo) continue;
+      
+      // Apply date range filter on VALDATE (index 6)
+      var valDate = '';
+      if (data[i][6]) {
+        try {
+          valDate = Utilities.formatDate(new Date(data[i][6]), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+        } catch (e) {
+          valDate = '';
+        }
+      }
+      if (fromDate && valDate < fromDate) continue;
+      if (toDate && valDate > toDate) continue;
+      
+      var amount = parseFloat(data[i][8]) || 0;
+      
+      // Only include accounts that exist in COA as GL accounts
+      var coaInfo = coaMap[acDocNo];
+      if (!coaInfo || coaInfo.acType !== 'GL') continue;
+      
+      if (!totalsMap[acDocNo]) {
+        totalsMap[acDocNo] = { totalDebit: 0, totalCredit: 0 };
+      }
+      
+      if (amount < 0) {
+        totalsMap[acDocNo].totalDebit += Math.abs(amount);
+      } else {
+        totalsMap[acDocNo].totalCredit += amount;
+      }
+    }
+  }
+  
+  // P&L ledgers: all GL accounts whose FIRST_LEVEL classification is
+  // INCOME (4) or EXPENSE (5).
+  var pnlCodes = {}; // acCode -> { section, firstLevel }
+  for (var code in coaMap) {
+    if (!coaMap.hasOwnProperty(code)) continue;
+    var rec = coaMap[code];
+    if (rec.acType !== 'GL') continue;
+    var fl = getAccountFirstLevel(rec);
+    if (fl === 4 || fl === 5) {
+      pnlCodes[code] = { section: fl === 4 ? 'income' : 'expense', firstLevel: fl };
+    }
+  }
+  
+  // Compute per-ledger figures
+  var ledgerInfo = {}; // acCode -> ledger figures + hierarchy info
+  var incomeAccounts = 0;
+  var expenseAccounts = 0;
+  for (var ac in pnlCodes) {
+    if (!pnlCodes.hasOwnProperty(ac)) continue;
+    var info = coaMap[ac];
+    if (!info) continue;
+    var t = totalsMap[ac] || { totalDebit: 0, totalCredit: 0 };
+    var netDebit = 0;
+    var netCredit = 0;
+    var net = t.totalDebit - t.totalCredit;
+    if (net > 0) {
+      netDebit = net;
+    } else {
+      netCredit = Math.abs(net);
+    }
+    // P&L amount: income = credit - debit, expense = debit - credit
+    var section = pnlCodes[ac].section;
+    var pnlAmount = section === 'income' ? (t.totalCredit - t.totalDebit) : (t.totalDebit - t.totalCredit);
+    ledgerInfo[ac] = {
+      acCode: ac,
+      description: info.description,
+      level: info.level,
+      parent: info.parent,
+      docno: info.docno,
+      section: section,
+      firstLevel: pnlCodes[ac].firstLevel,
+      totalDebit: Math.round(t.totalDebit * 100) / 100,
+      totalCredit: Math.round(t.totalCredit * 100) / 100,
+      netDebit: Math.round(netDebit * 100) / 100,
+      netCredit: Math.round(netCredit * 100) / 100,
+      pnlAmount: Math.round(pnlAmount * 100) / 100
+    };
+    if (section === 'income') {
+      incomeAccounts++;
+    } else {
+      expenseAccounts++;
+    }
+  }
+  
+  // Build parent -> children map from the full COA hierarchy
+  var childrenMap = {};
+  for (var d in coaByDocno) {
+    if (coaByDocno.hasOwnProperty(d)) {
+      var r = coaByDocno[d];
+      var p = r.parent || 0;
+      if (!childrenMap[p]) childrenMap[p] = [];
+      childrenMap[p].push(r);
+    }
+  }
+  for (var cm in childrenMap) {
+    if (childrenMap.hasOwnProperty(cm)) {
+      childrenMap[cm].sort(function(a, b) { return a.docno - b.docno; });
+    }
+  }
+  
+  // Walk the COA tree and emit P&L rows in tree order.
+  // Group rows are headers only (no amounts); only groups that lead to at
+  // least one P&L ledger are included.
+  var rows = [];
+  var includedLedgers = {}; // acCode -> true
+  
+  function pushLedgerRow(rec, depth) {
+    var lr = ledgerInfo[rec.acCode];
+    if (!lr) return false;
+    rows.push({
+      type: 'ledger',
+      level: depth,
+      docno: rec.docno,
+      parent: rec.parent,
+      acCode: rec.acCode,
+      description: rec.description,
+      section: lr.section,
+      totalDebit: lr.totalDebit,
+      totalCredit: lr.totalCredit,
+      netDebit: lr.netDebit,
+      netCredit: lr.netCredit,
+      pnlAmount: lr.pnlAmount,
+      hasChildren: false
+    });
+    includedLedgers[rec.acCode] = true;
+    return true;
+  }
+  
+  function buildNode(node, depth) {
+    var kids = childrenMap[node.docno] || [];
+    var startIdx = rows.length;
+    var hasLedger = false;
+    for (var k = 0; k < kids.length; k++) {
+      var child = kids[k];
+      if (child.acType === 'GL' && ledgerInfo[child.acCode]) {
+        if (pushLedgerRow(child, depth + 1)) hasLedger = true;
+      } else {
+        if (buildNode(child, depth + 1)) hasLedger = true;
+      }
+    }
+    if (hasLedger && node.acType !== 'GL') {
+      rows.splice(startIdx, 0, {
+        type: 'group',
+        level: depth,
+        docno: node.docno,
+        parent: node.parent,
+        acCode: '',
+        description: node.description,
+        section: node.firstLevel === 4 ? 'income' : (node.firstLevel === 5 ? 'expense' : ''),
+        totalDebit: 0,
+        totalCredit: 0,
+        netDebit: 0,
+        netCredit: 0,
+        pnlAmount: 0,
+        hasChildren: true
+      });
+    }
+    return hasLedger;
+  }
+  
+  var roots = childrenMap[0] || [];
+  for (var r0 = 0; r0 < roots.length; r0++) {
+    var root = roots[r0];
+    if (root.acType === 'GL' && ledgerInfo[root.acCode]) {
+      pushLedgerRow(root, 1);
+    } else {
+      buildNode(root, 1);
+    }
+  }
+  // Safety net: include any P&L ledger that could not be reached through the tree
+  for (var ac3 in ledgerInfo) {
+    if (ledgerInfo.hasOwnProperty(ac3) && !includedLedgers[ac3]) {
+      var li = ledgerInfo[ac3];
+      rows.push({
+        type: 'ledger',
+        level: 1,
+        docno: li.docno,
+        parent: 0,
+        acCode: li.acCode,
+        description: li.description,
+        section: li.section,
+        totalDebit: li.totalDebit,
+        totalCredit: li.totalCredit,
+        netDebit: li.netDebit,
+        netCredit: li.netCredit,
+        pnlAmount: li.pnlAmount,
+        hasChildren: false
+      });
+    }
+  }
+  
+  // Calculate summary over ledger rows only
+  var totalIncome = 0;
+  var totalExpenses = 0;
+  for (var r = 0; r < rows.length; r++) {
+    if (rows[r].type !== 'ledger') continue;
+    if (rows[r].section === 'income') {
+      totalIncome += rows[r].pnlAmount;
+    } else {
+      totalExpenses += rows[r].pnlAmount;
+    }
+  }
+  var netProfit = Math.round((totalIncome - totalExpenses) * 100) / 100;
+  
+  var result = {
+    status: "success",
+    rows: rows,
+    summary: {
+      incomeAccounts: incomeAccounts,
+      expenseAccounts: expenseAccounts,
+      totalIncome: Math.round(totalIncome * 100) / 100,
+      totalExpenses: Math.round(totalExpenses * 100) / 100,
+      netProfit: netProfit,
+      isProfit: netProfit >= 0
+    },
+    fromDate: fromDate,
+    toDate: toDate
+  };
+  
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// ============================================
+// BALANCE SHEET HANDLER
+// ============================================
+
+// Get balance sheet (asset, liability and equity GL accounts with totals for a date range)
+function handleGetBalanceSheetGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var fromDate = e.parameter.fromDate || '';
+  var toDate = e.parameter.toDate || '';
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Read the full COA hierarchy (groups + GL ledgers)
+  var coaSheet = ss.getSheetByName("COA");
+  var coaByDocno = {}; // docno -> account record
+  var coaMap = {};     // acCode -> account record
+  if (coaSheet) {
+    var coaData = coaSheet.getDataRange().getValues();
+    for (var i = 1; i < coaData.length; i++) {
+      var acCode = String(coaData[i][0] || '');
+      var acType = String(coaData[i][1] || '');
+      var desc = coaData[i][2] || '';
+      var level = parseInt(coaData[i][3]) || 1;
+      var parent = parseInt(coaData[i][4]) || 0;
+      var docno = parseInt(coaData[i][5]) || 0;
+      var firstLevel = parseInt(coaData[i][6]) || 0;
+      if (!acCode && !docno) continue;
+      
+      var rec = {
+        acCode: acCode, acType: acType, description: desc,
+        level: level, parent: parent, docno: docno, firstLevel: firstLevel
+      };
+      if (docno) coaByDocno[docno] = rec;
+      if (acCode) coaMap[acCode] = rec;
+    }
+  }
+  
+  // Resolve the FIRST_LEVEL classification of an account by walking up the
+  // parent chain to the top-level account that carries it.
+  // 1=ASSET, 2=LIABILITY, 3=EQUITY, 4=INCOME, 5=EXPENSE
+  function getAccountFirstLevel(rec) {
+    var current = rec;
+    var steps = 0;
+    while (current && steps < 50) {
+      steps++;
+      if (current.firstLevel) return current.firstLevel;
+      if (!current.parent || current.parent == 0) {
+        return current.firstLevel || 0;
+      }
+      current = coaByDocno[current.parent];
+    }
+    return (current && current.firstLevel) ? current.firstLevel : (rec.firstLevel || 0);
+  }
+  
+  // Get AccountTransaction sheet
+  var accountTransactionSheet = ss.getSheetByName("AccountTransaction");
+  var totalsMap = {}; // acCode -> { totalDebit, totalCredit }
+  
+  if (accountTransactionSheet) {
+    var data = accountTransactionSheet.getDataRange().getValues();
+    
+    for (var i = 1; i < data.length; i++) {
+      var acDocNo = String(data[i][3] || '');
+      if (!acDocNo) continue;
+      
+      // Apply date range filter on VALDATE (index 6)
+      var valDate = '';
+      if (data[i][6]) {
+        try {
+          valDate = Utilities.formatDate(new Date(data[i][6]), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+        } catch (e) {
+          valDate = '';
+        }
+      }
+      if (fromDate && valDate < fromDate) continue;
+      if (toDate && valDate > toDate) continue;
+      
+      var amount = parseFloat(data[i][8]) || 0;
+      
+      // Only include accounts that exist in COA as GL accounts
+      var coaInfo = coaMap[acDocNo];
+      if (!coaInfo || coaInfo.acType !== 'GL') continue;
+      
+      if (!totalsMap[acDocNo]) {
+        totalsMap[acDocNo] = { totalDebit: 0, totalCredit: 0 };
+      }
+      
+      if (amount < 0) {
+        totalsMap[acDocNo].totalDebit += Math.abs(amount);
+      } else {
+        totalsMap[acDocNo].totalCredit += amount;
+      }
+    }
+  }
+  
+  // Balance sheet ledgers: all GL accounts whose FIRST_LEVEL classification is
+  // ASSET (1), LIABILITY (2) or EQUITY (3).
+  var bsCodes = {}; // acCode -> { section, firstLevel }
+  for (var code in coaMap) {
+    if (!coaMap.hasOwnProperty(code)) continue;
+    var rec = coaMap[code];
+    if (rec.acType !== 'GL') continue;
+    var fl = getAccountFirstLevel(rec);
+    if (fl === 1 || fl === 2 || fl === 3) {
+      var section = fl === 1 ? 'asset' : (fl === 2 ? 'liability' : 'equity');
+      bsCodes[code] = { section: section, firstLevel: fl };
+    }
+  }
+  
+  // Net Profit/(Loss) for the period from P&L accounts (INCOME 4 / EXPENSE 5)
+  var totalIncome = 0;
+  var totalExpenses = 0;
+  for (var codePl in coaMap) {
+    if (!coaMap.hasOwnProperty(codePl)) continue;
+    var recPl = coaMap[codePl];
+    if (recPl.acType !== 'GL') continue;
+    var flPl = getAccountFirstLevel(recPl);
+    if (flPl !== 4 && flPl !== 5) continue;
+    var tPl = totalsMap[codePl] || { totalDebit: 0, totalCredit: 0 };
+    if (flPl === 4) {
+      totalIncome += (tPl.totalCredit - tPl.totalDebit);
+    } else {
+      totalExpenses += (tPl.totalDebit - tPl.totalCredit);
+    }
+  }
+  var netProfit = Math.round((totalIncome - totalExpenses) * 100) / 100;
+  
+  // Compute per-ledger figures
+  var ledgerInfo = {}; // acCode -> ledger figures + hierarchy info
+  var assetAccounts = 0;
+  var liabilityAccounts = 0;
+  var equityAccounts = 0;
+  for (var ac in bsCodes) {
+    if (!bsCodes.hasOwnProperty(ac)) continue;
+    var info = coaMap[ac];
+    if (!info) continue;
+    var t = totalsMap[ac] || { totalDebit: 0, totalCredit: 0 };
+    var netDebit = 0;
+    var netCredit = 0;
+    var net = t.totalDebit - t.totalCredit;
+    if (net > 0) {
+      netDebit = net;
+    } else {
+      netCredit = Math.abs(net);
+    }
+    var section = bsCodes[ac].section;
+    ledgerInfo[ac] = {
+      acCode: ac,
+      description: info.description,
+      level: info.level,
+      parent: info.parent,
+      docno: info.docno,
+      section: section,
+      firstLevel: bsCodes[ac].firstLevel,
+      totalDebit: Math.round(t.totalDebit * 100) / 100,
+      totalCredit: Math.round(t.totalCredit * 100) / 100,
+      netDebit: Math.round(netDebit * 100) / 100,
+      netCredit: Math.round(netCredit * 100) / 100
+    };
+    if (section === 'asset') {
+      assetAccounts++;
+    } else if (section === 'liability') {
+      liabilityAccounts++;
+    } else {
+      equityAccounts++;
+    }
+  }
+  
+  // Build parent -> children map from the full COA hierarchy
+  var childrenMap = {};
+  for (var d in coaByDocno) {
+    if (coaByDocno.hasOwnProperty(d)) {
+      var r = coaByDocno[d];
+      var p = r.parent || 0;
+      if (!childrenMap[p]) childrenMap[p] = [];
+      childrenMap[p].push(r);
+    }
+  }
+  for (var cm in childrenMap) {
+    if (childrenMap.hasOwnProperty(cm)) {
+      childrenMap[cm].sort(function(a, b) { return a.docno - b.docno; });
+    }
+  }
+  
+  // Walk the COA tree and emit balance sheet rows in tree order.
+  // Group rows are headers only (no amounts); only groups that lead to at
+  // least one balance sheet ledger are included.
+  var rows = [];
+  var includedLedgers = {}; // acCode -> true
+  
+  function pushLedgerRow(rec, depth) {
+    var lr = ledgerInfo[rec.acCode];
+    if (!lr) return false;
+    rows.push({
+      type: 'ledger',
+      level: depth,
+      docno: rec.docno,
+      parent: rec.parent,
+      acCode: rec.acCode,
+      description: rec.description,
+      section: lr.section,
+      totalDebit: lr.totalDebit,
+      totalCredit: lr.totalCredit,
+      netDebit: lr.netDebit,
+      netCredit: lr.netCredit,
+      hasChildren: false
+    });
+    includedLedgers[rec.acCode] = true;
+    return true;
+  }
+  
+  function buildNode(node, depth) {
+    var kids = childrenMap[node.docno] || [];
+    var startIdx = rows.length;
+    var hasLedger = false;
+    for (var k = 0; k < kids.length; k++) {
+      var child = kids[k];
+      if (child.acType === 'GL' && ledgerInfo[child.acCode]) {
+        if (pushLedgerRow(child, depth + 1)) hasLedger = true;
+      } else {
+        if (buildNode(child, depth + 1)) hasLedger = true;
+      }
+    }
+    if (hasLedger && node.acType !== 'GL') {
+      rows.splice(startIdx, 0, {
+        type: 'group',
+        level: depth,
+        docno: node.docno,
+        parent: node.parent,
+        acCode: '',
+        description: node.description,
+        section: node.firstLevel === 1 ? 'asset' : (node.firstLevel === 2 ? 'liability' : (node.firstLevel === 3 ? 'equity' : '')),
+        totalDebit: 0,
+        totalCredit: 0,
+        netDebit: 0,
+        netCredit: 0,
+        hasChildren: true
+      });
+    }
+    return hasLedger;
+  }
+  
+  var roots = childrenMap[0] || [];
+  for (var r0 = 0; r0 < roots.length; r0++) {
+    var root = roots[r0];
+    if (root.acType === 'GL' && ledgerInfo[root.acCode]) {
+      pushLedgerRow(root, 1);
+    } else {
+      buildNode(root, 1);
+    }
+  }
+  // Safety net: include any balance sheet ledger that could not be reached through the tree
+  for (var ac3 in ledgerInfo) {
+    if (ledgerInfo.hasOwnProperty(ac3) && !includedLedgers[ac3]) {
+      var li = ledgerInfo[ac3];
+      rows.push({
+        type: 'ledger',
+        level: 1,
+        docno: li.docno,
+        parent: 0,
+        acCode: li.acCode,
+        description: li.description,
+        section: li.section,
+        totalDebit: li.totalDebit,
+        totalCredit: li.totalCredit,
+        netDebit: li.netDebit,
+        netCredit: li.netCredit,
+        hasChildren: false
+      });
+    }
+  }
+  
+  // Calculate summary over ledger rows only
+  var totalAssets = 0;
+  var totalLiabilities = 0;
+  var totalEquity = 0;
+  for (var r = 0; r < rows.length; r++) {
+    if (rows[r].type !== 'ledger') continue;
+    if (rows[r].section === 'asset') {
+      totalAssets += (rows[r].netDebit - rows[r].netCredit);
+    } else if (rows[r].section === 'liability') {
+      totalLiabilities += (rows[r].netCredit - rows[r].netDebit);
+    } else {
+      totalEquity += (rows[r].netCredit - rows[r].netDebit);
+    }
+  }
+  var totalLiabilitiesEquity = Math.round((totalLiabilities + totalEquity + netProfit) * 100) / 100;
+  var difference = Math.round((totalAssets - totalLiabilitiesEquity) * 100) / 100;
+  
+  var result = {
+    status: "success",
+    rows: rows,
+    summary: {
+      assetAccounts: assetAccounts,
+      liabilityAccounts: liabilityAccounts,
+      equityAccounts: equityAccounts,
+      totalAssets: Math.round(totalAssets * 100) / 100,
+      totalLiabilities: Math.round(totalLiabilities * 100) / 100,
+      totalEquity: Math.round(totalEquity * 100) / 100,
+      netProfit: netProfit,
+      totalLiabilitiesEquity: totalLiabilitiesEquity,
+      difference: difference,
+      balanced: Math.abs(difference) < 0.01
     },
     fromDate: fromDate,
     toDate: toDate
