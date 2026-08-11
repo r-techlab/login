@@ -1116,6 +1116,70 @@ function doGet(e) {
     return handleCancelJVAccountTransactionPostGet(e);
   } else if (action === "getJournalVoucherReport") {
     return handleGetJournalVoucherReportGet(e);
+  } else if (action === "getBankReceiptVouchers") {
+    return handleGetBankReceiptVouchersGet(e);
+  } else if (action === "getBankReceiptVoucherByDocNo") {
+    return handleGetBankReceiptVoucherByDocNoGet(e);
+  } else if (action === "createBankReceiptVoucher") {
+    return handleCreateBankReceiptVoucherGet(e);
+  } else if (action === "updateBankReceiptVoucher") {
+    return handleUpdateBankReceiptVoucherGet(e);
+  } else if (action === "deleteBankReceiptVoucher") {
+    return handleDeleteBankReceiptVoucherGet(e);
+  } else if (action === "postBRVToAccountTransaction") {
+    return handlePostBRVToAccountTransactionGet(e);
+  } else if (action === "cancelBRVAccountTransactionPost") {
+    return handleCancelBRVAccountTransactionPostGet(e);
+  } else if (action === "getBankReceiptVoucherReport") {
+    return handleGetBankReceiptVoucherReportGet(e);
+  } else if (action === "getCashReceiptVouchers") {
+    return handleGetCashReceiptVouchersGet(e);
+  } else if (action === "getCashReceiptVoucherByDocNo") {
+    return handleGetCashReceiptVoucherByDocNoGet(e);
+  } else if (action === "createCashReceiptVoucher") {
+    return handleCreateCashReceiptVoucherGet(e);
+  } else if (action === "updateCashReceiptVoucher") {
+    return handleUpdateCashReceiptVoucherGet(e);
+  } else if (action === "deleteCashReceiptVoucher") {
+    return handleDeleteCashReceiptVoucherGet(e);
+  } else if (action === "postCRVToAccountTransaction") {
+    return handlePostCRVToAccountTransactionGet(e);
+  } else if (action === "cancelCRVAccountTransactionPost") {
+    return handleCancelCRVAccountTransactionPostGet(e);
+  } else if (action === "getCashReceiptVoucherReport") {
+    return handleGetCashReceiptVoucherReportGet(e);
+  } else if (action === "getBankPaymentVouchers") {
+    return handleGetBankPaymentVouchersGet(e);
+  } else if (action === "getBankPaymentVoucherByDocNo") {
+    return handleGetBankPaymentVoucherByDocNoGet(e);
+  } else if (action === "createBankPaymentVoucher") {
+    return handleCreateBankPaymentVoucherGet(e);
+  } else if (action === "updateBankPaymentVoucher") {
+    return handleUpdateBankPaymentVoucherGet(e);
+  } else if (action === "deleteBankPaymentVoucher") {
+    return handleDeleteBankPaymentVoucherGet(e);
+  } else if (action === "postBPVToAccountTransaction") {
+    return handlePostBPVToAccountTransactionGet(e);
+  } else if (action === "cancelBPVAccountTransactionPost") {
+    return handleCancelBPVAccountTransactionPostGet(e);
+  } else if (action === "getBankPaymentVoucherReport") {
+    return handleGetBankPaymentVoucherReportGet(e);
+  } else if (action === "getCashPaymentVouchers") {
+    return handleGetCashPaymentVouchersGet(e);
+  } else if (action === "getCashPaymentVoucherByDocNo") {
+    return handleGetCashPaymentVoucherByDocNoGet(e);
+  } else if (action === "createCashPaymentVoucher") {
+    return handleCreateCashPaymentVoucherGet(e);
+  } else if (action === "updateCashPaymentVoucher") {
+    return handleUpdateCashPaymentVoucherGet(e);
+  } else if (action === "deleteCashPaymentVoucher") {
+    return handleDeleteCashPaymentVoucherGet(e);
+  } else if (action === "postCPVToAccountTransaction") {
+    return handlePostCPVToAccountTransactionGet(e);
+  } else if (action === "cancelCPVAccountTransactionPost") {
+    return handleCancelCPVAccountTransactionPostGet(e);
+  } else if (action === "getCashPaymentVoucherReport") {
+    return handleGetCashPaymentVoucherReportGet(e);
   } else if (action === "getStatementOfAccount") {
     return handleGetStatementOfAccountGet(e);
   } else if (action === "getTrialBalance") {
@@ -10789,6 +10853,9 @@ function handleGetJournalVouchersGet(e) {
   var allVouchers = [];
   
   for (var i = 1; i < headerData.length; i++) {
+    // Only include Journal Voucher (JV) documents - shared sheet also holds BRV
+    var rowDocType = String(headerData[i][0] || '').toUpperCase();
+    if (rowDocType && rowDocType !== 'JV') continue;
     if (headerData[i][1]) { // Check if DocNo exists
       var docNo = headerData[i][1].toString();
       var narration = headerData[i][3] || '';
@@ -11584,6 +11651,9 @@ function handleGetJournalVoucherReportGet(e) {
   var totalCredit = 0;
   
   for (var i = 1; i < headerData.length; i++) {
+    // Only include Journal Voucher (JV) documents - shared sheet also holds BRV
+    var rowDocType = String(headerData[i][0] || '').toUpperCase();
+    if (rowDocType && rowDocType !== 'JV') continue;
     if (headerData[i][1]) { // Check if DocNo exists
       var docNo = headerData[i][1].toString();
       var dateObj = headerData[i][2] ? new Date(headerData[i][2]) : null;
@@ -11677,6 +11747,3748 @@ function handleGetJournalVoucherReportGet(e) {
   return createJsonResponse(result);
 }
 
+// ============================================
+// BANK RECEIPT VOUCHER (BRV) MANAGEMENT HANDLERS
+// ============================================
+
+// Get all bank receipt vouchers (with server-side pagination)
+function handleGetBankReceiptVouchersGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Read pagination and search parameters
+  var page = parseInt(e.parameter.page) || 1;
+  var pageSize = parseInt(e.parameter.pageSize) || 10;
+  var search = (e.parameter.search || '').toLowerCase();
+  
+  // Get all vouchers from JournalVoucherHeader sheet (shared with JV)
+  var headerSheet = ss.getSheetByName("JournalVoucherHeader");
+  if (!headerSheet) {
+    var emptyResult = { status: "success", jv: [], totalRecords: 0, totalPages: 0, currentPage: page, pageSize: pageSize };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(emptyResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(emptyResult);
+  }
+  
+  var headerData = headerSheet.getDataRange().getValues();
+  var allVouchers = [];
+  
+  for (var i = 1; i < headerData.length; i++) {
+    // Only include Bank Receipt Voucher (BRV) documents - shared sheet with JV
+    if (String(headerData[i][0] || '').toUpperCase() !== 'BRV') continue;
+    if (headerData[i][1]) { // Check if DocNo exists
+      var docNo = headerData[i][1].toString();
+      var narration = headerData[i][3] || '';
+      var date = headerData[i][2] ? Utilities.formatDate(new Date(headerData[i][2]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '';
+      
+      // Apply search filter if search term is provided
+      if (search) {
+        if (docNo.toLowerCase().indexOf(search) === -1 &&
+            narration.toLowerCase().indexOf(search) === -1 &&
+            date.toLowerCase().indexOf(search) === -1) {
+          continue;
+        }
+      }
+      
+      allVouchers.push({
+        docType: headerData[i][0] || '',
+        docNo: docNo,
+        date: date,
+        narration: narration,
+        debit: parseFloat(headerData[i][4]) || 0,
+        credit: parseFloat(headerData[i][5]) || 0,
+        refNo: headerData[i][6] || '',
+        refDate: headerData[i][7] ? Utilities.formatDate(new Date(headerData[i][7]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
+        createdBy: headerData[i][8] || '',
+        createdTime: headerData[i][9] || '',
+        postedBy: headerData[i][10] || '',
+        postedTime: headerData[i][11] || ''
+      });
+    }
+  }
+  
+  // Sort descending by DocNo (most recent/last document first)
+  allVouchers.sort(function(a, b) {
+    return b.docNo.localeCompare(a.docNo);
+  });
+  
+  var totalRecords = allVouchers.length;
+  var totalPages = Math.ceil(totalRecords / pageSize);
+  
+  var startIndex = (page - 1) * pageSize;
+  var endIndex = Math.min(startIndex + pageSize, totalRecords);
+  var vouchers = allVouchers.slice(startIndex, endIndex);
+  
+  var result = { 
+    status: "success", 
+    jv: vouchers, 
+    totalRecords: totalRecords,
+    totalPages: totalPages,
+    currentPage: page,
+    pageSize: pageSize
+  };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Get single bank receipt voucher by DocNo
+function handleGetBankReceiptVoucherByDocNoGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var docNo = e.parameter.docNo;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get voucher header
+  var headerSheet = ss.getSheetByName("JournalVoucherHeader");
+  if (!headerSheet) {
+    var errorResult = { status: "error", message: "Bank receipt voucher not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  var headerData = headerSheet.getDataRange().getValues();
+  var header = null;
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1] == docNo) {
+      header = {
+        docType: headerData[i][0] || '',
+        docNo: headerData[i][1],
+        date: headerData[i][2] ? Utilities.formatDate(new Date(headerData[i][2]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
+        narration: headerData[i][3] || '',
+        debit: parseFloat(headerData[i][4]) || 0,
+        credit: parseFloat(headerData[i][5]) || 0,
+        refNo: headerData[i][6] || '',
+        refDate: headerData[i][7] ? Utilities.formatDate(new Date(headerData[i][7]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
+        createdBy: headerData[i][8] || '',
+        createdTime: headerData[i][9] || '',
+        postedBy: headerData[i][10] || '',
+        postedTime: headerData[i][11] || ''
+      };
+      break;
+    }
+  }
+  
+  if (!header) {
+    var errorResult = { status: "error", message: "Bank receipt voucher not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get voucher details
+  var detailsSheet = ss.getSheetByName("JournalVoucherDetails");
+  var detailsData = detailsSheet ? detailsSheet.getDataRange().getValues() : [];
+  var details = [];
+  
+  for (var i = 1; i < detailsData.length; i++) {
+    if (detailsData[i][1] == docNo) {
+      details.push({
+        docType: detailsData[i][0] || '',
+        docNo: detailsData[i][1],
+        docSrNo: detailsData[i][2] || 0,
+        acCode: detailsData[i][3] || '',
+        acDescription: detailsData[i][4] || '',
+        subledger: detailsData[i][5] || '',
+        amount: parseFloat(detailsData[i][6]) || 0,
+        narration: detailsData[i][7] || '',
+        mode: detailsData[i][8] || '',
+        bank: detailsData[i][9] || '',
+        instrumentNo: detailsData[i][10] || '',
+        instrumentDate: detailsData[i][11] ? Utilities.formatDate(new Date(detailsData[i][11]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : ''
+      });
+    }
+  }
+  
+  var result = { status: "success", jv: { header: header, details: details } };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Create new bank receipt voucher
+function handleCreateBankReceiptVoucherGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var brvDataJson = e.parameter.brvData;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Parse bank receipt voucher data
+  var brvData;
+  try {
+    brvData = JSON.parse(brvDataJson);
+  } catch (error) {
+    var errorResult = { status: "error", message: "Invalid bank receipt voucher data format" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!brvData.header || !brvData.details || brvData.details.length === 0) {
+    var errorResult = { status: "error", message: "Header and at least one detail line are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate debit = credit balance
+  var totalDebit = 0;
+  var totalCredit = 0;
+  for (var d = 0; d < brvData.details.length; d++) {
+    var amt = parseFloat(brvData.details[d].amount) || 0;
+    if (amt < 0) {
+      totalDebit += Math.abs(amt);
+    } else {
+      totalCredit += amt;
+    }
+  }
+  
+  if (Math.abs(totalDebit - totalCredit) > 0.01) {
+    var errorResult = { status: "error", message: "Voucher is not balanced! Total Debit must equal Total Credit." };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get or create JournalVoucherHeader sheet (shared with JV)
+  var headerSheet = ss.getSheetByName("JournalVoucherHeader");
+  if (!headerSheet) {
+    headerSheet = ss.insertSheet("JournalVoucherHeader");
+    headerSheet.appendRow(["DocType", "DocNo", "Date", "Narration", "Debit", "Credit", "RefNo", "RefDate", "CreatedBy", "CreatedTime", "PostedBy", "PostedTime"]);
+  }
+  
+  // Generate DocNo - starting from 1000 per sample
+  var headerData = headerSheet.getDataRange().getValues();
+  var maxNum = 1000; // Starting number
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1]) {
+      var docNo = headerData[i][1].toString();
+      if (docNo.startsWith('BRV')) {
+        var num = parseInt(docNo.substring(3));
+        if (num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+  }
+  
+  var newDocNo = 'BRV' + (maxNum + 1);
+  
+  // Add header
+  var header = brvData.header;
+  var now = new Date();
+  var createdTime = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+  
+  headerSheet.appendRow([
+    'BRV', // DocType
+    newDocNo,
+    header.date,
+    header.narration || '',
+    totalDebit,
+    totalCredit,
+    header.refNo || '',
+    header.refDate || '',
+    validation.userName,
+    createdTime,
+    '', // PostedBy
+    ''  // PostedTime
+  ]);
+  
+  // Get or create JournalVoucherDetails sheet (shared with JV)
+  var detailsSheet = ss.getSheetByName("JournalVoucherDetails");
+  if (!detailsSheet) {
+    detailsSheet = ss.insertSheet("JournalVoucherDetails");
+    detailsSheet.appendRow(["DocType", "DocNo", "DocSrNo", "ACCode", "ACDescription", "Subledger", "Amount", "Narration", "Mode", "Bank", "InstrumentNo", "InstrumentDate"]);
+  }
+  
+  // Add details
+  for (var i = 0; i < brvData.details.length; i++) {
+    var detail = brvData.details[i];
+    detailsSheet.appendRow([
+      'BRV', // DocType
+      newDocNo,
+      detail.docSrNo || (i + 1),
+      detail.acCode,
+      detail.acDescription || '',
+      detail.subledger || '',
+      parseFloat(detail.amount) || 0,
+      detail.narration || '',
+      detail.mode || '',
+      detail.bank || '',
+      detail.instrumentNo || '',
+      detail.instrumentDate || ''
+    ]);
+  }
+  
+  var result = { status: "success", message: "Bank Receipt Voucher created successfully", docNo: newDocNo };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+// Update existing bank receipt voucher
+function handleUpdateBankReceiptVoucherGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var brvDataJson = e.parameter.brvData;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Parse bank receipt voucher data
+  var brvData;
+  try {
+    brvData = JSON.parse(brvDataJson);
+  } catch (error) {
+    var errorResult = { status: "error", message: "Invalid bank receipt voucher data format" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!brvData.header || !brvData.header.docNo || !brvData.details || brvData.details.length === 0) {
+    var errorResult = { status: "error", message: "Header with DocNo and at least one detail line are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var docNo = brvData.header.docNo;
+  
+  // Validate debit = credit balance
+  var totalDebit = 0;
+  var totalCredit = 0;
+  for (var d = 0; d < brvData.details.length; d++) {
+    var amt = parseFloat(brvData.details[d].amount) || 0;
+    if (amt < 0) {
+      totalDebit += Math.abs(amt);
+    } else {
+      totalCredit += amt;
+    }
+  }
+  
+  if (Math.abs(totalDebit - totalCredit) > 0.01) {
+    var errorResult = { status: "error", message: "Voucher is not balanced! Total Debit must equal Total Credit." };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Update header
+  var headerSheet = ss.getSheetByName("JournalVoucherHeader");
+  var headerData = headerSheet.getDataRange().getValues();
+  var headerFound = false;
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1] == docNo) {
+      // Check if posted
+      if (headerData[i][10] && headerData[i][10] !== '') {
+        var errorResult = { status: "error", message: "Cannot update a posted bank receipt voucher. Cancel post first." };
+        if (callback) {
+          return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+            .setMimeType(ContentService.MimeType.JAVASCRIPT);
+        }
+        return createJsonResponse(errorResult);
+      }
+      
+      var header = brvData.header;
+      headerSheet.getRange(i + 1, 1, 1, 12).setValues([[
+        'BRV', // DocType
+        docNo,
+        header.date,
+        header.narration || '',
+        totalDebit,
+        totalCredit,
+        header.refNo || '',
+        header.refDate || '',
+        headerData[i][8], // Keep original CreatedBy
+        headerData[i][9], // Keep original CreatedTime
+        '', // PostedBy
+        ''  // PostedTime
+      ]]);
+      headerFound = true;
+      break;
+    }
+  }
+  
+  if (!headerFound) {
+    var errorResult = { status: "error", message: "Bank receipt voucher not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Delete existing details
+  var detailsSheet = ss.getSheetByName("JournalVoucherDetails");
+  if (detailsSheet) {
+    var detailsData = detailsSheet.getDataRange().getValues();
+    for (var i = detailsData.length - 1; i >= 1; i--) {
+      if (detailsData[i][1] == docNo) {
+        detailsSheet.deleteRow(i + 1);
+      }
+    }
+  } else {
+    detailsSheet = ss.insertSheet("JournalVoucherDetails");
+    detailsSheet.appendRow(["DocType", "DocNo", "DocSrNo", "ACCode", "ACDescription", "Subledger", "Amount", "Narration", "Mode", "Bank", "InstrumentNo", "InstrumentDate"]);
+  }
+  
+  // Add new details
+  for (var i = 0; i < brvData.details.length; i++) {
+    var detail = brvData.details[i];
+    detailsSheet.appendRow([
+      'BRV', // DocType
+      docNo,
+      detail.docSrNo || (i + 1),
+      detail.acCode,
+      detail.acDescription || '',
+      detail.subledger || '',
+      parseFloat(detail.amount) || 0,
+      detail.narration || '',
+      detail.mode || '',
+      detail.bank || '',
+      detail.instrumentNo || '',
+      detail.instrumentDate || ''
+    ]);
+  }
+  
+  var result = { status: "success", message: "Bank Receipt Voucher updated successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Delete bank receipt voucher
+function handleDeleteBankReceiptVoucherGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var docNo = e.parameter.docNo;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Delete header
+  var headerSheet = ss.getSheetByName("JournalVoucherHeader");
+  var headerData = headerSheet.getDataRange().getValues();
+  var headerFound = false;
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1] == docNo) {
+      // Check if posted
+      if (headerData[i][10] && headerData[i][10] !== '') {
+        var errorResult = { status: "error", message: "Cannot delete a posted bank receipt voucher. Cancel post first." };
+        if (callback) {
+          return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+            .setMimeType(ContentService.MimeType.JAVASCRIPT);
+        }
+        return createJsonResponse(errorResult);
+      }
+      headerSheet.deleteRow(i + 1);
+      headerFound = true;
+      break;
+    }
+  }
+  
+  if (!headerFound) {
+    var errorResult = { status: "error", message: "Bank receipt voucher not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Delete details
+  var detailsSheet = ss.getSheetByName("JournalVoucherDetails");
+  if (detailsSheet) {
+    var detailsData = detailsSheet.getDataRange().getValues();
+    for (var i = detailsData.length - 1; i >= 1; i--) {
+      if (detailsData[i][1] == docNo) {
+        detailsSheet.deleteRow(i + 1);
+      }
+    }
+  }
+  
+  var result = { status: "success", message: "Bank Receipt Voucher deleted successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Post BRV to AccountTransaction
+function handlePostBRVToAccountTransactionGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var docNo = e.parameter.docNo;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  if (!docNo) {
+    var errorResult = { status: "error", message: "DocNo is required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get voucher header
+  var headerSheet = ss.getSheetByName("JournalVoucherHeader");
+  var headerData = headerSheet.getDataRange().getValues();
+  var headerRow = -1;
+  var headerDate = '';
+  var postedBy = '';
+  var headerRefNo = '';
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1] == docNo) {
+      headerRow = i;
+      headerDate = headerData[i][2] ? Utilities.formatDate(new Date(headerData[i][2]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '';
+      postedBy = headerData[i][10] || '';
+      headerRefNo = headerData[i][6] || '';
+      break;
+    }
+  }
+  
+  if (headerRow === -1) {
+    var errorResult = { status: "error", message: "Bank receipt voucher not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  if (postedBy) {
+    var errorResult = { status: "error", message: "Bank receipt voucher is already posted by " + postedBy };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Check if accounting entries already exist
+  var existingSheet = ss.getSheetByName("AccountTransaction");
+  if (existingSheet) {
+    var existingData = existingSheet.getDataRange().getValues();
+    for (var i = 1; i < existingData.length; i++) {
+      if (existingData[i][0] && existingData[i][0].toString() == 'BRV' && existingData[i][1] && existingData[i][1].toString() == docNo.toString()) {
+        var alreadyResult = { status: "error", message: "Accounting entries already exist for this document. Cancel post first." };
+        if (callback) {
+          return ContentService.createTextOutput(callback + "(" + JSON.stringify(alreadyResult) + ")")
+            .setMimeType(ContentService.MimeType.JAVASCRIPT);
+        }
+        return createJsonResponse(alreadyResult);
+      }
+    }
+  }
+  
+  // Get voucher details
+  var detailsSheet = ss.getSheetByName("JournalVoucherDetails");
+  var detailsData = detailsSheet.getDataRange().getValues();
+  var brvDetails = [];
+  
+  for (var i = 1; i < detailsData.length; i++) {
+    if (detailsData[i][1] == docNo) {
+      brvDetails.push({
+        docSrNo: detailsData[i][2] || 0,
+        acCode: detailsData[i][3] || '',
+        subledger: detailsData[i][5] || '',
+        amount: parseFloat(detailsData[i][6]) || 0,
+        narration: detailsData[i][7] || ''
+      });
+    }
+  }
+  
+  if (brvDetails.length === 0) {
+    var errorResult = { status: "error", message: "No details found for this document" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Ensure AccountTransaction sheet exists
+  var accountTransactionSheet = ensureAccountTransactionSheet(ss);
+  
+  var now = new Date();
+  var postedTime = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+  
+  // Post each detail line to AccountTransaction
+  for (var d = 0; d < brvDetails.length; d++) {
+    var detail = brvDetails[d];
+    var amount = detail.amount;
+    
+    accountTransactionSheet.appendRow([
+      'BRV',                   // DOCTYPE
+      docNo,                   // DOCNO
+      detail.docSrNo,          // DOCSRNO
+      detail.acCode,           // AC_DOCNO
+      detail.subledger,        // SUBLEDGER_DOCNO
+      headerDate,              // DOCDATE
+      headerDate,              // VALDATE
+      detail.narration || 'Bank Receipt Voucher ' + docNo, // NARRATION
+      amount,                  // AMOUNT (negative = debit, positive = credit)
+      amount,                  // BAL_AMOUNT
+      headerRefNo,             // REF_NO
+      headerDate,              // REF_DATE
+      validation.userName,     // CREATED_BY
+      postedTime               // CREATED_TS
+    ]);
+  }
+  
+  // Update JournalVoucherHeader with PostedBy and PostedTime
+  headerSheet.getRange(headerRow + 1, 11).setValue(validation.userName);
+  headerSheet.getRange(headerRow + 1, 12).setValue(postedTime);
+  
+  var result = { status: "success", message: "Bank Receipt Voucher posted to accounting successfully", postedBy: validation.userName, postedTime: postedTime };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Cancel BRV AccountTransaction Post (Delete entries)
+function handleCancelBRVAccountTransactionPostGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var docNo = e.parameter.docNo;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  if (!docNo) {
+    var errorResult = { status: "error", message: "DocNo is required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Find header row for clearing posted status
+  var headerSheet = ss.getSheetByName("JournalVoucherHeader");
+  var headerRow = -1;
+  if (headerSheet) {
+    var headerData = headerSheet.getDataRange().getValues();
+    for (var i = 1; i < headerData.length; i++) {
+      if (headerData[i][1] == docNo) {
+        headerRow = i;
+        break;
+      }
+    }
+  }
+  
+  // Delete from AccountTransaction sheet
+  var accountTransactionSheet = ss.getSheetByName("AccountTransaction");
+  if (accountTransactionSheet) {
+    var data = accountTransactionSheet.getDataRange().getValues();
+    var deleted = false;
+    
+    for (var i = data.length - 1; i >= 1; i--) {
+      if (data[i][0] && data[i][0].toString() == 'BRV' && data[i][1] && data[i][1].toString() == docNo.toString()) {
+        accountTransactionSheet.deleteRow(i + 1);
+        deleted = true;
+      }
+    }
+    
+    // Clear PostedBy and PostedTime in JournalVoucherHeader
+    if (headerRow !== -1 && deleted) {
+      headerSheet.getRange(headerRow + 1, 11).setValue('');
+      headerSheet.getRange(headerRow + 1, 12).setValue('');
+    }
+    
+    var result = { status: "success", message: deleted ? "Accounting entries cancelled successfully" : "No accounting entries found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(result);
+  }
+  
+  var result = { status: "success", message: "No accounting entries found" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+// ============================================
+// BANK RECEIPT VOUCHER REPORT HANDLER
+// ============================================
+
+// Get bank receipt voucher report with date range filters
+function handleGetBankReceiptVoucherReportGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Read filter parameters
+  var fromDate = e.parameter.fromDate || '';
+  var toDate = e.parameter.toDate || '';
+  var reportType = (e.parameter.reportType || 'headerwise').toLowerCase();
+  
+  // Get all bank receipt vouchers from JournalVoucherHeader sheet (shared with JV)
+  var headerSheet = ss.getSheetByName("JournalVoucherHeader");
+  if (!headerSheet) {
+    var emptyResult = { status: "success", jv: [], summary: { totalCount: 0, totalDebit: 0, totalCredit: 0 } };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(emptyResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(emptyResult);
+  }
+  
+  var headerData = headerSheet.getDataRange().getValues();
+  var allVouchers = [];
+  var totalDebit = 0;
+  var totalCredit = 0;
+  
+  for (var i = 1; i < headerData.length; i++) {
+    // Only include Bank Receipt Voucher (BRV) documents - shared sheet with JV
+    if (String(headerData[i][0] || '').toUpperCase() !== 'BRV') continue;
+    if (headerData[i][1]) { // Check if DocNo exists
+      var docNo = headerData[i][1].toString();
+      var dateObj = headerData[i][2] ? new Date(headerData[i][2]) : null;
+      var dateStr = dateObj ? Utilities.formatDate(dateObj, Session.getScriptTimeZone(), 'yyyy-MM-dd') : '';
+      
+      // Apply date range filter
+      if (fromDate && dateStr < fromDate) continue;
+      if (toDate && dateStr > toDate) continue;
+      
+      var debit = parseFloat(headerData[i][4]) || 0;
+      var credit = parseFloat(headerData[i][5]) || 0;
+      totalDebit += debit;
+      totalCredit += credit;
+      
+      var voucher = {
+        docType: headerData[i][0] || '',
+        docNo: docNo,
+        date: dateStr,
+        narration: headerData[i][3] || '',
+        debit: debit,
+        credit: credit,
+        refNo: headerData[i][6] || '',
+        refDate: headerData[i][7] ? Utilities.formatDate(new Date(headerData[i][7]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
+        createdBy: headerData[i][8] || '',
+        createdTime: headerData[i][9] || '',
+        postedBy: headerData[i][10] || '',
+        postedTime: headerData[i][11] || ''
+      };
+      
+      allVouchers.push(voucher);
+    }
+  }
+  
+  // Sort by date descending, then by DocNo descending
+  allVouchers.sort(function(a, b) {
+    if (a.date !== b.date) return b.date.localeCompare(a.date);
+    return b.docNo.localeCompare(a.docNo);
+  });
+  
+  // If reportType is linewise, fetch detail lines for each voucher
+  if (reportType === 'linewise') {
+    var detailsSheet = ss.getSheetByName("JournalVoucherDetails");
+    if (detailsSheet) {
+      var detailsData = detailsSheet.getDataRange().getValues();
+      
+      // Build a map of docNo -> details array
+      var detailsMap = {};
+      for (var d = 1; d < detailsData.length; d++) {
+        var detailDocNo = detailsData[d][1];
+        if (detailDocNo) {
+          if (!detailsMap[detailDocNo]) {
+            detailsMap[detailDocNo] = [];
+          }
+          var amount = parseFloat(detailsData[d][6]) || 0;
+          detailsMap[detailDocNo].push({
+            docSrNo: detailsData[d][2] || 0,
+            acCode: detailsData[d][3] || '',
+            acDescription: detailsData[d][4] || '',
+            subledger: detailsData[d][5] || '',
+            amount: amount,
+            debit: amount < 0 ? Math.abs(amount) : 0,
+            credit: amount > 0 ? amount : 0,
+            narration: detailsData[d][7] || '',
+            mode: detailsData[d][8] || ''
+          });
+        }
+      }
+      
+      // Attach details to each voucher
+      for (var vi = 0; vi < allVouchers.length; vi++) {
+        allVouchers[vi].details = detailsMap[allVouchers[vi].docNo] || [];
+      }
+    }
+  }
+  
+  var result = { 
+    status: "success", 
+    jv: allVouchers,
+    reportType: reportType,
+    summary: {
+      totalCount: allVouchers.length,
+      totalDebit: Math.round(totalDebit * 100) / 100,
+      totalCredit: Math.round(totalCredit * 100) / 100
+    }
+  };
+  
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+
+
+
+
+
+
+
+// ============================================
+// CASH RECEIPT VOUCHER (CRV) MANAGEMENT HANDLERS
+// ============================================
+
+// Get all cash receipt vouchers (with server-side pagination)
+function handleGetCashReceiptVouchersGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Read pagination and search parameters
+  var page = parseInt(e.parameter.page) || 1;
+  var pageSize = parseInt(e.parameter.pageSize) || 10;
+  var search = (e.parameter.search || '').toLowerCase();
+  
+  // Get all vouchers from JournalVoucherHeader sheet (shared with JV)
+  var headerSheet = ss.getSheetByName("JournalVoucherHeader");
+  if (!headerSheet) {
+    var emptyResult = { status: "success", jv: [], totalRecords: 0, totalPages: 0, currentPage: page, pageSize: pageSize };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(emptyResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(emptyResult);
+  }
+  
+  var headerData = headerSheet.getDataRange().getValues();
+  var allVouchers = [];
+  
+  for (var i = 1; i < headerData.length; i++) {
+    // Only include Cash Receipt Voucher (CRV) documents - shared sheet with JV
+    if (String(headerData[i][0] || '').toUpperCase() !== 'CRV') continue;
+    if (headerData[i][1]) { // Check if DocNo exists
+      var docNo = headerData[i][1].toString();
+      var narration = headerData[i][3] || '';
+      var date = headerData[i][2] ? Utilities.formatDate(new Date(headerData[i][2]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '';
+      
+      // Apply search filter if search term is provided
+      if (search) {
+        if (docNo.toLowerCase().indexOf(search) === -1 &&
+            narration.toLowerCase().indexOf(search) === -1 &&
+            date.toLowerCase().indexOf(search) === -1) {
+          continue;
+        }
+      }
+      
+      allVouchers.push({
+        docType: headerData[i][0] || '',
+        docNo: docNo,
+        date: date,
+        narration: narration,
+        debit: parseFloat(headerData[i][4]) || 0,
+        credit: parseFloat(headerData[i][5]) || 0,
+        refNo: headerData[i][6] || '',
+        refDate: headerData[i][7] ? Utilities.formatDate(new Date(headerData[i][7]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
+        createdBy: headerData[i][8] || '',
+        createdTime: headerData[i][9] || '',
+        postedBy: headerData[i][10] || '',
+        postedTime: headerData[i][11] || ''
+      });
+    }
+  }
+  
+  // Sort descending by DocNo (most recent/last document first)
+  allVouchers.sort(function(a, b) {
+    return b.docNo.localeCompare(a.docNo);
+  });
+  
+  var totalRecords = allVouchers.length;
+  var totalPages = Math.ceil(totalRecords / pageSize);
+  
+  var startIndex = (page - 1) * pageSize;
+  var endIndex = Math.min(startIndex + pageSize, totalRecords);
+  var vouchers = allVouchers.slice(startIndex, endIndex);
+  
+  var result = { 
+    status: "success", 
+    jv: vouchers, 
+    totalRecords: totalRecords,
+    totalPages: totalPages,
+    currentPage: page,
+    pageSize: pageSize
+  };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Get single cash receipt voucher by DocNo
+function handleGetCashReceiptVoucherByDocNoGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var docNo = e.parameter.docNo;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get voucher header
+  var headerSheet = ss.getSheetByName("JournalVoucherHeader");
+  if (!headerSheet) {
+    var errorResult = { status: "error", message: "Cash receipt voucher not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  var headerData = headerSheet.getDataRange().getValues();
+  var header = null;
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1] == docNo) {
+      header = {
+        docType: headerData[i][0] || '',
+        docNo: headerData[i][1],
+        date: headerData[i][2] ? Utilities.formatDate(new Date(headerData[i][2]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
+        narration: headerData[i][3] || '',
+        debit: parseFloat(headerData[i][4]) || 0,
+        credit: parseFloat(headerData[i][5]) || 0,
+        refNo: headerData[i][6] || '',
+        refDate: headerData[i][7] ? Utilities.formatDate(new Date(headerData[i][7]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
+        createdBy: headerData[i][8] || '',
+        createdTime: headerData[i][9] || '',
+        postedBy: headerData[i][10] || '',
+        postedTime: headerData[i][11] || ''
+      };
+      break;
+    }
+  }
+  
+  if (!header) {
+    var errorResult = { status: "error", message: "Cash receipt voucher not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get voucher details
+  var detailsSheet = ss.getSheetByName("JournalVoucherDetails");
+  var detailsData = detailsSheet ? detailsSheet.getDataRange().getValues() : [];
+  var details = [];
+  
+  for (var i = 1; i < detailsData.length; i++) {
+    if (detailsData[i][1] == docNo) {
+      details.push({
+        docType: detailsData[i][0] || '',
+        docNo: detailsData[i][1],
+        docSrNo: detailsData[i][2] || 0,
+        acCode: detailsData[i][3] || '',
+        acDescription: detailsData[i][4] || '',
+        subledger: detailsData[i][5] || '',
+        amount: parseFloat(detailsData[i][6]) || 0,
+        narration: detailsData[i][7] || '',
+        mode: detailsData[i][8] || '',
+        bank: detailsData[i][9] || '',
+        instrumentNo: detailsData[i][10] || '',
+        instrumentDate: detailsData[i][11] ? Utilities.formatDate(new Date(detailsData[i][11]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : ''
+      });
+    }
+  }
+  
+  var result = { status: "success", jv: { header: header, details: details } };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Create new cash receipt voucher
+function handleCreateCashReceiptVoucherGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var crvDataJson = e.parameter.crvData;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Parse cash receipt voucher data
+  var crvData;
+  try {
+    crvData = JSON.parse(crvDataJson);
+  } catch (error) {
+    var errorResult = { status: "error", message: "Invalid cash receipt voucher data format" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!crvData.header || !crvData.details || crvData.details.length === 0) {
+    var errorResult = { status: "error", message: "Header and at least one detail line are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate debit = credit balance
+  var totalDebit = 0;
+  var totalCredit = 0;
+  for (var d = 0; d < crvData.details.length; d++) {
+    var amt = parseFloat(crvData.details[d].amount) || 0;
+    if (amt < 0) {
+      totalDebit += Math.abs(amt);
+    } else {
+      totalCredit += amt;
+    }
+  }
+  
+  if (Math.abs(totalDebit - totalCredit) > 0.01) {
+    var errorResult = { status: "error", message: "Voucher is not balanced! Total Debit must equal Total Credit." };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get or create JournalVoucherHeader sheet (shared with JV)
+  var headerSheet = ss.getSheetByName("JournalVoucherHeader");
+  if (!headerSheet) {
+    headerSheet = ss.insertSheet("JournalVoucherHeader");
+    headerSheet.appendRow(["DocType", "DocNo", "Date", "Narration", "Debit", "Credit", "RefNo", "RefDate", "CreatedBy", "CreatedTime", "PostedBy", "PostedTime"]);
+  }
+  
+  // Generate DocNo - starting from 1000 per sample
+  var headerData = headerSheet.getDataRange().getValues();
+  var maxNum = 1000; // Starting number
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1]) {
+      var docNo = headerData[i][1].toString();
+      if (docNo.startsWith('CRV')) {
+        var num = parseInt(docNo.substring(3));
+        if (num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+  }
+  
+  var newDocNo = 'CRV' + (maxNum + 1);
+  
+  // Add header
+  var header = crvData.header;
+  var now = new Date();
+  var createdTime = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+  
+  headerSheet.appendRow([
+    'CRV', // DocType
+    newDocNo,
+    header.date,
+    header.narration || '',
+    totalDebit,
+    totalCredit,
+    header.refNo || '',
+    header.refDate || '',
+    validation.userName,
+    createdTime,
+    '', // PostedBy
+    ''  // PostedTime
+  ]);
+  
+  // Get or create JournalVoucherDetails sheet (shared with JV)
+  var detailsSheet = ss.getSheetByName("JournalVoucherDetails");
+  if (!detailsSheet) {
+    detailsSheet = ss.insertSheet("JournalVoucherDetails");
+    detailsSheet.appendRow(["DocType", "DocNo", "DocSrNo", "ACCode", "ACDescription", "Subledger", "Amount", "Narration", "Mode", "Bank", "InstrumentNo", "InstrumentDate"]);
+  }
+  
+  // Add details
+  for (var i = 0; i < crvData.details.length; i++) {
+    var detail = crvData.details[i];
+    detailsSheet.appendRow([
+      'CRV', // DocType
+      newDocNo,
+      detail.docSrNo || (i + 1),
+      detail.acCode,
+      detail.acDescription || '',
+      detail.subledger || '',
+      parseFloat(detail.amount) || 0,
+      detail.narration || '',
+      detail.mode || '',
+      detail.bank || '',
+      detail.instrumentNo || '',
+      detail.instrumentDate || ''
+    ]);
+  }
+  
+  var result = { status: "success", message: "Cash Receipt Voucher created successfully", docNo: newDocNo };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+// Update existing cash receipt voucher
+function handleUpdateCashReceiptVoucherGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var crvDataJson = e.parameter.crvData;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Parse cash receipt voucher data
+  var crvData;
+  try {
+    crvData = JSON.parse(crvDataJson);
+  } catch (error) {
+    var errorResult = { status: "error", message: "Invalid cash receipt voucher data format" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!crvData.header || !crvData.header.docNo || !crvData.details || crvData.details.length === 0) {
+    var errorResult = { status: "error", message: "Header with DocNo and at least one detail line are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var docNo = crvData.header.docNo;
+  
+  // Validate debit = credit balance
+  var totalDebit = 0;
+  var totalCredit = 0;
+  for (var d = 0; d < crvData.details.length; d++) {
+    var amt = parseFloat(crvData.details[d].amount) || 0;
+    if (amt < 0) {
+      totalDebit += Math.abs(amt);
+    } else {
+      totalCredit += amt;
+    }
+  }
+  
+  if (Math.abs(totalDebit - totalCredit) > 0.01) {
+    var errorResult = { status: "error", message: "Voucher is not balanced! Total Debit must equal Total Credit." };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Update header
+  var headerSheet = ss.getSheetByName("JournalVoucherHeader");
+  var headerData = headerSheet.getDataRange().getValues();
+  var headerFound = false;
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1] == docNo) {
+      // Check if posted
+      if (headerData[i][10] && headerData[i][10] !== '') {
+        var errorResult = { status: "error", message: "Cannot update a posted cash receipt voucher. Cancel post first." };
+        if (callback) {
+          return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+            .setMimeType(ContentService.MimeType.JAVASCRIPT);
+        }
+        return createJsonResponse(errorResult);
+      }
+      
+      var header = crvData.header;
+      headerSheet.getRange(i + 1, 1, 1, 12).setValues([[
+        'CRV', // DocType
+        docNo,
+        header.date,
+        header.narration || '',
+        totalDebit,
+        totalCredit,
+        header.refNo || '',
+        header.refDate || '',
+        headerData[i][8], // Keep original CreatedBy
+        headerData[i][9], // Keep original CreatedTime
+        '', // PostedBy
+        ''  // PostedTime
+      ]]);
+      headerFound = true;
+      break;
+    }
+  }
+  
+  if (!headerFound) {
+    var errorResult = { status: "error", message: "Cash receipt voucher not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Delete existing details
+  var detailsSheet = ss.getSheetByName("JournalVoucherDetails");
+  if (detailsSheet) {
+    var detailsData = detailsSheet.getDataRange().getValues();
+    for (var i = detailsData.length - 1; i >= 1; i--) {
+      if (detailsData[i][1] == docNo) {
+        detailsSheet.deleteRow(i + 1);
+      }
+    }
+  } else {
+    detailsSheet = ss.insertSheet("JournalVoucherDetails");
+    detailsSheet.appendRow(["DocType", "DocNo", "DocSrNo", "ACCode", "ACDescription", "Subledger", "Amount", "Narration", "Mode", "Bank", "InstrumentNo", "InstrumentDate"]);
+  }
+  
+  // Add new details
+  for (var i = 0; i < crvData.details.length; i++) {
+    var detail = crvData.details[i];
+    detailsSheet.appendRow([
+      'CRV', // DocType
+      docNo,
+      detail.docSrNo || (i + 1),
+      detail.acCode,
+      detail.acDescription || '',
+      detail.subledger || '',
+      parseFloat(detail.amount) || 0,
+      detail.narration || '',
+      detail.mode || '',
+      detail.bank || '',
+      detail.instrumentNo || '',
+      detail.instrumentDate || ''
+    ]);
+  }
+  
+  var result = { status: "success", message: "Cash Receipt Voucher updated successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Delete cash receipt voucher
+function handleDeleteCashReceiptVoucherGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var docNo = e.parameter.docNo;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Delete header
+  var headerSheet = ss.getSheetByName("JournalVoucherHeader");
+  var headerData = headerSheet.getDataRange().getValues();
+  var headerFound = false;
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1] == docNo) {
+      // Check if posted
+      if (headerData[i][10] && headerData[i][10] !== '') {
+        var errorResult = { status: "error", message: "Cannot delete a posted cash receipt voucher. Cancel post first." };
+        if (callback) {
+          return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+            .setMimeType(ContentService.MimeType.JAVASCRIPT);
+        }
+        return createJsonResponse(errorResult);
+      }
+      headerSheet.deleteRow(i + 1);
+      headerFound = true;
+      break;
+    }
+  }
+  
+  if (!headerFound) {
+    var errorResult = { status: "error", message: "Cash receipt voucher not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Delete details
+  var detailsSheet = ss.getSheetByName("JournalVoucherDetails");
+  if (detailsSheet) {
+    var detailsData = detailsSheet.getDataRange().getValues();
+    for (var i = detailsData.length - 1; i >= 1; i--) {
+      if (detailsData[i][1] == docNo) {
+        detailsSheet.deleteRow(i + 1);
+      }
+    }
+  }
+  
+  var result = { status: "success", message: "Cash Receipt Voucher deleted successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Post CRV to AccountTransaction
+function handlePostCRVToAccountTransactionGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var docNo = e.parameter.docNo;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  if (!docNo) {
+    var errorResult = { status: "error", message: "DocNo is required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get voucher header
+  var headerSheet = ss.getSheetByName("JournalVoucherHeader");
+  var headerData = headerSheet.getDataRange().getValues();
+  var headerRow = -1;
+  var headerDate = '';
+  var postedBy = '';
+  var headerRefNo = '';
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1] == docNo) {
+      headerRow = i;
+      headerDate = headerData[i][2] ? Utilities.formatDate(new Date(headerData[i][2]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '';
+      postedBy = headerData[i][10] || '';
+      headerRefNo = headerData[i][6] || '';
+      break;
+    }
+  }
+  
+  if (headerRow === -1) {
+    var errorResult = { status: "error", message: "Cash receipt voucher not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  if (postedBy) {
+    var errorResult = { status: "error", message: "Cash receipt voucher is already posted by " + postedBy };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Check if accounting entries already exist
+  var existingSheet = ss.getSheetByName("AccountTransaction");
+  if (existingSheet) {
+    var existingData = existingSheet.getDataRange().getValues();
+    for (var i = 1; i < existingData.length; i++) {
+      if (existingData[i][0] && existingData[i][0].toString() == 'CRV' && existingData[i][1] && existingData[i][1].toString() == docNo.toString()) {
+        var alreadyResult = { status: "error", message: "Accounting entries already exist for this document. Cancel post first." };
+        if (callback) {
+          return ContentService.createTextOutput(callback + "(" + JSON.stringify(alreadyResult) + ")")
+            .setMimeType(ContentService.MimeType.JAVASCRIPT);
+        }
+        return createJsonResponse(alreadyResult);
+      }
+    }
+  }
+  
+  // Get voucher details
+  var detailsSheet = ss.getSheetByName("JournalVoucherDetails");
+  var detailsData = detailsSheet.getDataRange().getValues();
+  var crvDetails = [];
+  
+  for (var i = 1; i < detailsData.length; i++) {
+    if (detailsData[i][1] == docNo) {
+      crvDetails.push({
+        docSrNo: detailsData[i][2] || 0,
+        acCode: detailsData[i][3] || '',
+        subledger: detailsData[i][5] || '',
+        amount: parseFloat(detailsData[i][6]) || 0,
+        narration: detailsData[i][7] || ''
+      });
+    }
+  }
+  
+  if (crvDetails.length === 0) {
+    var errorResult = { status: "error", message: "No details found for this document" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Ensure AccountTransaction sheet exists
+  var accountTransactionSheet = ensureAccountTransactionSheet(ss);
+  
+  var now = new Date();
+  var postedTime = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+  
+  // Post each detail line to AccountTransaction
+  for (var d = 0; d < crvDetails.length; d++) {
+    var detail = crvDetails[d];
+    var amount = detail.amount;
+    
+    accountTransactionSheet.appendRow([
+      'CRV',                   // DOCTYPE
+      docNo,                   // DOCNO
+      detail.docSrNo,          // DOCSRNO
+      detail.acCode,           // AC_DOCNO
+      detail.subledger,        // SUBLEDGER_DOCNO
+      headerDate,              // DOCDATE
+      headerDate,              // VALDATE
+      detail.narration || 'Cash Receipt Voucher ' + docNo, // NARRATION
+      amount,                  // AMOUNT (negative = debit, positive = credit)
+      amount,                  // BAL_AMOUNT
+      headerRefNo,             // REF_NO
+      headerDate,              // REF_DATE
+      validation.userName,     // CREATED_BY
+      postedTime               // CREATED_TS
+    ]);
+  }
+  
+  // Update JournalVoucherHeader with PostedBy and PostedTime
+  headerSheet.getRange(headerRow + 1, 11).setValue(validation.userName);
+  headerSheet.getRange(headerRow + 1, 12).setValue(postedTime);
+  
+  var result = { status: "success", message: "Cash Receipt Voucher posted to accounting successfully", postedBy: validation.userName, postedTime: postedTime };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Cancel CRV AccountTransaction Post (Delete entries)
+function handleCancelCRVAccountTransactionPostGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var docNo = e.parameter.docNo;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  if (!docNo) {
+    var errorResult = { status: "error", message: "DocNo is required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Find header row for clearing posted status
+  var headerSheet = ss.getSheetByName("JournalVoucherHeader");
+  var headerRow = -1;
+  if (headerSheet) {
+    var headerData = headerSheet.getDataRange().getValues();
+    for (var i = 1; i < headerData.length; i++) {
+      if (headerData[i][1] == docNo) {
+        headerRow = i;
+        break;
+      }
+    }
+  }
+  
+  // Delete from AccountTransaction sheet
+  var accountTransactionSheet = ss.getSheetByName("AccountTransaction");
+  if (accountTransactionSheet) {
+    var data = accountTransactionSheet.getDataRange().getValues();
+    var deleted = false;
+    
+    for (var i = data.length - 1; i >= 1; i--) {
+      if (data[i][0] && data[i][0].toString() == 'CRV' && data[i][1] && data[i][1].toString() == docNo.toString()) {
+        accountTransactionSheet.deleteRow(i + 1);
+        deleted = true;
+      }
+    }
+    
+    // Clear PostedBy and PostedTime in JournalVoucherHeader
+    if (headerRow !== -1 && deleted) {
+      headerSheet.getRange(headerRow + 1, 11).setValue('');
+      headerSheet.getRange(headerRow + 1, 12).setValue('');
+    }
+    
+    var result = { status: "success", message: deleted ? "Accounting entries cancelled successfully" : "No accounting entries found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(result);
+  }
+  
+  var result = { status: "success", message: "No accounting entries found" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+// ============================================
+// CASH RECEIPT VOUCHER REPORT HANDLER
+// ============================================
+
+// Get cash receipt voucher report with date range filters
+function handleGetCashReceiptVoucherReportGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Read filter parameters
+  var fromDate = e.parameter.fromDate || '';
+  var toDate = e.parameter.toDate || '';
+  var reportType = (e.parameter.reportType || 'headerwise').toLowerCase();
+  
+  // Get all cash receipt vouchers from JournalVoucherHeader sheet (shared with JV)
+  var headerSheet = ss.getSheetByName("JournalVoucherHeader");
+  if (!headerSheet) {
+    var emptyResult = { status: "success", jv: [], summary: { totalCount: 0, totalDebit: 0, totalCredit: 0 } };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(emptyResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(emptyResult);
+  }
+  
+  var headerData = headerSheet.getDataRange().getValues();
+  var allVouchers = [];
+  var totalDebit = 0;
+  var totalCredit = 0;
+  
+  for (var i = 1; i < headerData.length; i++) {
+    // Only include Cash Receipt Voucher (CRV) documents - shared sheet with JV
+    if (String(headerData[i][0] || '').toUpperCase() !== 'CRV') continue;
+    if (headerData[i][1]) { // Check if DocNo exists
+      var docNo = headerData[i][1].toString();
+      var dateObj = headerData[i][2] ? new Date(headerData[i][2]) : null;
+      var dateStr = dateObj ? Utilities.formatDate(dateObj, Session.getScriptTimeZone(), 'yyyy-MM-dd') : '';
+      
+      // Apply date range filter
+      if (fromDate && dateStr < fromDate) continue;
+      if (toDate && dateStr > toDate) continue;
+      
+      var debit = parseFloat(headerData[i][4]) || 0;
+      var credit = parseFloat(headerData[i][5]) || 0;
+      totalDebit += debit;
+      totalCredit += credit;
+      
+      var voucher = {
+        docType: headerData[i][0] || '',
+        docNo: docNo,
+        date: dateStr,
+        narration: headerData[i][3] || '',
+        debit: debit,
+        credit: credit,
+        refNo: headerData[i][6] || '',
+        refDate: headerData[i][7] ? Utilities.formatDate(new Date(headerData[i][7]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
+        createdBy: headerData[i][8] || '',
+        createdTime: headerData[i][9] || '',
+        postedBy: headerData[i][10] || '',
+        postedTime: headerData[i][11] || ''
+      };
+      
+      allVouchers.push(voucher);
+    }
+  }
+  
+  // Sort by date descending, then by DocNo descending
+  allVouchers.sort(function(a, b) {
+    if (a.date !== b.date) return b.date.localeCompare(a.date);
+    return b.docNo.localeCompare(a.docNo);
+  });
+  
+  // If reportType is linewise, fetch detail lines for each voucher
+  if (reportType === 'linewise') {
+    var detailsSheet = ss.getSheetByName("JournalVoucherDetails");
+    if (detailsSheet) {
+      var detailsData = detailsSheet.getDataRange().getValues();
+      
+      // Build a map of docNo -> details array
+      var detailsMap = {};
+      for (var d = 1; d < detailsData.length; d++) {
+        var detailDocNo = detailsData[d][1];
+        if (detailDocNo) {
+          if (!detailsMap[detailDocNo]) {
+            detailsMap[detailDocNo] = [];
+          }
+          var amount = parseFloat(detailsData[d][6]) || 0;
+          detailsMap[detailDocNo].push({
+            docSrNo: detailsData[d][2] || 0,
+            acCode: detailsData[d][3] || '',
+            acDescription: detailsData[d][4] || '',
+            subledger: detailsData[d][5] || '',
+            amount: amount,
+            debit: amount < 0 ? Math.abs(amount) : 0,
+            credit: amount > 0 ? amount : 0,
+            narration: detailsData[d][7] || '',
+            mode: detailsData[d][8] || ''
+          });
+        }
+      }
+      
+      // Attach details to each voucher
+      for (var vi = 0; vi < allVouchers.length; vi++) {
+        allVouchers[vi].details = detailsMap[allVouchers[vi].docNo] || [];
+      }
+    }
+  }
+  
+  var result = { 
+    status: "success", 
+    jv: allVouchers,
+    reportType: reportType,
+    summary: {
+      totalCount: allVouchers.length,
+      totalDebit: Math.round(totalDebit * 100) / 100,
+      totalCredit: Math.round(totalCredit * 100) / 100
+    }
+  };
+  
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// ============================================
+// BANK PAYMENT VOUCHER (BPV) MANAGEMENT HANDLERS
+// ============================================
+
+// Get all bank payment vouchers (with server-side pagination)
+function handleGetBankPaymentVouchersGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Read pagination and search parameters
+  var page = parseInt(e.parameter.page) || 1;
+  var pageSize = parseInt(e.parameter.pageSize) || 10;
+  var search = (e.parameter.search || '').toLowerCase();
+  
+  // Get all vouchers from JournalVoucherHeader sheet (shared with JV)
+  var headerSheet = ss.getSheetByName("JournalVoucherHeader");
+  if (!headerSheet) {
+    var emptyResult = { status: "success", jv: [], totalRecords: 0, totalPages: 0, currentPage: page, pageSize: pageSize };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(emptyResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(emptyResult);
+  }
+  
+  var headerData = headerSheet.getDataRange().getValues();
+  var allVouchers = [];
+  
+  for (var i = 1; i < headerData.length; i++) {
+    // Only include Bank Payment Voucher (BPV) documents - shared sheet with JV
+    if (String(headerData[i][0] || '').toUpperCase() !== 'BPV') continue;
+    if (headerData[i][1]) { // Check if DocNo exists
+      var docNo = headerData[i][1].toString();
+      var narration = headerData[i][3] || '';
+      var date = headerData[i][2] ? Utilities.formatDate(new Date(headerData[i][2]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '';
+      
+      // Apply search filter if search term is provided
+      if (search) {
+        if (docNo.toLowerCase().indexOf(search) === -1 &&
+            narration.toLowerCase().indexOf(search) === -1 &&
+            date.toLowerCase().indexOf(search) === -1) {
+          continue;
+        }
+      }
+      
+      allVouchers.push({
+        docType: headerData[i][0] || '',
+        docNo: docNo,
+        date: date,
+        narration: narration,
+        debit: parseFloat(headerData[i][4]) || 0,
+        credit: parseFloat(headerData[i][5]) || 0,
+        refNo: headerData[i][6] || '',
+        refDate: headerData[i][7] ? Utilities.formatDate(new Date(headerData[i][7]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
+        createdBy: headerData[i][8] || '',
+        createdTime: headerData[i][9] || '',
+        postedBy: headerData[i][10] || '',
+        postedTime: headerData[i][11] || ''
+      });
+    }
+  }
+  
+  // Sort descending by DocNo (most recent/last document first)
+  allVouchers.sort(function(a, b) {
+    return b.docNo.localeCompare(a.docNo);
+  });
+  
+  var totalRecords = allVouchers.length;
+  var totalPages = Math.ceil(totalRecords / pageSize);
+  
+  var startIndex = (page - 1) * pageSize;
+  var endIndex = Math.min(startIndex + pageSize, totalRecords);
+  var vouchers = allVouchers.slice(startIndex, endIndex);
+  
+  var result = { 
+    status: "success", 
+    jv: vouchers, 
+    totalRecords: totalRecords,
+    totalPages: totalPages,
+    currentPage: page,
+    pageSize: pageSize
+  };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Get single bank payment voucher by DocNo
+function handleGetBankPaymentVoucherByDocNoGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var docNo = e.parameter.docNo;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get voucher header
+  var headerSheet = ss.getSheetByName("JournalVoucherHeader");
+  if (!headerSheet) {
+    var errorResult = { status: "error", message: "Bank payment voucher not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  var headerData = headerSheet.getDataRange().getValues();
+  var header = null;
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1] == docNo) {
+      header = {
+        docType: headerData[i][0] || '',
+        docNo: headerData[i][1],
+        date: headerData[i][2] ? Utilities.formatDate(new Date(headerData[i][2]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
+        narration: headerData[i][3] || '',
+        debit: parseFloat(headerData[i][4]) || 0,
+        credit: parseFloat(headerData[i][5]) || 0,
+        refNo: headerData[i][6] || '',
+        refDate: headerData[i][7] ? Utilities.formatDate(new Date(headerData[i][7]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
+        createdBy: headerData[i][8] || '',
+        createdTime: headerData[i][9] || '',
+        postedBy: headerData[i][10] || '',
+        postedTime: headerData[i][11] || ''
+      };
+      break;
+    }
+  }
+  
+  if (!header) {
+    var errorResult = { status: "error", message: "Bank payment voucher not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get voucher details
+  var detailsSheet = ss.getSheetByName("JournalVoucherDetails");
+  var detailsData = detailsSheet ? detailsSheet.getDataRange().getValues() : [];
+  var details = [];
+  
+  for (var i = 1; i < detailsData.length; i++) {
+    if (detailsData[i][1] == docNo) {
+      details.push({
+        docType: detailsData[i][0] || '',
+        docNo: detailsData[i][1],
+        docSrNo: detailsData[i][2] || 0,
+        acCode: detailsData[i][3] || '',
+        acDescription: detailsData[i][4] || '',
+        subledger: detailsData[i][5] || '',
+        amount: parseFloat(detailsData[i][6]) || 0,
+        narration: detailsData[i][7] || '',
+        mode: detailsData[i][8] || '',
+        bank: detailsData[i][9] || '',
+        instrumentNo: detailsData[i][10] || '',
+        instrumentDate: detailsData[i][11] ? Utilities.formatDate(new Date(detailsData[i][11]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : ''
+      });
+    }
+  }
+  
+  var result = { status: "success", jv: { header: header, details: details } };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Create new bank payment voucher
+function handleCreateBankPaymentVoucherGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var bpvDataJson = e.parameter.bpvData;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Parse bank payment voucher data
+  var bpvData;
+  try {
+    bpvData = JSON.parse(bpvDataJson);
+  } catch (error) {
+    var errorResult = { status: "error", message: "Invalid bank payment voucher data format" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!bpvData.header || !bpvData.details || bpvData.details.length === 0) {
+    var errorResult = { status: "error", message: "Header and at least one detail line are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate debit = credit balance
+  var totalDebit = 0;
+  var totalCredit = 0;
+  for (var d = 0; d < bpvData.details.length; d++) {
+    var amt = parseFloat(bpvData.details[d].amount) || 0;
+    if (amt < 0) {
+      totalDebit += Math.abs(amt);
+    } else {
+      totalCredit += amt;
+    }
+  }
+  
+  if (Math.abs(totalDebit - totalCredit) > 0.01) {
+    var errorResult = { status: "error", message: "Voucher is not balanced! Total Debit must equal Total Credit." };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get or create JournalVoucherHeader sheet (shared with JV)
+  var headerSheet = ss.getSheetByName("JournalVoucherHeader");
+  if (!headerSheet) {
+    headerSheet = ss.insertSheet("JournalVoucherHeader");
+    headerSheet.appendRow(["DocType", "DocNo", "Date", "Narration", "Debit", "Credit", "RefNo", "RefDate", "CreatedBy", "CreatedTime", "PostedBy", "PostedTime"]);
+  }
+  
+  // Generate DocNo - starting from 1000 per sample
+  var headerData = headerSheet.getDataRange().getValues();
+  var maxNum = 1000; // Starting number
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1]) {
+      var docNo = headerData[i][1].toString();
+      if (docNo.startsWith('BPV')) {
+        var num = parseInt(docNo.substring(3));
+        if (num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+  }
+  
+  var newDocNo = 'BPV' + (maxNum + 1);
+  
+  // Add header
+  var header = bpvData.header;
+  var now = new Date();
+  var createdTime = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+  
+  headerSheet.appendRow([
+    'BPV', // DocType
+    newDocNo,
+    header.date,
+    header.narration || '',
+    totalDebit,
+    totalCredit,
+    header.refNo || '',
+    header.refDate || '',
+    validation.userName,
+    createdTime,
+    '', // PostedBy
+    ''  // PostedTime
+  ]);
+  
+  // Get or create JournalVoucherDetails sheet (shared with JV)
+  var detailsSheet = ss.getSheetByName("JournalVoucherDetails");
+  if (!detailsSheet) {
+    detailsSheet = ss.insertSheet("JournalVoucherDetails");
+    detailsSheet.appendRow(["DocType", "DocNo", "DocSrNo", "ACCode", "ACDescription", "Subledger", "Amount", "Narration", "Mode", "Bank", "InstrumentNo", "InstrumentDate"]);
+  }
+  
+  // Add details
+  for (var i = 0; i < bpvData.details.length; i++) {
+    var detail = bpvData.details[i];
+    detailsSheet.appendRow([
+      'BPV', // DocType
+      newDocNo,
+      detail.docSrNo || (i + 1),
+      detail.acCode,
+      detail.acDescription || '',
+      detail.subledger || '',
+      parseFloat(detail.amount) || 0,
+      detail.narration || '',
+      detail.mode || '',
+      detail.bank || '',
+      detail.instrumentNo || '',
+      detail.instrumentDate || ''
+    ]);
+  }
+  
+  var result = { status: "success", message: "Bank Payment Voucher created successfully", docNo: newDocNo };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+// Update existing bank payment voucher
+function handleUpdateBankPaymentVoucherGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var bpvDataJson = e.parameter.bpvData;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Parse bank payment voucher data
+  var bpvData;
+  try {
+    bpvData = JSON.parse(bpvDataJson);
+  } catch (error) {
+    var errorResult = { status: "error", message: "Invalid bank payment voucher data format" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!bpvData.header || !bpvData.header.docNo || !bpvData.details || bpvData.details.length === 0) {
+    var errorResult = { status: "error", message: "Header with DocNo and at least one detail line are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var docNo = bpvData.header.docNo;
+  
+  // Validate debit = credit balance
+  var totalDebit = 0;
+  var totalCredit = 0;
+  for (var d = 0; d < bpvData.details.length; d++) {
+    var amt = parseFloat(bpvData.details[d].amount) || 0;
+    if (amt < 0) {
+      totalDebit += Math.abs(amt);
+    } else {
+      totalCredit += amt;
+    }
+  }
+  
+  if (Math.abs(totalDebit - totalCredit) > 0.01) {
+    var errorResult = { status: "error", message: "Voucher is not balanced! Total Debit must equal Total Credit." };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Update header
+  var headerSheet = ss.getSheetByName("JournalVoucherHeader");
+  var headerData = headerSheet.getDataRange().getValues();
+  var headerFound = false;
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1] == docNo) {
+      // Check if posted
+      if (headerData[i][10] && headerData[i][10] !== '') {
+        var errorResult = { status: "error", message: "Cannot update a posted bank payment voucher. Cancel post first." };
+        if (callback) {
+          return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+            .setMimeType(ContentService.MimeType.JAVASCRIPT);
+        }
+        return createJsonResponse(errorResult);
+      }
+      
+      var header = bpvData.header;
+      headerSheet.getRange(i + 1, 1, 1, 12).setValues([[
+        'BPV', // DocType
+        docNo,
+        header.date,
+        header.narration || '',
+        totalDebit,
+        totalCredit,
+        header.refNo || '',
+        header.refDate || '',
+        headerData[i][8], // Keep original CreatedBy
+        headerData[i][9], // Keep original CreatedTime
+        '', // PostedBy
+        ''  // PostedTime
+      ]]);
+      headerFound = true;
+      break;
+    }
+  }
+  
+  if (!headerFound) {
+    var errorResult = { status: "error", message: "Bank payment voucher not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Delete existing details
+  var detailsSheet = ss.getSheetByName("JournalVoucherDetails");
+  if (detailsSheet) {
+    var detailsData = detailsSheet.getDataRange().getValues();
+    for (var i = detailsData.length - 1; i >= 1; i--) {
+      if (detailsData[i][1] == docNo) {
+        detailsSheet.deleteRow(i + 1);
+      }
+    }
+  } else {
+    detailsSheet = ss.insertSheet("JournalVoucherDetails");
+    detailsSheet.appendRow(["DocType", "DocNo", "DocSrNo", "ACCode", "ACDescription", "Subledger", "Amount", "Narration", "Mode", "Bank", "InstrumentNo", "InstrumentDate"]);
+  }
+  
+  // Add new details
+  for (var i = 0; i < bpvData.details.length; i++) {
+    var detail = bpvData.details[i];
+    detailsSheet.appendRow([
+      'BPV', // DocType
+      docNo,
+      detail.docSrNo || (i + 1),
+      detail.acCode,
+      detail.acDescription || '',
+      detail.subledger || '',
+      parseFloat(detail.amount) || 0,
+      detail.narration || '',
+      detail.mode || '',
+      detail.bank || '',
+      detail.instrumentNo || '',
+      detail.instrumentDate || ''
+    ]);
+  }
+  
+  var result = { status: "success", message: "Bank Payment Voucher updated successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Delete bank payment voucher
+function handleDeleteBankPaymentVoucherGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var docNo = e.parameter.docNo;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Delete header
+  var headerSheet = ss.getSheetByName("JournalVoucherHeader");
+  var headerData = headerSheet.getDataRange().getValues();
+  var headerFound = false;
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1] == docNo) {
+      // Check if posted
+      if (headerData[i][10] && headerData[i][10] !== '') {
+        var errorResult = { status: "error", message: "Cannot delete a posted bank payment voucher. Cancel post first." };
+        if (callback) {
+          return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+            .setMimeType(ContentService.MimeType.JAVASCRIPT);
+        }
+        return createJsonResponse(errorResult);
+      }
+      headerSheet.deleteRow(i + 1);
+      headerFound = true;
+      break;
+    }
+  }
+  
+  if (!headerFound) {
+    var errorResult = { status: "error", message: "Bank payment voucher not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Delete details
+  var detailsSheet = ss.getSheetByName("JournalVoucherDetails");
+  if (detailsSheet) {
+    var detailsData = detailsSheet.getDataRange().getValues();
+    for (var i = detailsData.length - 1; i >= 1; i--) {
+      if (detailsData[i][1] == docNo) {
+        detailsSheet.deleteRow(i + 1);
+      }
+    }
+  }
+  
+  var result = { status: "success", message: "Bank Payment Voucher deleted successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Post BPV to AccountTransaction
+function handlePostBPVToAccountTransactionGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var docNo = e.parameter.docNo;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  if (!docNo) {
+    var errorResult = { status: "error", message: "DocNo is required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get voucher header
+  var headerSheet = ss.getSheetByName("JournalVoucherHeader");
+  var headerData = headerSheet.getDataRange().getValues();
+  var headerRow = -1;
+  var headerDate = '';
+  var postedBy = '';
+  var headerRefNo = '';
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1] == docNo) {
+      headerRow = i;
+      headerDate = headerData[i][2] ? Utilities.formatDate(new Date(headerData[i][2]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '';
+      postedBy = headerData[i][10] || '';
+      headerRefNo = headerData[i][6] || '';
+      break;
+    }
+  }
+  
+  if (headerRow === -1) {
+    var errorResult = { status: "error", message: "Bank payment voucher not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  if (postedBy) {
+    var errorResult = { status: "error", message: "Bank payment voucher is already posted by " + postedBy };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Check if accounting entries already exist
+  var existingSheet = ss.getSheetByName("AccountTransaction");
+  if (existingSheet) {
+    var existingData = existingSheet.getDataRange().getValues();
+    for (var i = 1; i < existingData.length; i++) {
+      if (existingData[i][0] && existingData[i][0].toString() == 'BPV' && existingData[i][1] && existingData[i][1].toString() == docNo.toString()) {
+        var alreadyResult = { status: "error", message: "Accounting entries already exist for this document. Cancel post first." };
+        if (callback) {
+          return ContentService.createTextOutput(callback + "(" + JSON.stringify(alreadyResult) + ")")
+            .setMimeType(ContentService.MimeType.JAVASCRIPT);
+        }
+        return createJsonResponse(alreadyResult);
+      }
+    }
+  }
+  
+  // Get voucher details
+  var detailsSheet = ss.getSheetByName("JournalVoucherDetails");
+  var detailsData = detailsSheet.getDataRange().getValues();
+  var bpvDetails = [];
+  
+  for (var i = 1; i < detailsData.length; i++) {
+    if (detailsData[i][1] == docNo) {
+      bpvDetails.push({
+        docSrNo: detailsData[i][2] || 0,
+        acCode: detailsData[i][3] || '',
+        subledger: detailsData[i][5] || '',
+        amount: parseFloat(detailsData[i][6]) || 0,
+        narration: detailsData[i][7] || ''
+      });
+    }
+  }
+  
+  if (bpvDetails.length === 0) {
+    var errorResult = { status: "error", message: "No details found for this document" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Ensure AccountTransaction sheet exists
+  var accountTransactionSheet = ensureAccountTransactionSheet(ss);
+  
+  var now = new Date();
+  var postedTime = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+  
+  // Post each detail line to AccountTransaction
+  for (var d = 0; d < bpvDetails.length; d++) {
+    var detail = bpvDetails[d];
+    var amount = detail.amount;
+    
+    accountTransactionSheet.appendRow([
+      'BPV',                   // DOCTYPE
+      docNo,                   // DOCNO
+      detail.docSrNo,          // DOCSRNO
+      detail.acCode,           // AC_DOCNO
+      detail.subledger,        // SUBLEDGER_DOCNO
+      headerDate,              // DOCDATE
+      headerDate,              // VALDATE
+      detail.narration || 'Bank Payment Voucher ' + docNo, // NARRATION
+      amount,                  // AMOUNT (negative = debit, positive = credit)
+      amount,                  // BAL_AMOUNT
+      headerRefNo,             // REF_NO
+      headerDate,              // REF_DATE
+      validation.userName,     // CREATED_BY
+      postedTime               // CREATED_TS
+    ]);
+  }
+  
+  // Update JournalVoucherHeader with PostedBy and PostedTime
+  headerSheet.getRange(headerRow + 1, 11).setValue(validation.userName);
+  headerSheet.getRange(headerRow + 1, 12).setValue(postedTime);
+  
+  var result = { status: "success", message: "Bank Payment Voucher posted to accounting successfully", postedBy: validation.userName, postedTime: postedTime };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Cancel BPV AccountTransaction Post (Delete entries)
+function handleCancelBPVAccountTransactionPostGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var docNo = e.parameter.docNo;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  if (!docNo) {
+    var errorResult = { status: "error", message: "DocNo is required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Find header row for clearing posted status
+  var headerSheet = ss.getSheetByName("JournalVoucherHeader");
+  var headerRow = -1;
+  if (headerSheet) {
+    var headerData = headerSheet.getDataRange().getValues();
+    for (var i = 1; i < headerData.length; i++) {
+      if (headerData[i][1] == docNo) {
+        headerRow = i;
+        break;
+      }
+    }
+  }
+  
+  // Delete from AccountTransaction sheet
+  var accountTransactionSheet = ss.getSheetByName("AccountTransaction");
+  if (accountTransactionSheet) {
+    var data = accountTransactionSheet.getDataRange().getValues();
+    var deleted = false;
+    
+    for (var i = data.length - 1; i >= 1; i--) {
+      if (data[i][0] && data[i][0].toString() == 'BPV' && data[i][1] && data[i][1].toString() == docNo.toString()) {
+        accountTransactionSheet.deleteRow(i + 1);
+        deleted = true;
+      }
+    }
+    
+    // Clear PostedBy and PostedTime in JournalVoucherHeader
+    if (headerRow !== -1 && deleted) {
+      headerSheet.getRange(headerRow + 1, 11).setValue('');
+      headerSheet.getRange(headerRow + 1, 12).setValue('');
+    }
+    
+    var result = { status: "success", message: deleted ? "Accounting entries cancelled successfully" : "No accounting entries found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(result);
+  }
+  
+  var result = { status: "success", message: "No accounting entries found" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+// ============================================
+// BANK PAYMENT VOUCHER REPORT HANDLER
+// ============================================
+
+// Get bank payment voucher report with date range filters
+function handleGetBankPaymentVoucherReportGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Read filter parameters
+  var fromDate = e.parameter.fromDate || '';
+  var toDate = e.parameter.toDate || '';
+  var reportType = (e.parameter.reportType || 'headerwise').toLowerCase();
+  
+  // Get all bank payment vouchers from JournalVoucherHeader sheet (shared with JV)
+  var headerSheet = ss.getSheetByName("JournalVoucherHeader");
+  if (!headerSheet) {
+    var emptyResult = { status: "success", jv: [], summary: { totalCount: 0, totalDebit: 0, totalCredit: 0 } };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(emptyResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(emptyResult);
+  }
+  
+  var headerData = headerSheet.getDataRange().getValues();
+  var allVouchers = [];
+  var totalDebit = 0;
+  var totalCredit = 0;
+  
+  for (var i = 1; i < headerData.length; i++) {
+    // Only include Bank Payment Voucher (BPV) documents - shared sheet with JV
+    if (String(headerData[i][0] || '').toUpperCase() !== 'BPV') continue;
+    if (headerData[i][1]) { // Check if DocNo exists
+      var docNo = headerData[i][1].toString();
+      var dateObj = headerData[i][2] ? new Date(headerData[i][2]) : null;
+      var dateStr = dateObj ? Utilities.formatDate(dateObj, Session.getScriptTimeZone(), 'yyyy-MM-dd') : '';
+      
+      // Apply date range filter
+      if (fromDate && dateStr < fromDate) continue;
+      if (toDate && dateStr > toDate) continue;
+      
+      var debit = parseFloat(headerData[i][4]) || 0;
+      var credit = parseFloat(headerData[i][5]) || 0;
+      totalDebit += debit;
+      totalCredit += credit;
+      
+      var voucher = {
+        docType: headerData[i][0] || '',
+        docNo: docNo,
+        date: dateStr,
+        narration: headerData[i][3] || '',
+        debit: debit,
+        credit: credit,
+        refNo: headerData[i][6] || '',
+        refDate: headerData[i][7] ? Utilities.formatDate(new Date(headerData[i][7]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
+        createdBy: headerData[i][8] || '',
+        createdTime: headerData[i][9] || '',
+        postedBy: headerData[i][10] || '',
+        postedTime: headerData[i][11] || ''
+      };
+      
+      allVouchers.push(voucher);
+    }
+  }
+  
+  // Sort by date descending, then by DocNo descending
+  allVouchers.sort(function(a, b) {
+    if (a.date !== b.date) return b.date.localeCompare(a.date);
+    return b.docNo.localeCompare(a.docNo);
+  });
+  
+  // If reportType is linewise, fetch detail lines for each voucher
+  if (reportType === 'linewise') {
+    var detailsSheet = ss.getSheetByName("JournalVoucherDetails");
+    if (detailsSheet) {
+      var detailsData = detailsSheet.getDataRange().getValues();
+      
+      // Build a map of docNo -> details array
+      var detailsMap = {};
+      for (var d = 1; d < detailsData.length; d++) {
+        var detailDocNo = detailsData[d][1];
+        if (detailDocNo) {
+          if (!detailsMap[detailDocNo]) {
+            detailsMap[detailDocNo] = [];
+          }
+          var amount = parseFloat(detailsData[d][6]) || 0;
+          detailsMap[detailDocNo].push({
+            docSrNo: detailsData[d][2] || 0,
+            acCode: detailsData[d][3] || '',
+            acDescription: detailsData[d][4] || '',
+            subledger: detailsData[d][5] || '',
+            amount: amount,
+            debit: amount < 0 ? Math.abs(amount) : 0,
+            credit: amount > 0 ? amount : 0,
+            narration: detailsData[d][7] || '',
+            mode: detailsData[d][8] || ''
+          });
+        }
+      }
+      
+      // Attach details to each voucher
+      for (var vi = 0; vi < allVouchers.length; vi++) {
+        allVouchers[vi].details = detailsMap[allVouchers[vi].docNo] || [];
+      }
+    }
+  }
+  
+  var result = { 
+    status: "success", 
+    jv: allVouchers,
+    reportType: reportType,
+    summary: {
+      totalCount: allVouchers.length,
+      totalDebit: Math.round(totalDebit * 100) / 100,
+      totalCredit: Math.round(totalCredit * 100) / 100
+    }
+  };
+  
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// ============================================
+// CASH PAYMENT VOUCHER (CPV) MANAGEMENT HANDLERS
+// ============================================
+
+// Get all cash payment vouchers (with server-side pagination)
+function handleGetCashPaymentVouchersGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Read pagination and search parameters
+  var page = parseInt(e.parameter.page) || 1;
+  var pageSize = parseInt(e.parameter.pageSize) || 10;
+  var search = (e.parameter.search || '').toLowerCase();
+  
+  // Get all vouchers from JournalVoucherHeader sheet (shared with JV)
+  var headerSheet = ss.getSheetByName("JournalVoucherHeader");
+  if (!headerSheet) {
+    var emptyResult = { status: "success", jv: [], totalRecords: 0, totalPages: 0, currentPage: page, pageSize: pageSize };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(emptyResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(emptyResult);
+  }
+  
+  var headerData = headerSheet.getDataRange().getValues();
+  var allVouchers = [];
+  
+  for (var i = 1; i < headerData.length; i++) {
+    // Only include Cash Payment Voucher (CPV) documents - shared sheet with JV
+    if (String(headerData[i][0] || '').toUpperCase() !== 'CPV') continue;
+    if (headerData[i][1]) { // Check if DocNo exists
+      var docNo = headerData[i][1].toString();
+      var narration = headerData[i][3] || '';
+      var date = headerData[i][2] ? Utilities.formatDate(new Date(headerData[i][2]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '';
+      
+      // Apply search filter if search term is provided
+      if (search) {
+        if (docNo.toLowerCase().indexOf(search) === -1 &&
+            narration.toLowerCase().indexOf(search) === -1 &&
+            date.toLowerCase().indexOf(search) === -1) {
+          continue;
+        }
+      }
+      
+      allVouchers.push({
+        docType: headerData[i][0] || '',
+        docNo: docNo,
+        date: date,
+        narration: narration,
+        debit: parseFloat(headerData[i][4]) || 0,
+        credit: parseFloat(headerData[i][5]) || 0,
+        refNo: headerData[i][6] || '',
+        refDate: headerData[i][7] ? Utilities.formatDate(new Date(headerData[i][7]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
+        createdBy: headerData[i][8] || '',
+        createdTime: headerData[i][9] || '',
+        postedBy: headerData[i][10] || '',
+        postedTime: headerData[i][11] || ''
+      });
+    }
+  }
+  
+  // Sort descending by DocNo (most recent/last document first)
+  allVouchers.sort(function(a, b) {
+    return b.docNo.localeCompare(a.docNo);
+  });
+  
+  var totalRecords = allVouchers.length;
+  var totalPages = Math.ceil(totalRecords / pageSize);
+  
+  var startIndex = (page - 1) * pageSize;
+  var endIndex = Math.min(startIndex + pageSize, totalRecords);
+  var vouchers = allVouchers.slice(startIndex, endIndex);
+  
+  var result = { 
+    status: "success", 
+    jv: vouchers, 
+    totalRecords: totalRecords,
+    totalPages: totalPages,
+    currentPage: page,
+    pageSize: pageSize
+  };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Get single cash payment voucher by DocNo
+function handleGetCashPaymentVoucherByDocNoGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var docNo = e.parameter.docNo;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get voucher header
+  var headerSheet = ss.getSheetByName("JournalVoucherHeader");
+  if (!headerSheet) {
+    var errorResult = { status: "error", message: "Cash payment voucher not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  var headerData = headerSheet.getDataRange().getValues();
+  var header = null;
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1] == docNo) {
+      header = {
+        docType: headerData[i][0] || '',
+        docNo: headerData[i][1],
+        date: headerData[i][2] ? Utilities.formatDate(new Date(headerData[i][2]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
+        narration: headerData[i][3] || '',
+        debit: parseFloat(headerData[i][4]) || 0,
+        credit: parseFloat(headerData[i][5]) || 0,
+        refNo: headerData[i][6] || '',
+        refDate: headerData[i][7] ? Utilities.formatDate(new Date(headerData[i][7]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
+        createdBy: headerData[i][8] || '',
+        createdTime: headerData[i][9] || '',
+        postedBy: headerData[i][10] || '',
+        postedTime: headerData[i][11] || ''
+      };
+      break;
+    }
+  }
+  
+  if (!header) {
+    var errorResult = { status: "error", message: "Cash payment voucher not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get voucher details
+  var detailsSheet = ss.getSheetByName("JournalVoucherDetails");
+  var detailsData = detailsSheet ? detailsSheet.getDataRange().getValues() : [];
+  var details = [];
+  
+  for (var i = 1; i < detailsData.length; i++) {
+    if (detailsData[i][1] == docNo) {
+      details.push({
+        docType: detailsData[i][0] || '',
+        docNo: detailsData[i][1],
+        docSrNo: detailsData[i][2] || 0,
+        acCode: detailsData[i][3] || '',
+        acDescription: detailsData[i][4] || '',
+        subledger: detailsData[i][5] || '',
+        amount: parseFloat(detailsData[i][6]) || 0,
+        narration: detailsData[i][7] || '',
+        mode: detailsData[i][8] || '',
+        bank: detailsData[i][9] || '',
+        instrumentNo: detailsData[i][10] || '',
+        instrumentDate: detailsData[i][11] ? Utilities.formatDate(new Date(detailsData[i][11]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : ''
+      });
+    }
+  }
+  
+  var result = { status: "success", jv: { header: header, details: details } };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Create new cash payment voucher
+function handleCreateCashPaymentVoucherGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var cpvDataJson = e.parameter.cpvData;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Parse cash payment voucher data
+  var cpvData;
+  try {
+    cpvData = JSON.parse(cpvDataJson);
+  } catch (error) {
+    var errorResult = { status: "error", message: "Invalid cash payment voucher data format" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!cpvData.header || !cpvData.details || cpvData.details.length === 0) {
+    var errorResult = { status: "error", message: "Header and at least one detail line are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate debit = credit balance
+  var totalDebit = 0;
+  var totalCredit = 0;
+  for (var d = 0; d < cpvData.details.length; d++) {
+    var amt = parseFloat(cpvData.details[d].amount) || 0;
+    if (amt < 0) {
+      totalDebit += Math.abs(amt);
+    } else {
+      totalCredit += amt;
+    }
+  }
+  
+  if (Math.abs(totalDebit - totalCredit) > 0.01) {
+    var errorResult = { status: "error", message: "Voucher is not balanced! Total Debit must equal Total Credit." };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get or create JournalVoucherHeader sheet (shared with JV)
+  var headerSheet = ss.getSheetByName("JournalVoucherHeader");
+  if (!headerSheet) {
+    headerSheet = ss.insertSheet("JournalVoucherHeader");
+    headerSheet.appendRow(["DocType", "DocNo", "Date", "Narration", "Debit", "Credit", "RefNo", "RefDate", "CreatedBy", "CreatedTime", "PostedBy", "PostedTime"]);
+  }
+  
+  // Generate DocNo - starting from 1000 per sample
+  var headerData = headerSheet.getDataRange().getValues();
+  var maxNum = 1000; // Starting number
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1]) {
+      var docNo = headerData[i][1].toString();
+      if (docNo.startsWith('CPV')) {
+        var num = parseInt(docNo.substring(3));
+        if (num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+  }
+  
+  var newDocNo = 'CPV' + (maxNum + 1);
+  
+  // Add header
+  var header = cpvData.header;
+  var now = new Date();
+  var createdTime = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+  
+  headerSheet.appendRow([
+    'CPV', // DocType
+    newDocNo,
+    header.date,
+    header.narration || '',
+    totalDebit,
+    totalCredit,
+    header.refNo || '',
+    header.refDate || '',
+    validation.userName,
+    createdTime,
+    '', // PostedBy
+    ''  // PostedTime
+  ]);
+  
+  // Get or create JournalVoucherDetails sheet (shared with JV)
+  var detailsSheet = ss.getSheetByName("JournalVoucherDetails");
+  if (!detailsSheet) {
+    detailsSheet = ss.insertSheet("JournalVoucherDetails");
+    detailsSheet.appendRow(["DocType", "DocNo", "DocSrNo", "ACCode", "ACDescription", "Subledger", "Amount", "Narration", "Mode", "Bank", "InstrumentNo", "InstrumentDate"]);
+  }
+  
+  // Add details
+  for (var i = 0; i < cpvData.details.length; i++) {
+    var detail = cpvData.details[i];
+    detailsSheet.appendRow([
+      'CPV', // DocType
+      newDocNo,
+      detail.docSrNo || (i + 1),
+      detail.acCode,
+      detail.acDescription || '',
+      detail.subledger || '',
+      parseFloat(detail.amount) || 0,
+      detail.narration || '',
+      detail.mode || '',
+      detail.bank || '',
+      detail.instrumentNo || '',
+      detail.instrumentDate || ''
+    ]);
+  }
+  
+  var result = { status: "success", message: "Cash Payment Voucher created successfully", docNo: newDocNo };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+// Update existing cash payment voucher
+function handleUpdateCashPaymentVoucherGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var cpvDataJson = e.parameter.cpvData;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Parse cash payment voucher data
+  var cpvData;
+  try {
+    cpvData = JSON.parse(cpvDataJson);
+  } catch (error) {
+    var errorResult = { status: "error", message: "Invalid cash payment voucher data format" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Validate input
+  if (!cpvData.header || !cpvData.header.docNo || !cpvData.details || cpvData.details.length === 0) {
+    var errorResult = { status: "error", message: "Header with DocNo and at least one detail line are required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  var docNo = cpvData.header.docNo;
+  
+  // Validate debit = credit balance
+  var totalDebit = 0;
+  var totalCredit = 0;
+  for (var d = 0; d < cpvData.details.length; d++) {
+    var amt = parseFloat(cpvData.details[d].amount) || 0;
+    if (amt < 0) {
+      totalDebit += Math.abs(amt);
+    } else {
+      totalCredit += amt;
+    }
+  }
+  
+  if (Math.abs(totalDebit - totalCredit) > 0.01) {
+    var errorResult = { status: "error", message: "Voucher is not balanced! Total Debit must equal Total Credit." };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Update header
+  var headerSheet = ss.getSheetByName("JournalVoucherHeader");
+  var headerData = headerSheet.getDataRange().getValues();
+  var headerFound = false;
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1] == docNo) {
+      // Check if posted
+      if (headerData[i][10] && headerData[i][10] !== '') {
+        var errorResult = { status: "error", message: "Cannot update a posted cash payment voucher. Cancel post first." };
+        if (callback) {
+          return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+            .setMimeType(ContentService.MimeType.JAVASCRIPT);
+        }
+        return createJsonResponse(errorResult);
+      }
+      
+      var header = cpvData.header;
+      headerSheet.getRange(i + 1, 1, 1, 12).setValues([[
+        'CPV', // DocType
+        docNo,
+        header.date,
+        header.narration || '',
+        totalDebit,
+        totalCredit,
+        header.refNo || '',
+        header.refDate || '',
+        headerData[i][8], // Keep original CreatedBy
+        headerData[i][9], // Keep original CreatedTime
+        '', // PostedBy
+        ''  // PostedTime
+      ]]);
+      headerFound = true;
+      break;
+    }
+  }
+  
+  if (!headerFound) {
+    var errorResult = { status: "error", message: "Cash payment voucher not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Delete existing details
+  var detailsSheet = ss.getSheetByName("JournalVoucherDetails");
+  if (detailsSheet) {
+    var detailsData = detailsSheet.getDataRange().getValues();
+    for (var i = detailsData.length - 1; i >= 1; i--) {
+      if (detailsData[i][1] == docNo) {
+        detailsSheet.deleteRow(i + 1);
+      }
+    }
+  } else {
+    detailsSheet = ss.insertSheet("JournalVoucherDetails");
+    detailsSheet.appendRow(["DocType", "DocNo", "DocSrNo", "ACCode", "ACDescription", "Subledger", "Amount", "Narration", "Mode", "Bank", "InstrumentNo", "InstrumentDate"]);
+  }
+  
+  // Add new details
+  for (var i = 0; i < cpvData.details.length; i++) {
+    var detail = cpvData.details[i];
+    detailsSheet.appendRow([
+      'CPV', // DocType
+      docNo,
+      detail.docSrNo || (i + 1),
+      detail.acCode,
+      detail.acDescription || '',
+      detail.subledger || '',
+      parseFloat(detail.amount) || 0,
+      detail.narration || '',
+      detail.mode || '',
+      detail.bank || '',
+      detail.instrumentNo || '',
+      detail.instrumentDate || ''
+    ]);
+  }
+  
+  var result = { status: "success", message: "Cash Payment Voucher updated successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Delete cash payment voucher
+function handleDeleteCashPaymentVoucherGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var docNo = e.parameter.docNo;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Delete header
+  var headerSheet = ss.getSheetByName("JournalVoucherHeader");
+  var headerData = headerSheet.getDataRange().getValues();
+  var headerFound = false;
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1] == docNo) {
+      // Check if posted
+      if (headerData[i][10] && headerData[i][10] !== '') {
+        var errorResult = { status: "error", message: "Cannot delete a posted cash payment voucher. Cancel post first." };
+        if (callback) {
+          return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+            .setMimeType(ContentService.MimeType.JAVASCRIPT);
+        }
+        return createJsonResponse(errorResult);
+      }
+      headerSheet.deleteRow(i + 1);
+      headerFound = true;
+      break;
+    }
+  }
+  
+  if (!headerFound) {
+    var errorResult = { status: "error", message: "Cash payment voucher not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Delete details
+  var detailsSheet = ss.getSheetByName("JournalVoucherDetails");
+  if (detailsSheet) {
+    var detailsData = detailsSheet.getDataRange().getValues();
+    for (var i = detailsData.length - 1; i >= 1; i--) {
+      if (detailsData[i][1] == docNo) {
+        detailsSheet.deleteRow(i + 1);
+      }
+    }
+  }
+  
+  var result = { status: "success", message: "Cash Payment Voucher deleted successfully" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Post CPV to AccountTransaction
+function handlePostCPVToAccountTransactionGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var docNo = e.parameter.docNo;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  if (!docNo) {
+    var errorResult = { status: "error", message: "DocNo is required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Get voucher header
+  var headerSheet = ss.getSheetByName("JournalVoucherHeader");
+  var headerData = headerSheet.getDataRange().getValues();
+  var headerRow = -1;
+  var headerDate = '';
+  var postedBy = '';
+  var headerRefNo = '';
+  
+  for (var i = 1; i < headerData.length; i++) {
+    if (headerData[i][1] == docNo) {
+      headerRow = i;
+      headerDate = headerData[i][2] ? Utilities.formatDate(new Date(headerData[i][2]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '';
+      postedBy = headerData[i][10] || '';
+      headerRefNo = headerData[i][6] || '';
+      break;
+    }
+  }
+  
+  if (headerRow === -1) {
+    var errorResult = { status: "error", message: "Cash payment voucher not found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  if (postedBy) {
+    var errorResult = { status: "error", message: "Cash payment voucher is already posted by " + postedBy };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Check if accounting entries already exist
+  var existingSheet = ss.getSheetByName("AccountTransaction");
+  if (existingSheet) {
+    var existingData = existingSheet.getDataRange().getValues();
+    for (var i = 1; i < existingData.length; i++) {
+      if (existingData[i][0] && existingData[i][0].toString() == 'CPV' && existingData[i][1] && existingData[i][1].toString() == docNo.toString()) {
+        var alreadyResult = { status: "error", message: "Accounting entries already exist for this document. Cancel post first." };
+        if (callback) {
+          return ContentService.createTextOutput(callback + "(" + JSON.stringify(alreadyResult) + ")")
+            .setMimeType(ContentService.MimeType.JAVASCRIPT);
+        }
+        return createJsonResponse(alreadyResult);
+      }
+    }
+  }
+  
+  // Get voucher details
+  var detailsSheet = ss.getSheetByName("JournalVoucherDetails");
+  var detailsData = detailsSheet.getDataRange().getValues();
+  var cpvDetails = [];
+  
+  for (var i = 1; i < detailsData.length; i++) {
+    if (detailsData[i][1] == docNo) {
+      cpvDetails.push({
+        docSrNo: detailsData[i][2] || 0,
+        acCode: detailsData[i][3] || '',
+        subledger: detailsData[i][5] || '',
+        amount: parseFloat(detailsData[i][6]) || 0,
+        narration: detailsData[i][7] || ''
+      });
+    }
+  }
+  
+  if (cpvDetails.length === 0) {
+    var errorResult = { status: "error", message: "No details found for this document" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Ensure AccountTransaction sheet exists
+  var accountTransactionSheet = ensureAccountTransactionSheet(ss);
+  
+  var now = new Date();
+  var postedTime = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+  
+  // Post each detail line to AccountTransaction
+  for (var d = 0; d < cpvDetails.length; d++) {
+    var detail = cpvDetails[d];
+    var amount = detail.amount;
+    
+    accountTransactionSheet.appendRow([
+      'CPV',                   // DOCTYPE
+      docNo,                   // DOCNO
+      detail.docSrNo,          // DOCSRNO
+      detail.acCode,           // AC_DOCNO
+      detail.subledger,        // SUBLEDGER_DOCNO
+      headerDate,              // DOCDATE
+      headerDate,              // VALDATE
+      detail.narration || 'Cash Payment Voucher ' + docNo, // NARRATION
+      amount,                  // AMOUNT (negative = debit, positive = credit)
+      amount,                  // BAL_AMOUNT
+      headerRefNo,             // REF_NO
+      headerDate,              // REF_DATE
+      validation.userName,     // CREATED_BY
+      postedTime               // CREATED_TS
+    ]);
+  }
+  
+  // Update JournalVoucherHeader with PostedBy and PostedTime
+  headerSheet.getRange(headerRow + 1, 11).setValue(validation.userName);
+  headerSheet.getRange(headerRow + 1, 12).setValue(postedTime);
+  
+  var result = { status: "success", message: "Cash Payment Voucher posted to accounting successfully", postedBy: validation.userName, postedTime: postedTime };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Cancel CPV AccountTransaction Post (Delete entries)
+function handleCancelCPVAccountTransactionPostGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var docNo = e.parameter.docNo;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  if (!docNo) {
+    var errorResult = { status: "error", message: "DocNo is required" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Find header row for clearing posted status
+  var headerSheet = ss.getSheetByName("JournalVoucherHeader");
+  var headerRow = -1;
+  if (headerSheet) {
+    var headerData = headerSheet.getDataRange().getValues();
+    for (var i = 1; i < headerData.length; i++) {
+      if (headerData[i][1] == docNo) {
+        headerRow = i;
+        break;
+      }
+    }
+  }
+  
+  // Delete from AccountTransaction sheet
+  var accountTransactionSheet = ss.getSheetByName("AccountTransaction");
+  if (accountTransactionSheet) {
+    var data = accountTransactionSheet.getDataRange().getValues();
+    var deleted = false;
+    
+    for (var i = data.length - 1; i >= 1; i--) {
+      if (data[i][0] && data[i][0].toString() == 'CPV' && data[i][1] && data[i][1].toString() == docNo.toString()) {
+        accountTransactionSheet.deleteRow(i + 1);
+        deleted = true;
+      }
+    }
+    
+    // Clear PostedBy and PostedTime in JournalVoucherHeader
+    if (headerRow !== -1 && deleted) {
+      headerSheet.getRange(headerRow + 1, 11).setValue('');
+      headerSheet.getRange(headerRow + 1, 12).setValue('');
+    }
+    
+    var result = { status: "success", message: deleted ? "Accounting entries cancelled successfully" : "No accounting entries found" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(result);
+  }
+  
+  var result = { status: "success", message: "No accounting entries found" };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+// ============================================
+// CASH PAYMENT VOUCHER REPORT HANDLER
+// ============================================
+
+// Get cash payment voucher report with date range filters
+function handleGetCashPaymentVoucherReportGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    var errorResult = { status: "error", message: "Invalid or expired session" };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
+  // Read filter parameters
+  var fromDate = e.parameter.fromDate || '';
+  var toDate = e.parameter.toDate || '';
+  var reportType = (e.parameter.reportType || 'headerwise').toLowerCase();
+  
+  // Get all cash payment vouchers from JournalVoucherHeader sheet (shared with JV)
+  var headerSheet = ss.getSheetByName("JournalVoucherHeader");
+  if (!headerSheet) {
+    var emptyResult = { status: "success", jv: [], summary: { totalCount: 0, totalDebit: 0, totalCredit: 0 } };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(emptyResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(emptyResult);
+  }
+  
+  var headerData = headerSheet.getDataRange().getValues();
+  var allVouchers = [];
+  var totalDebit = 0;
+  var totalCredit = 0;
+  
+  for (var i = 1; i < headerData.length; i++) {
+    // Only include Cash Payment Voucher (CPV) documents - shared sheet with JV
+    if (String(headerData[i][0] || '').toUpperCase() !== 'CPV') continue;
+    if (headerData[i][1]) { // Check if DocNo exists
+      var docNo = headerData[i][1].toString();
+      var dateObj = headerData[i][2] ? new Date(headerData[i][2]) : null;
+      var dateStr = dateObj ? Utilities.formatDate(dateObj, Session.getScriptTimeZone(), 'yyyy-MM-dd') : '';
+      
+      // Apply date range filter
+      if (fromDate && dateStr < fromDate) continue;
+      if (toDate && dateStr > toDate) continue;
+      
+      var debit = parseFloat(headerData[i][4]) || 0;
+      var credit = parseFloat(headerData[i][5]) || 0;
+      totalDebit += debit;
+      totalCredit += credit;
+      
+      var voucher = {
+        docType: headerData[i][0] || '',
+        docNo: docNo,
+        date: dateStr,
+        narration: headerData[i][3] || '',
+        debit: debit,
+        credit: credit,
+        refNo: headerData[i][6] || '',
+        refDate: headerData[i][7] ? Utilities.formatDate(new Date(headerData[i][7]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
+        createdBy: headerData[i][8] || '',
+        createdTime: headerData[i][9] || '',
+        postedBy: headerData[i][10] || '',
+        postedTime: headerData[i][11] || ''
+      };
+      
+      allVouchers.push(voucher);
+    }
+  }
+  
+  // Sort by date descending, then by DocNo descending
+  allVouchers.sort(function(a, b) {
+    if (a.date !== b.date) return b.date.localeCompare(a.date);
+    return b.docNo.localeCompare(a.docNo);
+  });
+  
+  // If reportType is linewise, fetch detail lines for each voucher
+  if (reportType === 'linewise') {
+    var detailsSheet = ss.getSheetByName("JournalVoucherDetails");
+    if (detailsSheet) {
+      var detailsData = detailsSheet.getDataRange().getValues();
+      
+      // Build a map of docNo -> details array
+      var detailsMap = {};
+      for (var d = 1; d < detailsData.length; d++) {
+        var detailDocNo = detailsData[d][1];
+        if (detailDocNo) {
+          if (!detailsMap[detailDocNo]) {
+            detailsMap[detailDocNo] = [];
+          }
+          var amount = parseFloat(detailsData[d][6]) || 0;
+          detailsMap[detailDocNo].push({
+            docSrNo: detailsData[d][2] || 0,
+            acCode: detailsData[d][3] || '',
+            acDescription: detailsData[d][4] || '',
+            subledger: detailsData[d][5] || '',
+            amount: amount,
+            debit: amount < 0 ? Math.abs(amount) : 0,
+            credit: amount > 0 ? amount : 0,
+            narration: detailsData[d][7] || '',
+            mode: detailsData[d][8] || ''
+          });
+        }
+      }
+      
+      // Attach details to each voucher
+      for (var vi = 0; vi < allVouchers.length; vi++) {
+        allVouchers[vi].details = detailsMap[allVouchers[vi].docNo] || [];
+      }
+    }
+  }
+  
+  var result = { 
+    status: "success", 
+    jv: allVouchers,
+    reportType: reportType,
+    summary: {
+      totalCount: allVouchers.length,
+      totalDebit: Math.round(totalDebit * 100) / 100,
+      totalCredit: Math.round(totalCredit * 100) / 100
+    }
+  };
+  
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
 // ============================================
 // STATEMENT OF ACCOUNT HANDLER
 // ============================================
