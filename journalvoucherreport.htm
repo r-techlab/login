@@ -3,293 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <title>Journal Voucher Report</title>
-<link rel="stylesheet" href="menu.css">
+<link rel="stylesheet" href="design-system.css">
 
-<style>
-body {
-    font-family: Arial, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    margin: 0;
-    padding: 20px;
-    min-height: 100vh;
-}
-
-.container {
-    max-width: 1400px;
-    margin: 0 auto;
-    background: white;
-    border-radius: 15px;
-    padding: 30px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-}
-
-.header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 2px solid #667eea;
-    padding-bottom: 20px;
-    margin-bottom: 30px;
-}
-
-h1 {
-    color: #333;
-    margin: 0;
-}
-
-.btn {
-    background: #3498db;
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: bold;
-    margin-left: 10px;
-}
-
-.btn:hover {
-    background: #2980b9;
-}
-
-.btn-success {
-    background: #27ae60;
-}
-
-.btn-success:hover {
-    background: #229954;
-}
-
-.btn-danger {
-    background: #e74c3c;
-}
-
-.btn-danger:hover {
-    background: #c0392b;
-}
-
-.btn-warning {
-    background: #f39c12;
-}
-
-.btn-warning:hover {
-    background: #e67e22;
-}
-
-.btn:disabled {
-    background: #95a5a6;
-    cursor: not-allowed;
-}
-
-.layout-with-sidebar {
-    display: flex;
-    gap: 20px;
-}
-
-.sidebar {
-    width: 280px;
-    flex-shrink: 0;
-}
-
-.company-name-sidebar {
-    font-size: 16px;
-    font-weight: bold;
-    color: white;
-    padding: 12px;
-    margin-bottom: 15px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 8px;
-    text-align: center;
-}
-
-.main-content {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-}
-
-/* Filter Section */
-.filter-section {
-    background: #f8f9fa;
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 20px;
-}
-
-.filter-row {
-    display: flex;
-    gap: 15px;
-    flex-wrap: wrap;
-    align-items: flex-end;
-}
-
-.filter-group {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-}
-
-.filter-group label {
-    font-size: 12px;
-    font-weight: bold;
-    color: #555;
-    text-transform: uppercase;
-}
-
-.filter-group input,
-.filter-group select {
-    padding: 8px 12px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    font-size: 14px;
-    min-width: 180px;
-}
-
-.filter-group input:focus,
-.filter-group select:focus {
-    outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
-}
-
-.filter-actions {
-    display: flex;
-    gap: 10px;
-    align-items: flex-end;
-}
-
-.table-container {
-    overflow-x: auto;
-    overflow-y: auto;
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    max-width: 100%;
-}
-
-table {
-    width: auto;
-    border-collapse: collapse;
-    min-width: 600px;
-}
-
-thead {
-    background: #667eea;
-    color: white;
-}
-
-th {
-    padding: 12px 15px;
-    text-align: left;
-    font-weight: bold;
-    font-size: 13px;
-    white-space: nowrap;
-}
-
-td {
-    padding: 10px 15px;
-    border-bottom: 1px solid #eee;
-    font-size: 13px;
-    white-space: nowrap;
-}
-
-tbody tr:hover {
-    background: #f8f9fa;
-}
-
-.amount {
-    text-align: right;
-    font-weight: bold;
-}
-
-.message {
-    padding: 15px;
-    border-radius: 5px;
-    margin-bottom: 20px;
-    font-weight: bold;
-}
-
-.message.success {
-    background: #d4edda;
-    color: #155724;
-    border: 1px solid #c3e6cb;
-}
-
-.message.error {
-    background: #f8d7da;
-    color: #721c24;
-    border: 1px solid #f5c6cb;
-}
-
-.message.warning {
-    background: #fff3cd;
-    color: #856404;
-    border: 1px solid #ffeaa7;
-}
-
-.loading {
-    text-align: center;
-    padding: 40px;
-    color: #666;
-}
-
-.loading::after {
-    content: '...';
-    animation: dots 1.5s steps(4, end) infinite;
-}
-
-@keyframes dots {
-    0%, 20% { content: '.'; }
-    40% { content: '..'; }
-    60%, 100% { content: '...'; }
-}
-
-.empty-state {
-    text-align: center;
-    padding: 60px 20px;
-    color: #999;
-}
-
-.empty-state-icon {
-    font-size: 64px;
-    margin-bottom: 20px;
-}
-
-.debit-amount {
-    color: #e74c3c;
-}
-
-.credit-amount {
-    color: #27ae60;
-}
-
-@media (max-width: 992px) {
-    .layout-with-sidebar {
-        flex-direction: column;
-    }
-    
-    .sidebar {
-        width: 100%;
-    }
-    
-    .filter-row {
-        flex-direction: column;
-    }
-    
-    .filter-group input,
-    .filter-group select {
-        min-width: 100%;
-    }
-}
-</style>
+<!-- Styles migrated to design-system.css -->
 </head>
 
 <body>
 
 <div class="container">
     <div class="header">
-        <h1>📒 Journal Voucher Report</h1>
+        <h1 class="pg-icon pg-icon--chart">Journal Voucher Report</h1>
         <div>
             <button class="btn" onclick="window.location.href='journalvoucherlist.htm'">📋 Voucher List</button>
             <button class="btn" onclick="window.location.href='home.html'">🏠 Home</button>
@@ -382,6 +105,7 @@ tbody tr:hover {
 <script src="session.js"></script>
 <script src="menu.js"></script>
 <script src="systemConfig.js"></script>
+<script src="ui.js"></script>
 <script src="themeManager.js"></script>
 <script>
 // Global variables
@@ -645,39 +369,12 @@ function exportToCSV() {
 }
 
 // Format date for display
-function formatDate(dateStr) {
-    if (!dateStr) return '-';
-    try {
-        const date = new Date(dateStr);
-        return date.toLocaleDateString('en-GB');
-    } catch (e) {
-        return dateStr;
-    }
-}
 
 // Format amount for display
-function formatAmount(amount) {
-    if (amount === null || amount === undefined) return '0.00';
-    return parseFloat(amount).toFixed(2);
-}
 
 // Show message
-function showMessage(message, type) {
-    const container = document.getElementById('messageContainer');
-    container.innerHTML = '<div class="message ' + type + '">' + escapeHtml(message) + '</div>';
-    
-    setTimeout(function() {
-        container.innerHTML = '';
-    }, 5000);
-}
 
 // Escape HTML to prevent XSS
-function escapeHtml(text) {
-    if (text === null || text === undefined) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
 
 // Logout function
 function logout() {

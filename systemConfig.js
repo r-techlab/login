@@ -248,6 +248,7 @@ function initSystemConfig(pageName, companyNameElementId = null, displayOptions 
  * @returns {String} Escaped HTML
  */
 function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;

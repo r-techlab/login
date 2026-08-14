@@ -1,465 +1,19 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>Cash Payment Voucher Print</title>
 
-<style>
-/* ============================================
-   PRINT STYLES - Cash Payment Voucher Print Page
-   ============================================ */
-
-*, *::before, *::after {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-}
-
-body {
-    font-family: 'Segoe UI', Arial, sans-serif;
-    background: #f0f0f0;
-    padding: 20px;
-    color: #333;
-}
-
-/* Print toolbar - only visible on screen */
-.print-toolbar {
-    text-align: center;
-    margin-bottom: 20px;
-    padding: 15px;
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-
-.print-toolbar button {
-    background: #27ae60;
-    color: white;
-    border: none;
-    padding: 12px 30px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 16px;
-    font-weight: bold;
-    margin: 0 8px;
-    transition: background 0.2s;
-}
-
-.print-toolbar button:hover {
-    background: #229954;
-}
-
-.print-toolbar button.btn-close {
-    background: #95a5a6;
-}
-
-.print-toolbar button.btn-close:hover {
-    background: #7f8c8d;
-}
-
-.print-toolbar .hint {
-    display: block;
-    margin-top: 8px;
-    font-size: 13px;
-    color: #888;
-}
-
-/* Loading indicator */
-.loading {
-    text-align: center;
-    padding: 60px 20px;
-    font-size: 18px;
-    color: #666;
-}
-
-.loading::after {
-    content: '...';
-    animation: dots 1.5s steps(4, end) infinite;
-}
-
-@keyframes dots {
-    0%, 20% { content: '.'; }
-    40% { content: '..'; }
-    60%, 100% { content: '...'; }
-}
-
-/* Error message */
-.error-message {
-    text-align: center;
-    padding: 40px;
-    color: #e74c3c;
-    font-size: 16px;
-}
-
-/* ============================================
-   VOUCHER LAYOUT
-   ============================================ */
-.voucher {
-    max-width: 210mm;
-    margin: 0 auto;
-    background: white;
-    padding: 30px 35px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-    border-radius: 5px;
-}
-
-/* Header section with logo and company info */
-.voucher-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 25px;
-    padding-bottom: 20px;
-    border-bottom: 3px double #333;
-}
-
-.company-section {
-    flex: 1;
-}
-
-.company-logo {
-    max-width: 120px;
-    max-height: 100px;
-    object-fit: contain;
-    margin-bottom: 10px;
-}
-
-.company-name {
-    font-size: 22px;
-    font-weight: bold;
-    color: #2c3e50;
-    margin-bottom: 4px;
-}
-
-.company-details {
-    font-size: 12px;
-    color: #555;
-    line-height: 1.5;
-}
-
-.company-details div {
-    margin-bottom: 2px;
-}
-
-.voucher-title-section {
-    text-align: right;
-    min-width: 180px;
-}
-
-.voucher-title {
-    font-size: 26px;
-    font-weight: bold;
-    color: #2c3e50;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-}
-
-.voucher-subtitle {
-    font-size: 13px;
-    color: #666;
-    margin-top: 5px;
-}
-
-/* Document info section */
-.doc-info {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 20px;
-    padding: 15px;
-    background: #f8f9fa;
-    border-radius: 5px;
-    border-left: 4px solid #667eea;
-}
-
-.doc-info-left, .doc-info-right {
-    font-size: 13px;
-    line-height: 1.8;
-}
-
-.doc-info .label {
-    font-weight: bold;
-    color: #555;
-}
-
-.doc-info .value {
-    color: #333;
-}
-
-/* Voucher details table */
-.items-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 20px;
-    font-size: 12px;
-}
-
-.items-table thead {
-    background: #2c3e50;
-    color: white;
-}
-
-.items-table th {
-    padding: 10px 8px;
-    text-align: left;
-    font-weight: bold;
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: #ffffff !important;
-}
-
-.items-table th.amount {
-    text-align: right;
-}
-
-.items-table td {
-    padding: 8px;
-    border-bottom: 1px solid #e0e0e0;
-    vertical-align: top;
-}
-
-.items-table td.amount {
-    text-align: right;
-    font-family: 'Courier New', monospace;
-    font-weight: bold;
-}
-
-.items-table tbody tr:nth-child(even) {
-    background: #fafafa;
-}
-
-.items-table .item-sr {
-    width: 30px;
-    text-align: center;
-    color: #888;
-}
-
-.items-table .item-code {
-    width: 100px;
-    font-weight: bold;
-    color: #2c3e50;
-}
-
-.items-table .item-desc {
-    color: #555;
-}
-
-.items-table .item-subledger {
-    width: 90px;
-}
-
-.items-table .item-amount {
-    width: 110px;
-}
-
-/* Summary section */
-.summary-section {
-    display: flex;
-    justify-content: flex-end;
-    margin-bottom: 20px;
-}
-
-.summary-table {
-    width: 350px;
-    border-collapse: collapse;
-    font-size: 13px;
-}
-
-.summary-table td {
-    padding: 6px 12px;
-}
-
-.summary-table .summary-label {
-    text-align: right;
-    font-weight: bold;
-    color: #555;
-}
-
-.summary-table .summary-value {
-    text-align: right;
-    font-family: 'Courier New', monospace;
-    font-weight: bold;
-    width: 120px;
-}
-
-.summary-table .summary-row {
-    border-bottom: 1px solid #eee;
-}
-
-.summary-table .summary-total td {
-    padding: 10px 12px;
-    font-size: 16px;
-    font-weight: bold;
-    border-top: 2px solid #2c3e50;
-    color: #2c3e50;
-}
-
-.summary-table .summary-total .summary-value {
-    font-size: 18px;
-}
-
-/* Amount in words */
-.amount-words {
-    margin-bottom: 20px;
-    padding: 12px 15px;
-    background: #fff8e1;
-    border-radius: 5px;
-    border-left: 4px solid #f39c12;
-    font-size: 13px;
-    color: #555;
-}
-
-.amount-words .words-label {
-    font-weight: bold;
-    color: #333;
-}
-
-.amount-words .words-value {
-    font-style: italic;
-    color: #2c3e50;
-    font-weight: bold;
-}
-
-/* Narration section */
-.narration-section {
-    margin-bottom: 20px;
-    padding: 12px 15px;
-    background: #f8f9fa;
-    border-radius: 5px;
-    font-size: 12px;
-    color: #555;
-}
-
-.narration-section .narration-label {
-    font-weight: bold;
-    color: #333;
-    margin-bottom: 4px;
-}
-
-/* Footer */
-.voucher-footer {
-    text-align: center;
-    padding-top: 15px;
-    border-top: 1px solid #ddd;
-    font-size: 11px;
-    color: #999;
-}
-
-.voucher-footer .footer-line {
-    margin-bottom: 3px;
-}
-
-/* Signature section */
-.signature-section {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 30px;
-    padding-top: 20px;
-}
-
-.signature-box {
-    text-align: center;
-    min-width: 150px;
-}
-
-.signature-box .sig-line {
-    width: 180px;
-    border-top: 1px solid #333;
-    margin: 30px auto 5px;
-}
-
-.signature-box .sig-label {
-    font-size: 12px;
-    color: #888;
-}
-
-/* ============================================
-   PRINT-ONLY STYLES
-   ============================================ */
-@media print {
-    body {
-        background: white;
-        padding: 0;
-        margin: 0;
-    }
-    
-    .print-toolbar {
-        display: none !important;
-    }
-    
-    .voucher {
-        max-width: 100%;
-        box-shadow: none;
-        border-radius: 0;
-        padding: 20px 25px;
-        margin: 0;
-    }
-    
-    .items-table tbody tr:hover {
-        background: inherit;
-    }
-    
-    .items-table tbody tr:nth-child(even) {
-        background: #fafafa;
-    }
-    
-    @page {
-        margin: 15mm 10mm;
-        size: A4 portrait;
-    }
-}
-
-/* ============================================
-   RESPONSIVE
-   ============================================ */
-@media screen and (max-width: 768px) {
-    .voucher {
-        padding: 15px;
-    }
-    
-    .voucher-header {
-        flex-direction: column;
-        text-align: center;
-    }
-    
-    .voucher-title-section {
-        text-align: center;
-        margin-top: 15px;
-        min-width: auto;
-    }
-    
-    .doc-info {
-        flex-direction: column;
-        gap: 10px;
-    }
-    
-    .summary-table {
-        width: 100%;
-    }
-    
-    .signature-section {
-        flex-direction: column;
-        gap: 20px;
-    }
-    
-    .items-table {
-        font-size: 11px;
-    }
-    
-    .items-table th,
-    .items-table td {
-        padding: 6px 4px;
-    }
-}
-</style>
+<link rel="stylesheet" href="print.css">
+<!-- Styles migrated to print.css -->
 </head>
 <body>
 
 <!-- Print Toolbar (visible only on screen) -->
 <div class="print-toolbar" id="printToolbar">
-    <button onclick="window.print()">🖨️ Print / Save as PDF</button>
-    <button class="btn-close" onclick="window.close()">✖ Close</button>
-    <span class="hint">💡 Tip: Use browser's Print dialog to save as PDF or print on paper</span>
+    <button onclick="window.print()">ðŸ–¨ï¸ Print / Save as PDF</button>
+    <button class="btn-close" onclick="window.close()">âœ– Close</button>
+    <span class="hint">ðŸ’¡ Tip: Use browser's Print dialog to save as PDF or print on paper</span>
 </div>
 
 <!-- Loading Indicator -->
@@ -548,7 +102,7 @@ body {
     
     <!-- Narration -->
     <div class="narration-section" id="narrationSection" style="display: none;">
-        <div class="narration-label">📝 Narration / Notes:</div>
+        <div class="narration-label">ðŸ“ Narration / Notes:</div>
         <div id="printNarration"></div>
     </div>
     
@@ -579,6 +133,7 @@ body {
 <script src="indexedDB.js"></script>
 <script src="session.js"></script>
 <script src="systemConfig.js"></script>
+<script src="ui.js"></script>
 <script>
 // ============================================
 // CASH PAYMENT VOUCHER PRINT PAGE
@@ -618,10 +173,10 @@ function loadCompanyInfo() {
         const phone = params['CompanyPhone'] || '';
         const email = params['CompanyEmail'] || '';
         
-        if (address) document.getElementById('companyAddress').textContent = '📍 ' + address;
+        if (address) document.getElementById('companyAddress').textContent = 'ðŸ“ ' + address;
         if (trn) document.getElementById('companyTrn').textContent = 'TRN: ' + trn;
-        if (phone) document.getElementById('companyPhone').textContent = '📞 ' + phone;
-        if (email) document.getElementById('companyEmail').textContent = '✉ ' + email;
+        if (phone) document.getElementById('companyPhone').textContent = 'ðŸ“ž ' + phone;
+        if (email) document.getElementById('companyEmail').textContent = 'âœ‰ ' + email;
     });
     
     loadCompanyLogo();
@@ -740,39 +295,7 @@ function renderVoucher(jv) {
 // ============================================
 // UTILITY FUNCTIONS
 // ============================================
-
-// Format date
-function formatDate(dateStr) {
-    if (!dateStr) return '-';
-    try {
-        const date = new Date(dateStr);
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const year = date.getFullYear();
-        return day + '/' + month + '/' + year;
-    } catch (e) {
-        return dateStr;
-    }
-}
-
-// Format amount
-function formatAmount(amount) {
-    if (amount === null || amount === undefined) return '0.00';
-    return parseFloat(amount).toLocaleString('en-US', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    });
-}
-
-// Escape HTML
-function escapeHtml(text) {
-    if (text === null || text === undefined) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-// Show error
+`r`n// Show error
 function showError(message) {
     document.getElementById('loadingIndicator').style.display = 'none';
     const errorDiv = document.getElementById('errorMessage');

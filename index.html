@@ -4,78 +4,26 @@
 <head>
 <meta charset="UTF-8">
 <title>R-TechLab - Login</title>
+<link rel="stylesheet" href="design-system.css">
 
 <style>
-.company-name-header {
-    font-size: 24px;
-    font-weight: bold;
-    color: white;
-    text-align: center;
-    margin-bottom: 15px;
-    padding: 12px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 8px;
-}
-
+/* Login page: center the login box vertically & horizontally */
 body {
-    font-family: Arial;
-    background: #f2f2f2;
     display: flex;
-    height: 100vh;
+    min-height: 100vh;
     justify-content: center;
     align-items: center;
 }
 
-.login-box {
-    background: white;
-    padding: 20px;
-    border-radius: 10px;
-    width: 300px;
-    box-shadow: 0px 0px 10px rgba(0,0,0,0.2);
-}
-
-input {
-    width: 100%;
-    padding: 10px;
-    margin: 10px 0;
-    box-sizing: border-box;
-}
-
-button {
-    width: 100%;
-    padding: 10px;
-    background: blue;
-    color: white;
-    border: none;
-    cursor: pointer;
-    border-radius: 5px;
-}
-
-button:hover {
-    background: darkblue;
-}
-
-button:disabled {
-    background: #ccc;
-    cursor: not-allowed;
-}
-
-.message {
+/* Compact feedback message inside the login box */
+.login-box .message {
     margin-top: 10px;
     text-align: center;
-    font-weight: bold;
+    padding: 10px;
 }
 
-.loading {
+.login-box .loading {
     color: #666;
-}
-
-.success {
-    color: green;
-}
-
-.error {
-    color: red;
 }
 </style>
 </head>
@@ -98,6 +46,7 @@ button:disabled {
 <script src="indexedDB.js"></script>
 <script src="session.js"></script>
 <script src="systemConfig.js"></script>
+<script src="ui.js"></script>
 <script src="themeManager.js"></script>
 <script>
 // Check if already logged in

@@ -6,176 +6,25 @@
     <title>Print Opening Stock</title>
     <script src="session.js"></script>
     <script src="api.js"></script>
-    <style>
-        @media print {
-            body { margin: 0; padding: 15px; }
-            .no-print { display: none !important; }
-            .print-header { display: block !important; }
-        }
-        @media screen {
-            body { 
-                font-family: Arial, sans-serif; 
-                max-width: 800px; 
-                margin: 20px auto; 
-                padding: 20px;
-                background: #f5f5f5;
-            }
-            .print-container {
-                background: white;
-                padding: 30px;
-                border-radius: 8px;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            }
-        }
-        .print-header {
-            text-align: center;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #333;
-        }
-        .print-header h1 {
-            margin: 0;
-            font-size: 24px;
-            color: #333;
-        }
-        .print-header .company-name {
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-        .print-header .doc-title {
-            font-size: 20px;
-            margin-top: 5px;
-        }
-        .header-info {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 15px;
-            padding: 10px;
-            background: #f9f9f9;
-            border-radius: 4px;
-        }
-        .header-info div {
-            flex: 1;
-        }
-        .header-info label {
-            font-weight: bold;
-            color: #555;
-        }
-        .header-info span {
-            display: block;
-            margin-top: 2px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-        }
-        table th, table td {
-            padding: 8px 10px;
-            text-align: left;
-            border: 1px solid #333;
-            font-size: 13px;
-        }
-        table th {
-            background: #333;
-            color: white;
-            font-weight: bold;
-        }
-        table tr:nth-child(even) {
-            background: #f9f9f9;
-        }
-        .total-row {
-            font-weight: bold;
-            background: #e9ecef !important;
-        }
-        .total-row td {
-            padding: 10px;
-        }
-        .narration-section {
-            margin-top: 15px;
-            padding: 10px;
-            background: #f9f9f9;
-            border-radius: 4px;
-        }
-        .narration-section label {
-            font-weight: bold;
-            color: #555;
-        }
-        .footer {
-            margin-top: 30px;
-            display: flex;
-            justify-content: space-between;
-            padding-top: 10px;
-            border-top: 1px solid #333;
-        }
-        .footer div {
-            text-align: center;
-            flex: 1;
-        }
-        .footer .sign-line {
-            margin-top: 30px;
-            border-top: 1px solid #333;
-            padding-top: 5px;
-            font-size: 12px;
-        }
-        .no-print {
-            text-align: center;
-            margin-bottom: 15px;
-        }
-        .no-print button {
-            padding: 10px 20px;
-            background: #007bff;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            margin: 0 5px;
-        }
-        .no-print button:hover {
-            background: #0056b3;
-        }
-        .no-print button.close-btn {
-            background: #6c757d;
-        }
-        .no-print button.close-btn:hover {
-            background: #5a6268;
-        }
-        .loading {
-            text-align: center;
-            padding: 40px;
-            font-size: 16px;
-            color: #666;
-        }
-        .loading::after {
-            content: '...';
-            animation: dots 1.5s steps(4, end) infinite;
-        }
-        @keyframes dots {
-            0%, 20% { content: ''; }
-            40% { content: '.'; }
-            60% { content: '..'; }
-            80%, 100% { content: '...'; }
-        }
-        .error-msg {
-            text-align: center;
-            padding: 40px;
-            color: #dc3545;
-            font-size: 16px;
-        }
-        .amount-in-words {
-            margin-top: 10px;
-            font-style: italic;
-            color: #555;
-        }
-        .print-date {
-            text-align: right;
-            font-size: 11px;
-            color: #999;
-            margin-top: 5px;
-        }
-    </style>
+    <link rel="stylesheet" href="print.css">
+<!-- Styles migrated to print.css -->
+<style>
+@media screen {
+    body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 20px auto;
+        padding: 20px;
+        background: #f5f5f5;
+    }
+    .print-container {
+        background: white;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+}
+</style>
 </head>
 <body>
     <div class="no-print">

@@ -1,0 +1,733 @@
+/* ==========================================================================
+   PRINT CSS - Shared A4 layout for document print pages
+   --------------------------------------------------------------------------
+   Used by the standalone print pages (purchase/sales/voucher/stock prints).
+   ========================================================================== */
+
+/* --- Reset & Base --- */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Segoe UI', system-ui, -apple-system, Roboto, Arial, sans-serif;
+    background: #f0f0f0;
+    padding: 20px;
+    color: #333;
+}
+
+/* --- Print toolbar (screen only) --- */
+.print-toolbar {
+    text-align: center;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.print-toolbar button {
+    background: #27ae60;
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    margin: 0 8px;
+    transition: background 0.2s;
+}
+
+.print-toolbar button:hover {
+    background: #229954;
+}
+
+.print-toolbar button.btn-close {
+    background: #95a5a6;
+}
+
+.print-toolbar button.btn-close:hover {
+    background: #7f8c8d;
+}
+
+.print-toolbar .hint {
+    display: block;
+    margin-top: 8px;
+    font-size: 13px;
+    color: #888;
+}
+
+/* --- Loading / error states --- */
+.loading {
+    text-align: center;
+    padding: 60px 20px;
+    font-size: 18px;
+    color: #666;
+}
+
+.loading::after {
+    content: '...';
+    animation: dots 1.5s steps(4, end) infinite;
+}
+
+@keyframes dots {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    60%, 100% { content: '...'; }
+}
+
+.error-message,
+.error-msg {
+    text-align: center;
+    padding: 40px;
+    color: #e74c3c;
+    font-size: 16px;
+}
+
+/* --- Document card (invoice / voucher) --- */
+.invoice,
+.voucher {
+    max-width: 210mm;
+    margin: 0 auto;
+    background: white;
+    padding: 30px 35px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    border-radius: 5px;
+    position: relative;
+}
+
+/* --- Header section with logo and company info --- */
+.invoice-header,
+.voucher-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 25px;
+    padding-bottom: 20px;
+    border-bottom: 3px double #333;
+}
+
+.company-section {
+    flex: 1;
+}
+
+.company-logo {
+    max-width: 120px;
+    max-height: 100px;
+    object-fit: contain;
+    margin-bottom: 10px;
+}
+
+.company-name {
+    font-size: 22px;
+    font-weight: bold;
+    color: #2c3e50;
+    margin-bottom: 4px;
+}
+
+.company-details {
+    font-size: 12px;
+    color: #555;
+    line-height: 1.5;
+}
+
+.company-details div {
+    margin-bottom: 2px;
+}
+
+.invoice-title-section,
+.voucher-title-section {
+    text-align: right;
+    min-width: 180px;
+}
+
+.invoice-title,
+.voucher-title {
+    font-size: 28px;
+    font-weight: bold;
+    color: #2c3e50;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.invoice-subtitle,
+.voucher-subtitle {
+    font-size: 13px;
+    color: #666;
+    margin-top: 5px;
+}
+
+/* --- Document info section --- */
+.doc-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 5px;
+    border-left: 4px solid #667eea;
+}
+
+.doc-info-left,
+.doc-info-right {
+    font-size: 13px;
+    line-height: 1.8;
+}
+
+.doc-info .label {
+    font-weight: bold;
+    color: #555;
+}
+
+.doc-info .value {
+    color: #333;
+}
+
+/* --- Party info section --- */
+.party-section {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 5px;
+}
+
+.party-box {
+    flex: 1;
+}
+
+.party-box:last-child {
+    text-align: right;
+}
+
+.party-box .party-label {
+    font-size: 11px;
+    font-weight: bold;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 5px;
+}
+
+.party-box .party-name {
+    font-size: 15px;
+    font-weight: bold;
+    color: #2c3e50;
+    margin-bottom: 3px;
+}
+
+.party-box .party-detail {
+    font-size: 12px;
+    color: #555;
+    line-height: 1.5;
+}
+
+/* --- Items table --- */
+.items-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+    font-size: 12px;
+}
+
+.items-table thead {
+    background: #2c3e50;
+    color: white;
+}
+
+.items-table th {
+    padding: 10px 8px;
+    text-align: left;
+    font-weight: bold;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #ffffff !important;
+}
+
+.items-table th.amount {
+    text-align: right;
+}
+
+.items-table td {
+    padding: 8px;
+    border-bottom: 1px solid #e0e0e0;
+    vertical-align: top;
+}
+
+.items-table td.amount {
+    text-align: right;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+}
+
+.items-table tbody tr:nth-child(even) {
+    background: #fafafa;
+}
+
+.items-table tbody tr:hover {
+    background: #f0f4ff;
+}
+
+.items-table .item-sr {
+    width: 30px;
+    text-align: center;
+    color: #888;
+}
+
+.items-table .item-code {
+    width: 100px;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+.items-table .item-desc {
+    color: #555;
+}
+
+.items-table .item-qty {
+    width: 60px;
+    text-align: right;
+}
+
+.items-table .item-unit {
+    width: 50px;
+    text-align: center;
+    color: #888;
+}
+
+.items-table .item-rate {
+    width: 80px;
+    text-align: right;
+}
+
+.items-table .item-gross {
+    width: 80px;
+    text-align: right;
+}
+
+.items-table .item-disc {
+    width: 60px;
+    text-align: right;
+    color: #e74c3c;
+}
+
+.items-table .item-vat {
+    width: 60px;
+    text-align: right;
+    color: #8e44ad;
+}
+
+.items-table .item-net {
+    width: 80px;
+    text-align: right;
+    font-weight: bold;
+}
+
+.items-table .item-amount {
+    width: 100px;
+    text-align: right;
+    font-weight: bold;
+}
+
+.items-table .item-subledger {
+    color: #555;
+}
+
+/* --- Summary section --- */
+.summary-section {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 20px;
+}
+
+.summary-table {
+    width: 350px;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.summary-table td {
+    padding: 6px 12px;
+}
+
+.summary-table .summary-label {
+    text-align: right;
+    font-weight: bold;
+    color: #555;
+}
+
+.summary-table .summary-value {
+    text-align: right;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    width: 120px;
+}
+
+.summary-table .summary-row {
+    border-bottom: 1px solid #eee;
+}
+
+.summary-table .summary-total td {
+    padding: 10px 12px;
+    font-size: 16px;
+    font-weight: bold;
+    border-top: 2px solid #2c3e50;
+    color: #2c3e50;
+}
+
+.summary-table .summary-total .summary-value {
+    font-size: 18px;
+}
+
+/* --- Amount in words --- */
+.amount-words {
+    margin-bottom: 20px;
+    padding: 12px 15px;
+    background: #fff8e1;
+    border-radius: 5px;
+    border-left: 4px solid #f39c12;
+    font-size: 13px;
+    color: #555;
+}
+
+.amount-words .words-label {
+    font-weight: bold;
+    color: #333;
+}
+
+.amount-words .words-value {
+    font-style: italic;
+    color: #2c3e50;
+    font-weight: bold;
+}
+
+/* --- Narration section --- */
+.narration-section {
+    margin-bottom: 20px;
+    padding: 12px 15px;
+    background: #f8f9fa;
+    border-radius: 5px;
+    font-size: 12px;
+    color: #555;
+}
+
+.narration-section .narration-label,
+.narration-section label {
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 4px;
+}
+
+/* --- Footers --- */
+.invoice-footer,
+.voucher-footer {
+    text-align: center;
+    padding-top: 15px;
+    border-top: 1px solid #ddd;
+    font-size: 11px;
+    color: #999;
+}
+
+.invoice-footer .footer-line,
+.voucher-footer .footer-line {
+    margin-bottom: 3px;
+}
+
+/* --- Signature section --- */
+.signature-section {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 30px;
+    padding-top: 20px;
+}
+
+.signature-box {
+    text-align: center;
+    min-width: 150px;
+}
+
+.signature-box .sig-line {
+    width: 180px;
+    border-top: 1px solid #333;
+    margin: 30px auto 5px;
+}
+
+.signature-box .sig-label {
+    font-size: 12px;
+    color: #888;
+}
+
+
+/* ==========================================================================
+   STOCK PRINT LAYOUT (opening stock / stock adjustment)
+   ========================================================================== */
+.print-container {
+    max-width: 210mm;
+    margin: 0 auto;
+    background: white;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.print-header {
+    text-align: center;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #333;
+}
+
+.print-header h1 {
+    margin: 0;
+    font-size: 24px;
+    color: #333;
+}
+
+.print-header .company-name {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.print-header .doc-title {
+    font-size: 20px;
+    margin-top: 5px;
+}
+
+.header-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    padding: 10px;
+    background: #f9f9f9;
+    border-radius: 4px;
+}
+
+.header-info div {
+    flex: 1;
+}
+
+.header-info label {
+    font-weight: bold;
+    color: #555;
+}
+
+.header-info span {
+    display: block;
+    margin-top: 2px;
+}
+
+/* --- Generic bordered table (stock prints) --- */
+.print-container table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.print-container table th,
+.print-container table td {
+    padding: 8px 10px;
+    text-align: left;
+    border: 1px solid #333;
+    font-size: 13px;
+}
+
+.print-container table th {
+    background: #333;
+    color: white;
+    font-weight: bold;
+}
+
+.print-container table tr:nth-child(even) {
+    background: #f9f9f9;
+}
+
+.total-row {
+    font-weight: bold;
+    background: #e9ecef !important;
+}
+
+.total-row td {
+    padding: 10px;
+}
+
+/* --- Stock print extras --- */
+.amount-in-words {
+    margin-top: 10px;
+    font-style: italic;
+    color: #555;
+}
+
+.print-date {
+    text-align: right;
+    font-size: 11px;
+    color: #999;
+    margin-top: 5px;
+}
+
+.footer {
+    margin-top: 30px;
+    display: flex;
+    justify-content: space-between;
+    padding-top: 10px;
+    border-top: 1px solid #333;
+}
+
+.footer div {
+    text-align: center;
+    flex: 1;
+}
+
+.footer .sign-line {
+    margin-top: 30px;
+    border-top: 1px solid #333;
+    padding-top: 5px;
+    font-size: 12px;
+}
+
+/* --- Screen-only action bar (stock prints) --- */
+.no-print {
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.no-print button {
+    padding: 10px 20px;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    margin: 0 5px;
+}
+
+.no-print button:hover {
+    background: #0056b3;
+}
+
+.no-print button.close-btn {
+    background: #6c757d;
+}
+
+.no-print button.close-btn:hover {
+    background: #5a6268;
+}
+
+
+/* ==========================================================================
+   PRINT-ONLY RULES
+   ========================================================================== */
+@media print {
+    body {
+        background: white;
+        padding: 0;
+        margin: 0;
+    }
+
+    .print-toolbar,
+    .no-print {
+        display: none !important;
+    }
+
+    .invoice,
+    .voucher,
+    .print-container {
+        max-width: 100%;
+        box-shadow: none;
+        border-radius: 0;
+        padding: 20px 25px;
+        margin: 0;
+    }
+
+    .items-table tbody tr:hover {
+        background: inherit;
+    }
+
+    .items-table tbody tr:nth-child(even) {
+        background: #fafafa;
+    }
+
+    table tr:nth-child(even) {
+        background: #f9f9f9;
+    }
+
+    @page {
+        margin: 15mm 10mm;
+        size: A4 portrait;
+    }
+}
+
+/* ==========================================================================
+   RESPONSIVE
+   ========================================================================== */
+@media screen and (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+
+    .invoice,
+    .voucher,
+    .print-container {
+        padding: 15px;
+    }
+
+    .invoice-header,
+    .voucher-header {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .invoice-title-section,
+    .voucher-title-section {
+        text-align: center;
+        min-width: 0;
+        margin-top: 10px;
+    }
+
+    .doc-info {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .party-section {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .party-box:last-child {
+        text-align: left;
+    }
+
+    .summary-section {
+        justify-content: flex-start;
+        overflow-x: auto;
+    }
+
+    .signature-section {
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .signature-box {
+        min-width: 0;
+    }
+
+    .header-info {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .print-toolbar button,
+    .no-print button {
+        padding: 10px 18px;
+        font-size: 14px;
+        margin: 4px;
+    }
+}
+

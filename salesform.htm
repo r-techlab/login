@@ -3,284 +3,34 @@
 <head>
 <meta charset="UTF-8">
 <title>Sales Management - Sales Form</title>
-<link rel="stylesheet" href="menu.css">
+<link rel="stylesheet" href="design-system.css">
 
+<!-- Styles migrated to design-system.css -->
 <style>
-body {
-    font-family: Arial, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    margin: 0;
-    padding: 20px;
-    min-height: 100vh;
-}
-
-.container {
-    max-width: 1600px;
-    margin: 0 auto;
-    background: white;
-    border-radius: 15px;
-    padding: 30px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-}
-
-.header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 2px solid #667eea;
-    padding-bottom: 20px;
-    margin-bottom: 30px;
-}
-
-h1 {
-    color: #333;
-    margin: 0;
-}
-
-h2 {
-    color: #667eea;
-    margin: 0 0 15px 0;
-    font-size: 18px;
-    border-bottom: 2px solid #667eea;
-    padding-bottom: 8px;
-}
-
-.btn {
-    background: #3498db;
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: bold;
-    margin-left: 10px;
-}
-
-.btn:hover {
-    background: #2980b9;
-}
-
-.btn-success {
-    background: #27ae60;
-}
-
-.btn-success:hover {
-    background: #229954;
-}
-
-.btn-danger {
-    background: #e74c3c;
-}
-
-.btn-danger:hover {
-    background: #c0392b;
-}
-
-.btn-warning {
-    background: #f39c12;
-}
-
-.btn-warning:hover {
-    background: #e67e22;
-}
-
-.btn-secondary {
-    background: #95a5a6;
-}
-
-.btn-secondary:hover {
-    background: #7f8c8d;
-}
-
-.btn:disabled {
-    background: #95a5a6;
-    cursor: not-allowed;
-}
-
-.form-card {
-    background: #f8f9fa;
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 20px;
-}
-
-.form-row {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 15px;
-    margin-bottom: 15px;
-}
-
-.form-group {
-    margin-bottom: 0;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 5px;
-    font-weight: bold;
-    color: #555;
-}
-
-.form-group input,
-.form-group select,
-.form-group textarea {
-    width: 100%;
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    font-size: 14px;
-    box-sizing: border-box;
-}
-
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
-    outline: none;
-    border-color: #667eea;
-}
-
-.form-group input:disabled,
-.form-group select:disabled {
-    background: #e9ecef;
-    cursor: not-allowed;
-}
-
-.form-group textarea {
-    resize: vertical;
-    min-height: 60px;
-}
-
-.searchable-select {
-    position: relative;
-}
-
-.searchable-select input {
-    width: 100%;
-}
-
-.searchable-dropdown {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    max-height: 200px;
-    overflow-y: auto;
-    background: white;
-    border: 1px solid #ddd;
-    border-top: none;
-    border-radius: 0 0 5px 5px;
-    z-index: 1000;
-    display: none;
-}
-
-.searchable-dropdown.active {
-    display: block;
-}
-
-.dropdown-item {
-    padding: 10px;
-    cursor: pointer;
-    border-bottom: 1px solid #eee;
-}
-
-.dropdown-item:hover {
-    background: #f8f9fa;
-}
-
-.dropdown-item:last-child {
-    border-bottom: none;
-}
-
-.details-table-container {
-    overflow-x: auto;
-    margin-top: 15px;
-}
-
-.details-table {
-    width: 100%;
-    border-collapse: collapse;
-    background: white;
-}
-
-.details-table thead {
-    background: #667eea;
-    color: white;
-}
-
-.details-table th,
-.details-table td {
-    padding: 10px;
-    text-align: left;
-    border: 1px solid #ddd;
-}
-
-.details-table th {
-    font-weight: bold;
-    font-size: 13px;
-}
-
-.details-table td input,
-.details-table td select {
-    width: 100%;
-    padding: 6px;
-    border: 1px solid #ddd;
-    border-radius: 3px;
-    font-size: 13px;
-    box-sizing: border-box;
-}
-
-.details-table td input:focus,
-.details-table td select:focus {
-    outline: none;
-    border-color: #667eea;
-}
-
-.details-table td input:disabled {
-    background: #f8f9fa;
-}
-
-.details-table .amount-cell {
-    text-align: right;
-}
-
-.details-table td:has(.stock-search) {
-    position: relative;
-}
-
-.btn-icon {
-    padding: 6px 10px;
-    font-size: 12px;
-}
-
+/* Sales form summary panel (page-specific) */
 .summary-section {
     background: #e8f4f8;
     padding: 20px;
     border-radius: 8px;
     margin-top: 20px;
 }
-
 .summary-row {
     display: flex;
     justify-content: flex-end;
     margin-bottom: 10px;
     font-size: 16px;
 }
-
 .summary-label {
     font-weight: bold;
     margin-right: 20px;
     min-width: 150px;
     text-align: right;
 }
-
 .summary-value {
     min-width: 120px;
     text-align: right;
     font-weight: bold;
 }
-
 .summary-row.total {
     font-size: 18px;
     color: #667eea;
@@ -288,60 +38,19 @@ h2 {
     padding-top: 10px;
 }
 
-.form-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 25px;
+/* Sales form uses a 3-column grid row layout (Address field spans 2 columns) */
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    margin-bottom: 15px;
 }
-
-.message {
-    padding: 15px;
-    border-radius: 5px;
-    margin-bottom: 20px;
-    font-weight: bold;
+.form-row.single {
+    grid-template-columns: 1fr;
 }
-
-.message.success {
-    background: #d4edda;
-    color: #155724;
-    border: 1px solid #c3e6cb;
-}
-
-.message.error {
-    background: #f8d7da;
-    color: #721c24;
-    border: 1px solid #f5c6cb;
-}
-
-.loading {
-    text-align: center;
-    padding: 40px;
-    color: #666;
-}
-
-.loading::after {
-    content: '...';
-    animation: dots 1.5s steps(4, end) infinite;
-}
-
-@keyframes dots {
-    0%, 20% { content: '.'; }
-    40% { content: '..'; }
-    60%, 100% { content: '...'; }
-}
-
 @media (max-width: 992px) {
     .form-row {
         grid-template-columns: 1fr;
-    }
-    
-    .details-table-container {
-        font-size: 12px;
-    }
-    
-    .summary-row {
-        font-size: 14px;
     }
 }
 </style>
@@ -349,9 +58,9 @@ h2 {
 
 <body>
 
-<div class="container">
+<div class="container container-wide">
     <div class="header">
-        <h1 id="pageTitle">🧾 Sales Management - New Sale</h1>
+        <h1 id="pageTitle" class="pg-icon pg-icon--receipt">Sales Management</h1>
         <div>
             <button class="btn" onclick="window.location.href='saleslist.htm'">📋 Back to List</button>
             <button class="btn btn-secondary" id="refreshBtn" onclick="refreshMasterData()">🔄 Refresh Data</button>
@@ -520,6 +229,7 @@ h2 {
 <script src="session.js"></script>
 <script src="menu.js"></script>
 <script src="systemConfig.js"></script>
+<script src="ui.js"></script>
 <script src="themeManager.js"></script>
 <script>
 // Global variables
@@ -562,7 +272,7 @@ function loadInitialData() {
     if (viewDocNo) {
         // View mode
         viewMode = true;
-        document.getElementById('pageTitle').textContent = '🧾 Sales Management - View Sale';
+        document.getElementById('pageTitle').textContent = 'Sales Management';
         document.getElementById('saveButton').style.display = 'none';
         document.querySelector('.form-actions .btn-secondary').textContent = '🔙 Back to List';
         // Show Edit, Delete and Print buttons for view mode
@@ -571,7 +281,7 @@ function loadInitialData() {
         document.getElementById('viewPrintBtn').style.display = 'inline-block';
     } else if (editDocNo) {
         editMode = true;
-        document.getElementById('pageTitle').textContent = '🧾 Sales Management - Edit Sale';
+        document.getElementById('pageTitle').textContent = 'Sales Management';
         document.getElementById('saveButton').textContent = '💾 Update Sale';
     }
     
@@ -1458,22 +1168,8 @@ function cancelForm() {
 }
 
 // Show message
-function showMessage(message, type) {
-    const container = document.getElementById('messageContainer');
-    container.innerHTML = `<div class="message ${type}">${escapeHtml(message)}</div>`;
-    
-    setTimeout(() => {
-        container.innerHTML = '';
-    }, 5000);
-}
 
 // Escape HTML to prevent XSS
-function escapeHtml(text) {
-    if (text === null || text === undefined) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
 
 // Edit from view mode - navigate to edit mode
 function editFromView() {
@@ -1657,7 +1353,7 @@ function logout() {
 
 <!-- Accounting Entry Modal -->
 <div id="acctEntryModal" class="modal" style="display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); animation: fadeIn 0.3s; overflow-y: auto;">
-    <div class="modal-content" style="background: white; margin: 3% auto; padding: 30px; border-radius: 10px; width: 95%; max-width: 1200px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); animation: slideDown 0.3s;">
+    <div class="modal-content modal-lg">
         <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #667eea;">
             <h2 style="margin: 0; color: #333;">📒 Accounting Entry</h2>
             <span onclick="closeAcctEntryModal()" style="font-size: 28px; font-weight: bold; color: #999; cursor: pointer; line-height: 20px;">&times;</span>

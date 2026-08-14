@@ -3,169 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <title>Dashboard - Home</title>
-<link rel="stylesheet" href="menu.css">
+<link rel="stylesheet" href="design-system.css">
 
-<style>
-body {
-    font-family: Arial, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    margin: 0;
-    padding: 20px;
-    min-height: 100vh;
-}
-
-.container {
-    max-width: 1200px;
-    margin: 0 auto;
-    background: white;
-    border-radius: 15px;
-    padding: 30px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-}
-
-.header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 2px solid #667eea;
-    padding-bottom: 20px;
-    margin-bottom: 30px;
-}
-
-h1 {
-    color: #333;
-    margin: 0;
-}
-
-.logout-btn {
-    background: #e74c3c;
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: bold;
-}
-
-.logout-btn:hover {
-    background: #c0392b;
-}
-
-.welcome-message {
-    font-size: 24px;
-    color: #667eea;
-    margin-bottom: 20px;
-}
-
-.role-badge {
-    display: inline-block;
-    background: #3498db;
-    color: white;
-    padding: 5px 15px;
-    border-radius: 20px;
-    font-size: 14px;
-    font-weight: bold;
-}
-
-.layout-with-sidebar {
-    display: flex;
-    gap: 20px;
-    margin-top: 30px;
-}
-
-.sidebar {
-    width: 300px;
-    flex-shrink: 0;
-}
-
-.company-name-sidebar {
-    font-size: 16px;
-    font-weight: bold;
-    color: white;
-    padding: 12px;
-    margin-bottom: 15px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 8px;
-    text-align: center;
-}
-
-.main-content {
-    flex: 1;
-}
-
-.dashboard-section {
-    margin-bottom: 30px;
-}
-
-.dashboard-section h2 {
-    color: #333;
-    font-size: 20px;
-    margin-bottom: 15px;
-    padding-bottom: 8px;
-    border-bottom: 2px solid #667eea;
-}
-
-.dashboard-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 15px;
-}
-
-.dashboard-card {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 10px;
-    padding: 20px;
-    color: white;
-    cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-}
-
-.dashboard-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 12px rgba(0,0,0,0.2);
-}
-
-.dashboard-card .card-title {
-    font-size: 16px;
-    font-weight: bold;
-}
-
-.dashboard-empty {
-    text-align: center;
-    padding: 40px;
-    color: #999;
-    font-size: 16px;
-    background: #f9f9f9;
-    border-radius: 10px;
-    border: 2px dashed #ddd;
-}
-
-.dashboard-loading {
-    text-align: center;
-    padding: 20px;
-    color: #667eea;
-    font-size: 14px;
-}
-
-@media (max-width: 992px) {
-    .layout-with-sidebar {
-        flex-direction: column;
-    }
-    
-    .sidebar {
-        width: 100%;
-    }
-}
-</style>
+<!-- Styles migrated to design-system.css -->
 </head>
 
 <body>
 
 <div class="container">
     <div class="header">
-        <h1>🏠 Dashboard</h1>
+        <h1 class="pg-icon pg-icon--dashboard">Dashboard</h1>
         <div style="display: flex; align-items: center; gap: 15px;">
             <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
@@ -200,6 +47,7 @@ h1 {
 <script src="session.js"></script>
 <script src="menu.js"></script>
 <script src="systemConfig.js"></script>
+<script src="ui.js"></script>
 <script src="themeManager.js"></script>
 <script>
 // Show skeleton loader immediately
@@ -479,13 +327,7 @@ function renderCustomerSalesSummaryChart() {
     });
 }
 
-// Helper: escape HTML to prevent XSS
-function escapeHtml(text) {
-    var div = document.createElement('div');
-    div.appendChild(document.createTextNode(text));
-    return div.innerHTML;
-}
-
+// Helper: escape HTML to prevent XSS (provided by systemConfig.js)
 function logout() {
     if (confirm('Are you sure you want to logout?')) {
         clearSession();
