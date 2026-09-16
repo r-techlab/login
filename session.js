@@ -4,7 +4,7 @@
 // ============================================
 
 const SESSION_KEY = 'userSession';
-const SESSION_DURATION = 30 * 60 * 1000; // 30 minutes in milliseconds
+const SESSION_DURATION = 12 * 60 * 60 * 1000; // 12 hour in milliseconds
 
 // ============================================
 // SESSION MANAGEMENT

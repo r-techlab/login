@@ -247,6 +247,10 @@ function loadStocks() {
         
         if (response.status === 'success') {
             allStocks = response.stocks;
+            // Keep the IndexedDB cache in sync (fresh data straight from the server)
+            if (typeof saveStocksToDB === 'function') {
+                saveStocksToDB(allStocks);
+            }
             currentPage = 1;
             renderCurrentPage();
             updateStats();
@@ -610,6 +614,10 @@ function deleteStock(stockCode) {
     apiDeleteStock(stockCode, function(response) {
         if (response.status === 'success') {
             showMessage('Stock deleted successfully!', 'success');
+            // Drop the cached unit conversions of the deleted stock
+            if (typeof clearStockUnitsFromDB === 'function') {
+                clearStockUnitsFromDB(stockCode);
+            }
             loadStocks();
         } else {
             showMessage('Error: ' + response.message, 'error');
@@ -676,12 +684,16 @@ function populateStockUnitDropdown(baseUnitCode) {
     });
 }
 
-// Load stock units from API
+// Load stock units from API and refresh the cached copy used by the transaction forms
 function loadStockUnits(stockCode) {
     apiGetStockUnits(stockCode, function(response) {
         if (response.status === 'success') {
             currentStockUnits = response.stockUnits || [];
             displayStockUnits();
+            // Keep the IndexedDB cache in sync (fresh data straight from the server)
+            if (typeof saveStockUnitsToDB === 'function') {
+                saveStockUnitsToDB(stockCode, currentStockUnits);
+            }
         } else {
             showStockUnitsMessage('Error loading units: ' + response.message, 'error');
         }
@@ -757,6 +769,10 @@ function saveStockUnit(event) {
         if (response.status === 'success') {
             showStockUnitsMessage('Unit conversion added successfully!', 'success');
             document.getElementById('stockUnitForm').reset();
+            // Invalidate the cached units of this stock, then reload fresh from the server
+            if (typeof clearStockUnitsFromDB === 'function') {
+                clearStockUnitsFromDB(currentStockUnitsStockCode);
+            }
             loadStockUnits(currentStockUnitsStockCode);
         } else {
             showStockUnitsMessage('Error: ' + response.message, 'error');
@@ -776,6 +792,10 @@ function deleteStockUnit(index) {
     apiDeleteStockUnit(currentStockUnitsStockCode, unit.unit, function(response) {
         if (response.status === 'success') {
             showStockUnitsMessage('Unit conversion removed successfully!', 'success');
+            // Invalidate the cached units of this stock, then reload fresh from the server
+            if (typeof clearStockUnitsFromDB === 'function') {
+                clearStockUnitsFromDB(currentStockUnitsStockCode);
+            }
             loadStockUnits(currentStockUnitsStockCode);
         } else {
             showStockUnitsMessage('Error: ' + response.message, 'error');

@@ -5,7 +5,7 @@
 // ============================================
 
 const DB_NAME = 'AppCache';
-const DB_VERSION = 6;
+const DB_VERSION = 7;
 const STORE_NAME = 'menuAccess';
 const STORE_NAME_PARAMS = 'systemParams';
 const STORE_NAME_CUSTOMERS = 'customers';
@@ -15,6 +15,7 @@ const STORE_NAME_SALESMEN = 'salesmen';
 const STORE_NAME_SUPPLIERS = 'suppliers';
 const STORE_NAME_DASHBOARDS = 'dashboards';
 const STORE_NAME_COA = 'coaAccounts';
+const STORE_NAME_STOCK_UNITS = 'stockUnits';
 
 // Initialize IndexedDB database
 function initIndexedDB(callback) {
@@ -79,6 +80,12 @@ function initIndexedDB(callback) {
         if (!db.objectStoreNames.contains(STORE_NAME_COA)) {
             const store = db.createObjectStore(STORE_NAME_COA, { keyPath: 'acCode' });
             store.createIndex('acCode', 'acCode', { unique: true });
+        }
+        
+        // Create object store for stock unit availability if it doesn't exist
+        if (!db.objectStoreNames.contains(STORE_NAME_STOCK_UNITS)) {
+            const store = db.createObjectStore(STORE_NAME_STOCK_UNITS, { keyPath: 'stockCode' });
+            store.createIndex('stockCode', 'stockCode', { unique: true });
         }
     };
     
@@ -515,6 +522,116 @@ function clearStocksFromDB() {
             };
         } catch (error) {
             console.error('Error in clearStocksFromDB:', error);
+            db.close();
+        }
+    });
+}
+
+// ============================================
+// STOCK UNIT AVAILABILITY CACHING
+// Cached per stock code - filled lazily the first time a stock is used
+// ============================================
+
+// Save the available units of a single stock to IndexedDB
+function saveStockUnitsToDB(stockCode, units) {
+    if (!stockCode) return;
+    
+    initIndexedDB(function(db) {
+        if (!db) return;
+        
+        try {
+            const transaction = db.transaction([STORE_NAME_STOCK_UNITS], 'readwrite');
+            const store = transaction.objectStore(STORE_NAME_STOCK_UNITS);
+            
+            // An empty units array is cached on purpose (stock has no extra units)
+            store.put({
+                stockCode: stockCode,
+                units: units || [],
+                savedAt: new Date().getTime()
+            });
+            
+            transaction.oncomplete = function() {
+                db.close();
+            };
+            
+            transaction.onerror = function(event) {
+                console.error('Error saving stock units to IndexedDB:', event.target.error);
+                db.close();
+            };
+        } catch (error) {
+            console.error('Error in saveStockUnitsToDB:', error);
+            db.close();
+        }
+    });
+}
+
+// Get the cached available units of a single stock (null when not cached yet)
+function getStockUnitsFromDB(stockCode, callback) {
+    if (!stockCode) {
+        if (callback) callback(null);
+        return;
+    }
+    
+    initIndexedDB(function(db) {
+        if (!db) {
+            if (callback) callback(null);
+            return;
+        }
+        
+        try {
+            const transaction = db.transaction([STORE_NAME_STOCK_UNITS], 'readonly');
+            const store = transaction.objectStore(STORE_NAME_STOCK_UNITS);
+            const request = store.get(stockCode);
+            
+            request.onsuccess = function(event) {
+                const result = event.target.result;
+                db.close();
+                
+                if (result) {
+                    if (callback) callback(result.units || []);
+                } else {
+                    if (callback) callback(null);
+                }
+            };
+            
+            request.onerror = function(event) {
+                console.error('Error reading stock units from IndexedDB:', event.target.error);
+                db.close();
+                if (callback) callback(null);
+            };
+        } catch (error) {
+            console.error('Error in getStockUnitsFromDB:', error);
+            db.close();
+            if (callback) callback(null);
+        }
+    });
+}
+
+// Clear cached stock units - a single stock when stockCode is given, otherwise all
+function clearStockUnitsFromDB(stockCode) {
+    initIndexedDB(function(db) {
+        if (!db) return;
+        
+        try {
+            const transaction = db.transaction([STORE_NAME_STOCK_UNITS], 'readwrite');
+            const store = transaction.objectStore(STORE_NAME_STOCK_UNITS);
+            
+            if (stockCode) {
+                store.delete(stockCode);
+            } else {
+                store.clear();
+            }
+            
+            transaction.oncomplete = function() {
+                db.close();
+            };
+            
+            transaction.onerror = function(event) {
+                console.error('Error clearing stock units from IndexedDB:', event.target.error);
+                db.close();
+            };
+        } catch (error) {
+            console.error('Error in clearStockUnitsFromDB:', error);
             db.close();
         }
     });
@@ -1046,6 +1163,8 @@ function refreshMasterDataFromServer(callback) {
     clearSalesmenFromDB();
     clearSuppliersFromDB();
     clearCOAAccountsFromDB();
+    // Stock unit availability is re-fetched lazily the next time a stock is used
+    clearStockUnitsFromDB();
     
     let completed = 0;
     let total = 6;

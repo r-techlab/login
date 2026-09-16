@@ -124,7 +124,7 @@
                             <th style="min-width: 120px;">Stock Code</th>
                             <th style="min-width: 150px;">Description</th>
                             <th style="width: 70px;">Qty</th>
-                            <th style="width: 60px;">Unit</th>
+                            <th style="width: 120px;">Unit</th>
                             <th style="width: 80px;">Rate</th>
                             <th class="amount-cell">Gross</th>
                             <th style="width: 60px;">Disc %</th>
@@ -732,6 +732,7 @@ function selectStock(rowId, code, description, unit) {
 }
 
 // Load available units for a stock and populate the unit dropdown
+// IndexedDB is checked first - the server is only called on a cache miss
 function loadStockUnits(rowId, stockCode, defaultUnit) {
     const row = document.getElementById('detailRow' + rowId);
     const unitSelect = row.querySelector('.unit');
@@ -744,7 +745,8 @@ function loadStockUnits(rowId, stockCode, defaultUnit) {
     const stockMaster = allStocks.find(s => s.code === stockCode);
     const baseUnit = (stockMaster && stockMaster.unitCode) || defaultUnit || 'PCS';
     
-    apiGetStockUnits(stockCode, function(response) {
+    // Build the unit dropdown from the available units of this stock
+    function renderUnits(stockUnits) {
         unitSelect.innerHTML = '';
         const addedUnits = [];
         
@@ -753,8 +755,8 @@ function loadStockUnits(rowId, stockCode, defaultUnit) {
         addedUnits.push(baseUnit);
         
         // Add other available units from StockUnit sheet (skip duplicates)
-        if (response.status === 'success' && response.stockUnits) {
-            response.stockUnits.forEach(function(u) {
+        if (stockUnits) {
+            stockUnits.forEach(function(u) {
                 if (!addedUnits.includes(u.unit)) {
                     unitSelect.innerHTML += `<option value="${escapeHtml(u.unit)}">${escapeHtml(u.unit)}</option>`;
                     addedUnits.push(u.unit);
@@ -776,7 +778,29 @@ function loadStockUnits(rowId, stockCode, defaultUnit) {
         if (!viewMode) {
             unitSelect.disabled = false;
         }
-    });
+    }
+    
+    // Try IndexedDB first (fast - no server call once this stock has been used)
+    if (typeof getStockUnitsFromDB === 'function') {
+        getStockUnitsFromDB(stockCode, function(cachedUnits) {
+            if (cachedUnits) {
+                renderUnits(cachedUnits);
+                return;
+            }
+            
+            apiGetStockUnits(stockCode, function(response) {
+                const stockUnits = (response.status === 'success' && response.stockUnits) ? response.stockUnits : [];
+                if (response.status === 'success' && typeof saveStockUnitsToDB === 'function') {
+                    saveStockUnitsToDB(stockCode, stockUnits);
+                }
+                renderUnits(stockUnits);
+            });
+        });
+    } else {
+        apiGetStockUnits(stockCode, function(response) {
+            renderUnits((response.status === 'success' && response.stockUnits) ? response.stockUnits : []);
+        });
+    }
 }
 
 // Remove detail line

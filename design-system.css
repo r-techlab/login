@@ -1173,6 +1173,14 @@ td input[disabled] {
     cursor: not-allowed;
 }
 
+/* Unit dropdown in detail rows: needs room for the unit name + arrow.
+   Without this the narrow "Unit" column clips the selected unit to nothing. */
+td select.unit,
+.details-table td select.unit {
+    width: auto;
+    min-width: 110px;
+}
+
 td:has(.stock-search) {
     position: relative;
 }
