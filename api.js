@@ -3,9 +3,9 @@
 // Centralized API calls with session validation
 // ============================================
 
-const API_URL = "https://script.google.com/macros/s/AKfycbz5xu0TwkK2bvxuk4G0a3TSZod8b8vKyKf2Jx0k7Ye5ueFJ4fze4cBdS6yA83wj_kw/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbym07v7HW6Ay0qr981tKKcX8FW5hgc5VY-LB-dtBFoEl1B1H7C0kxSgTj0pH8g0olA/exec";
 
-const API_TIMEOUT = 15000; // 15 seconds
+const API_TIMEOUT = 60000; // 60 seconds
 
 // ============================================
 // DIAGNOSTIC: Test API connection from browser console
@@ -4595,6 +4595,125 @@ function apiGetStatementOfAccount(filters, callback) {
     
     const script = document.createElement('script');
     script.src = API_URL + '?' + params;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// ============================================
+// DOCUMENT ALLOCATION (AR / AP) API
+// ============================================
+
+// Get the pending documents of a party for allocation (SI for AR, PI for AP)
+// params: { acCode, subledgerDocNo, docType, docNo, currentAllocations }
+function apiGetAllocationOutstanding(params, callback) {
+    const callbackName = 'apiGetAllocationOutstandingCallback_' + Date.now();
+    const session = getSession();
+    if (!session) {
+        callback({ status: "error", message: "No active session" });
+        return;
+    }
+    
+    const timeoutId = setTimeout(function() {
+        if (window[callbackName]) {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+                document.body.removeChild(script);
+            }
+            callback({
+                status: "error",
+                message: "Request timeout"
+            });
+        }
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    var urlParams = 'action=getAllocationOutstanding' +
+        '&sessionId=' + encodeURIComponent(session.sessionId) +
+        '&userId=' + encodeURIComponent(session.userId) +
+        '&acCode=' + encodeURIComponent(params.acCode || '') +
+        '&subledgerDocNo=' + encodeURIComponent(params.subledgerDocNo || '') +
+        '&docType=' + encodeURIComponent(params.docType || '') +
+        '&docNo=' + encodeURIComponent(params.docNo || '') +
+        '&fromAmount=' + encodeURIComponent(params.fromAmount === undefined || params.fromAmount === null ? '' : params.fromAmount) +
+        '&excludeDocType=' + encodeURIComponent(params.excludeDocType || '') +
+        '&excludeDocNo=' + encodeURIComponent(params.excludeDocNo || '') +
+        '&currentAllocations=' + encodeURIComponent(params.currentAllocations || '') +
+        '&callback=' + callbackName;
+    
+    const script = document.createElement('script');
+    script.src = API_URL + '?' + urlParams;
+    script.onerror = function() {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback({
+            status: "error",
+            message: "Connection error"
+        });
+    };
+    document.body.appendChild(script);
+}
+
+// Get the saved (pending) allocations of a voucher, grouped by detail serial number
+function apiGetVoucherAllocations(docType, docNo, callback) {
+    const callbackName = 'apiGetVoucherAllocationsCallback_' + Date.now();
+    const session = getSession();
+    if (!session) {
+        callback({ status: "error", message: "No active session" });
+        return;
+    }
+    
+    const timeoutId = setTimeout(function() {
+        if (window[callbackName]) {
+            delete window[callbackName];
+            if (script && script.parentNode) {
+                document.body.removeChild(script);
+            }
+            callback({
+                status: "error",
+                message: "Request timeout"
+            });
+        }
+    }, API_TIMEOUT);
+    
+    window[callbackName] = function(data) {
+        clearTimeout(timeoutId);
+        delete window[callbackName];
+        if (script && script.parentNode) {
+            document.body.removeChild(script);
+        }
+        callback(data);
+    };
+    
+    var urlParams = 'action=getVoucherAllocations' +
+        '&sessionId=' + encodeURIComponent(session.sessionId) +
+        '&userId=' + encodeURIComponent(session.userId) +
+        '&docType=' + encodeURIComponent(docType || '') +
+        '&docNo=' + encodeURIComponent(docNo || '') +
+        '&callback=' + callbackName;
+    
+    const script = document.createElement('script');
+    script.src = API_URL + '?' + urlParams;
     script.onerror = function() {
         clearTimeout(timeoutId);
         delete window[callbackName];

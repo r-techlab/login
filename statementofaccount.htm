@@ -86,6 +86,10 @@
                     <div class="card-label">Closing Balance</div>
                     <div class="card-value" id="closingBalance">0.00</div>
                 </div>
+                <div class="summary-card card-closing" title="Sum of the pending amounts of the party documents (BAL_AMOUNT)">
+                    <div class="card-label">Outstanding</div>
+                    <div class="card-value" id="totalOutstanding">0.00</div>
+                </div>
             </div>
 
             <!-- Data Table -->
@@ -108,6 +112,7 @@
                             <th class="amount">Debit</th>
                             <th class="amount">Credit</th>
                             <th class="amount">Balance</th>
+                            <th class="amount">Outstanding</th>
                         </tr>
                     </thead>
                     <tbody id="statementTableBody">
@@ -118,6 +123,7 @@
                             <td class="amount debit-amount" style="padding: 12px 15px; font-size: 14px;" id="totalDebitDisplay">0.00</td>
                             <td class="amount credit-amount" style="padding: 12px 15px; font-size: 14px;" id="totalCreditDisplay">0.00</td>
                             <td class="amount balance-amount" style="padding: 12px 15px; font-size: 14px;" id="closingBalanceDisplay">0.00</td>
+                            <td class="amount balance-amount" style="padding: 12px 15px; font-size: 14px;" id="totalOutstandingDisplay">0.00</td>
                         </tr>
                     </tfoot>
                 </table>
@@ -160,20 +166,41 @@ protectPageWithMenuAccess(function(isValid) {
     }
 });
 
-// Check if an account code needs a subledger (AP or AR)
+// Check if an account code needs a subledger (account with SUBLEDGER_EXISTS = 1)
 function needsSubledger(acCode) {
-    if (!acCode) return false;
-    const code = String(acCode).toUpperCase();
-    return code.startsWith('AP') || code.startsWith('AR') || code.includes('PAYABLE') || code.includes('RECEIVABLE');
+    return getSubledgerInfo(acCode).hasSubledger;
 }
 
 // Get subledger type label for an account code
 function getSubledgerType(acCode) {
-    if (!acCode) return 'Party';
-    const code = String(acCode).toUpperCase();
-    if (code.startsWith('AP') || code.includes('PAYABLE')) return 'Supplier';
-    if (code.startsWith('AR') || code.includes('RECEIVABLE')) return 'Customer';
-    return 'Party';
+    return getSubledgerInfo(acCode).partyType || 'Party';
+}
+
+// COA driven subledger info (same rule as the voucher forms / backend)
+function getSubledgerInfo(acCode) {
+    const empty = { hasSubledger: false, partyType: '', allocType: '', toDocType: '' };
+    if (!acCode) return empty;
+    const code = String(acCode).replace(/\s+/g, '').toUpperCase();
+    const meta = (allAccounts || []).find(a => String(a.acCode).replace(/\s+/g, '').toUpperCase() === code);
+    if (meta) {
+        const hasSubledger = parseInt(meta.subledgerExists) === 1;
+        const actype = String(meta.actypeDocno || '').toUpperCase();
+        if (hasSubledger && actype === 'AR') {
+            return { hasSubledger: true, partyType: 'Customer', allocType: 'AR', toDocType: 'SI' };
+        }
+        if (hasSubledger && actype === 'AP') {
+            return { hasSubledger: true, partyType: 'Supplier', allocType: 'AP', toDocType: 'PI' };
+        }
+        return empty;
+    }
+    // Fallback for accounts that are missing from the cached COA
+    if (code.startsWith('AR') || code.includes('RECEIVABLE')) {
+        return { hasSubledger: true, partyType: 'Customer', allocType: 'AR', toDocType: 'SI' };
+    }
+    if (code.startsWith('AP') || code.includes('PAYABLE')) {
+        return { hasSubledger: true, partyType: 'Supplier', allocType: 'AP', toDocType: 'PI' };
+    }
+    return empty;
 }
 
 // Load GL accounts from IndexedDB or API
@@ -392,6 +419,7 @@ function displayStatement(entries) {
         document.getElementById('totalDebit').textContent = formatAmount(statementSummary.totalDebit);
         document.getElementById('totalCredit').textContent = formatAmount(statementSummary.totalCredit);
         document.getElementById('closingBalance').textContent = formatAmount(statementSummary.closingBalance);
+        document.getElementById('totalOutstanding').textContent = formatAmount(statementSummary.totalOutstanding || 0);
         document.getElementById('summaryCards').style.display = 'flex';
     }
     
@@ -417,6 +445,7 @@ function displayStatement(entries) {
             <td class="amount debit-amount">${entry.debit > 0 ? formatAmount(entry.debit) : ''}</td>
             <td class="amount credit-amount">${entry.credit > 0 ? formatAmount(entry.credit) : ''}</td>
             <td class="amount balance-amount">${formatAmount(entry.runningBalance)}</td>
+            <td class="amount balance-amount">${entry.outstanding > 0 ? formatAmount(entry.outstanding) : ''}</td>
         `;
         tbody.appendChild(row);
     });
@@ -426,6 +455,7 @@ function displayStatement(entries) {
         document.getElementById('totalDebitDisplay').textContent = formatAmount(statementSummary.totalDebit);
         document.getElementById('totalCreditDisplay').textContent = formatAmount(statementSummary.totalCredit);
         document.getElementById('closingBalanceDisplay').textContent = formatAmount(statementSummary.closingBalance);
+        document.getElementById('totalOutstandingDisplay').textContent = formatAmount(statementSummary.totalOutstanding || 0);
         document.getElementById('statementTableFooter').style.display = '';
     }
 }
@@ -454,7 +484,7 @@ function exportToCSV() {
         return;
     }
     
-    var csv = 'Date,Doc Type,Doc No,Account Code,Description,Narration,Debit,Credit,Balance\n';
+    var csv = 'Date,Doc Type,Doc No,Account Code,Description,Narration,Debit,Credit,Balance,Outstanding\n';
     
     statementData.forEach(function(entry) {
         csv += '"' + (entry.date || '') + '",';
@@ -465,7 +495,8 @@ function exportToCSV() {
         csv += '"' + (entry.narration || '') + '",';
         csv += (entry.debit || 0) + ',';
         csv += (entry.credit || 0) + ',';
-        csv += (entry.runningBalance || 0) + '\n';
+        csv += (entry.runningBalance || 0) + ',';
+        csv += (entry.outstanding || 0) + '\n';
     });
     
     // Add summary rows

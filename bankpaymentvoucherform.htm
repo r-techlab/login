@@ -108,6 +108,7 @@
                             <th style="min-width: 90px;">Bank</th>
                             <th style="min-width: 130px;">Instrument No</th>
                             <th style="min-width: 130px;">Instrument Date</th>
+                            <th style="min-width: 150px;">Allocation</th>
                             <th style="width: 40px;"></th>
                         </tr>
                     </thead>
@@ -145,6 +146,67 @@
         </div>
 
     </form>
+</div>
+
+<!-- Allocation Modal -->
+<div id="allocModal" class="modal">
+    <div class="modal-content modal-lg">
+        <div class="modal-header">
+            <h2>🔗 Allocation</h2>
+            <span class="modal-close" onclick="closeAllocationModal()">&times;</span>
+        </div>
+        <div id="allocDocInfo" style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 5px; font-size: 14px;"></div>
+        <div id="allocReadOnlyNote" style="display: none; margin-bottom: 15px; padding: 10px; background: #fff3cd; border-radius: 5px; font-size: 13px; color: #856404;">
+            This voucher is posted - the allocation is shown read only. Cancel the post to change it.
+        </div>
+        <div id="allocLoading" class="loading" style="display: none;">Loading pending documents...</div>
+        <div id="allocEmpty" style="display: none; text-align: center; padding: 30px; color: #999;">
+            <p style="font-size: 16px;">No pending documents found for this party.</p>
+        </div>
+        <div class="table-container" id="allocTableContainer" style="display: none;">
+            <table id="allocTable" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead>
+                    <tr>
+                        <th style="width: 40px; padding: 10px 8px; text-align: left; font-weight: bold; font-size: 12px; background: #667eea; color: white;">#</th>
+                        <th style="padding: 10px 8px; text-align: left; font-weight: bold; font-size: 12px; background: #667eea; color: white;">Doc Type</th>
+                        <th style="padding: 10px 8px; text-align: left; font-weight: bold; font-size: 12px; background: #667eea; color: white;">Doc No</th>
+                        <th style="padding: 10px 8px; text-align: left; font-weight: bold; font-size: 12px; background: #667eea; color: white;">Date</th>
+                        <th style="padding: 10px 8px; text-align: left; font-weight: bold; font-size: 12px; background: #667eea; color: white;">Narration</th>
+                        <th style="padding: 10px 8px; text-align: right; font-weight: bold; font-size: 12px; background: #667eea; color: white;">Doc Amount</th>
+                        <th style="padding: 10px 8px; text-align: right; font-weight: bold; font-size: 12px; background: #667eea; color: white;">Outstanding</th>
+                        <th style="padding: 10px 8px; text-align: right; font-weight: bold; font-size: 12px; background: #667eea; color: white;">Allocate</th>
+                    </tr>
+                </thead>
+                <tbody id="allocTableBody"></tbody>
+            </table>
+        </div>
+        <div id="allocFooter" style="display: none; margin-top: 15px;">
+            <table class="summary-table">
+                <tr>
+                    <td class="summary-label">Line Amount:</td>
+                    <td class="summary-value" id="allocLineAmount">0.00</td>
+                </tr>
+                <tr>
+                    <td class="summary-label">Allocated:</td>
+                    <td class="summary-value" id="allocTotalAllocated" style="color: #27ae60;">0.00</td>
+                </tr>
+                <tr class="summary-total">
+                    <td class="summary-label">Unallocated:</td>
+                    <td class="summary-value" id="allocUnallocated">0.00</td>
+                </tr>
+            </table>
+        </div>
+        <div style="display: flex; justify-content: space-between; gap: 10px; margin-top: 20px;">
+            <div>
+                <button type="button" class="btn btn-warning" id="allocAutoBtn" onclick="autoAllocate()">⚡ Auto Allocate</button>
+                <button type="button" class="btn" id="allocClearBtn" onclick="clearAllocation()">✖ Clear</button>
+            </div>
+            <div>
+                <button type="button" class="btn btn-success" id="allocSaveBtn" onclick="saveAllocationFromModal()">💾 Save Allocation</button>
+                <button type="button" class="btn" onclick="closeAllocationModal()">Close</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Accounting Entry Modal -->
@@ -205,11 +267,15 @@
 // ============================================
 // GLOBAL VARIABLES
 // ============================================
+const VOUCHER_DOC_TYPE = 'BPV'; // document type written to the Allocation sheet
 let editMode = false;
 let viewMode = false;
 let editDocNo = null;
 let viewDocNo = null;
 let detailLineCounter = 0;
+let rowAllocations = {};      // allocation state per detail row (keyed by row id)
+let allocModalRowId = null;   // detail row currently open in the allocation modal
+let allocModalDocs = [];      // pending documents shown in the allocation modal
 let allAccounts = [];
 let allSuppliers = [];
 let allCustomers = [];
@@ -392,6 +458,8 @@ function addDetailLine(data = null) {
     const tbody = document.getElementById('detailsTableBody');
     const row = tbody.insertRow();
     row.id = 'detailRow' + detailLineCounter;
+    // Remember the document serial number so saved allocations can be matched
+    if (data && data.docSrNo) row.dataset.docSrNo = data.docSrNo;
     
     const srNo = tbody.rows.length;
     // Determine Debit/Credit based on saved amount sign
@@ -413,7 +481,7 @@ function addDetailLine(data = null) {
         </td>
         <td><input type="text" class="ac-desc" disabled value="${data ? data.acDescription : ''}"></td>
         <td>
-            <select class="subledger" ${data && data.acCode && needsSubledger(data.acCode) ? '' : 'disabled'}>
+            <select class="subledger" onchange="onSubledgerChange(${detailLineCounter})" ${data && data.acCode && needsSubledger(data.acCode) ? '' : 'disabled'}>
                 <option value="">${data && data.acCode && needsSubledger(data.acCode) ? 'Select ' + getSubledgerType(data.acCode) : 'N/A'}</option>
             </select>
         </td>
@@ -433,6 +501,11 @@ function addDetailLine(data = null) {
         <td><input type="text" class="bank" value="${data ? data.bank : ''}" placeholder="Bank"></td>
         <td><input type="text" class="instrument-no" value="${data ? data.instrumentNo : ''}" placeholder="Inst No"></td>
         <td><input type="date" class="instrument-date" value="${data ? data.instrumentDate : ''}"></td>
+        <td class="alloc-cell">
+            <button type="button" class="btn btn-info btn-small alloc-btn" style="display: none;" onclick="openAllocationModal(${detailLineCounter})">🔗 Allocate</button>
+            <span class="alloc-summary" style="font-size: 12px; color: #666;"></span>
+            <span class="alloc-na" style="font-size: 12px; color: #999;">—</span>
+        </td>
         <td><button type="button" class="btn btn-danger btn-icon" onclick="removeDetailLine(${detailLineCounter})">🗑️</button></td>
     `;
     
@@ -444,25 +517,55 @@ function addDetailLine(data = null) {
         populateSubledgerOptions(detailLineCounter, data.subledger);
     }
     
+    // Restore the allocations saved with the voucher (if any)
+    if (data && data.allocations && data.allocations.length > 0) {
+        rowAllocations[detailLineCounter] = normalizeAllocationList(data.allocations);
+    }
+    if (data && data.subledger) row.dataset.allocSubledger = data.subledger;
+    updateAllocCell(detailLineCounter);
+    
     if (data) {
         recalculateSummary();
     }
 }
 
-// Check if an account code needs a subledger (AP or AR)
+// Check if an account code needs a subledger (account with SUBLEDGER_EXISTS = 1)
 function needsSubledger(acCode) {
-    if (!acCode) return false;
-    const code = String(acCode).toUpperCase();
-    return code.startsWith('AP') || code.startsWith('AR') || code.includes('PAYABLE') || code.includes('RECEIVABLE');
+    return getSubledgerInfo(acCode).hasSubledger;
 }
 
 // Get subledger type label for an account code
 function getSubledgerType(acCode) {
-    if (!acCode) return 'Party';
-    const code = String(acCode).toUpperCase();
-    if (code.startsWith('AP') || code.includes('PAYABLE')) return 'Supplier';
-    if (code.startsWith('AR') || code.includes('RECEIVABLE')) return 'Customer';
-    return 'Party';
+    return getSubledgerInfo(acCode).partyType || 'Party';
+}
+
+// COA driven subledger info of an account. Allocation is possible only for
+// accounts that have a subledger of type AR (customer) or AP (supplier) -
+// these are flagged in the COA master by SUBLEDGER_EXISTS + ACTYPE_DOCNO.
+function getSubledgerInfo(acCode) {
+    const empty = { hasSubledger: false, partyType: '', allocType: '', toDocType: '' };
+    if (!acCode) return empty;
+    const code = String(acCode).replace(/\s+/g, '').toUpperCase();
+    const meta = (allAccounts || []).find(a => String(a.acCode).replace(/\s+/g, '').toUpperCase() === code);
+    if (meta) {
+        const hasSubledger = parseInt(meta.subledgerExists) === 1;
+        const actype = String(meta.actypeDocno || '').toUpperCase();
+        if (hasSubledger && actype === 'AR') {
+            return { hasSubledger: true, partyType: 'Customer', allocType: 'AR', toDocType: 'SI' };
+        }
+        if (hasSubledger && actype === 'AP') {
+            return { hasSubledger: true, partyType: 'Supplier', allocType: 'AP', toDocType: 'PI' };
+        }
+        return empty;
+    }
+    // Fallback for accounts that are missing from the cached COA
+    if (code.startsWith('AR') || code.includes('RECEIVABLE')) {
+        return { hasSubledger: true, partyType: 'Customer', allocType: 'AR', toDocType: 'SI' };
+    }
+    if (code.startsWith('AP') || code.includes('PAYABLE')) {
+        return { hasSubledger: true, partyType: 'Supplier', allocType: 'AP', toDocType: 'PI' };
+    }
+    return empty;
 }
 
 // Populate subledger options for a row
@@ -521,6 +624,7 @@ function onAmountChange(rowId) {
     const rawValue = parseFloat(amountInput.value) || 0;
     amountInput.value = rawValue; // Keep as positive input
     
+    updateAllocCell(rowId);
     recalculateSummary();
 }
 
@@ -599,6 +703,11 @@ function selectAccount(rowId, code, description) {
         subledgerSelect.innerHTML = '<option value="">N/A</option>';
         subledgerSelect.disabled = true;
     }
+    
+    // The account changed, so the previous allocations no longer apply
+    delete rowAllocations[rowId];
+    row.dataset.allocSubledger = '';
+    updateAllocCell(rowId);
 }
 
 // Remove detail line
@@ -702,6 +811,7 @@ function saveBankPaymentVoucher(event) {
             subledger: row.querySelector('.subledger').value,
             amount: signedAmount,
             narration: row.querySelector('.line-narration').value,
+            allocations: getAllocationsForRow(row.id.replace('detailRow', '')),
             mode: row.querySelector('.mode').value,
             bank: row.querySelector('.bank').value,
             instrumentNo: row.querySelector('.instrument-no').value,
@@ -718,6 +828,24 @@ function saveBankPaymentVoucher(event) {
     if (Math.abs(totalDebit - totalCredit) > 0.01) {
         showMessage('Voucher is not balanced! Total Debit must equal Total Credit.', 'error');
         return;
+    }
+    
+    // Warn when an AR/AP line is not fully allocated
+    const unallocatedLines = [];
+    Array.from(tbody.rows).forEach(function(row, index) {
+        const rowKey = row.id.replace('detailRow', '');
+        const info = getSubledgerInfo(row.querySelector('.ac-code').value);
+        if (!info.hasSubledger) return;
+        const lineAmount = Math.abs(getSignedAmount(parseInt(rowKey, 10)));
+        const allocated = getRowAllocTotal(rowKey);
+        if (lineAmount > 0 && allocated < lineAmount - 0.01) {
+            unallocatedLines.push('line ' + (index + 1) + ' (' + (lineAmount - allocated).toFixed(2) + ')');
+        }
+    });
+    if (unallocatedLines.length > 0) {
+        if (!confirm('These lines are not fully allocated: ' + unallocatedLines.join(', ') + '.\n\nThe unallocated amount stays as a pending balance. Save anyway?')) {
+            return;
+        }
     }
     
     // Prepare bank payment voucher data
@@ -787,6 +915,7 @@ function loadVoucherForView(docNo) {
         
         if (response.status === 'success') {
             populateForm(response.jv, true);
+            loadSavedAllocations(docNo);
         } else {
             showMessage('Error loading voucher: ' + response.message, 'error');
         }
@@ -811,6 +940,7 @@ function loadVoucherForEdit(docNo) {
                 return;
             }
             populateForm(response.jv, false);
+            loadSavedAllocations(docNo);
         } else {
             showMessage('Error loading voucher: ' + response.message, 'error');
         }
@@ -836,6 +966,7 @@ function populateForm(jv, isView) {
     // Populate details
     details.forEach(function(item) {
         addDetailLine({
+            docSrNo: item.docSrNo,
             acCode: item.acCode,
             acDescription: item.acDescription,
             subledger: item.subledger,
@@ -961,7 +1092,11 @@ function postFromView() {
         postBtn.textContent = '📤 Post';
         
         if (response.status === 'success') {
-            showMessage('Bank Payment Voucher posted to accounting successfully!', 'success');
+            var allocInfo = '';
+            if (response.allocatedRows) {
+                allocInfo = ' Allocated ' + response.allocatedRows + ' bill(s) for ' + (parseFloat(response.allocatedAmount) || 0).toFixed(2) + '.';
+            }
+            showMessage('Bank Payment Voucher posted to accounting successfully!' + allocInfo, 'success');
             // Reload the page to reflect posted status
             setTimeout(function() {
                 window.location.href = 'bankpaymentvoucherform.htm?view=' + encodeURIComponent(viewDocNo);
@@ -1032,8 +1167,164 @@ function refreshMasterData() {
 }
 
 // ============================================
+// DOCUMENT ALLOCATION (AR / AP)
+// ============================================
+// The Allocation column is active only for accounts that have a subledger of
+// type AR (customer) or AP (supplier). It lists the pending invoices of the
+// selected party; the amounts allocated to them are saved with the voucher and
+// posted to the Allocation sheet when the voucher is posted.
+
+// Normalize a list of allocation entries (amounts are kept positive here)
+function normalizeAllocationList(list) {
+    return (list || []).map(function(a) {
+        return {
+            toDocType: String(a.toDocType || '').toUpperCase(),
+            toDocNo: String(a.toDocNo || ''),
+            toDocSrNo: parseInt(a.toDocSrNo, 10) || 0,
+            amount: Math.round(Math.abs(parseFloat(a.amount) || 0) * 100) / 100
+        };
+    }).filter(function(a) { return a.toDocNo && a.amount > 0; });
+}
+
+// Total amount allocated on a detail row
+function getRowAllocTotal(rowId) {
+    const list = rowAllocations[rowId] || [];
+    let total = 0;
+    list.forEach(function(a) { total += Math.abs(parseFloat(a.amount)) || 0; });
+    return Math.round(total * 100) / 100;
+}
+
+// Allocation amount of a row for one document
+function findRowAllocation(rowId, docKey) {
+    const list = rowAllocations[rowId] || [];
+    for (let i = 0; i < list.length; i++) {
+        const a = list[i];
+        if ((a.toDocType + '|' + a.toDocNo + '|' + a.toDocSrNo) === docKey) return a.amount;
+    }
+    return 0;
+}
+
+// Allocations of the detail rows that share the account + subledger of a row.
+// When docKey is empty the total of those rows is returned.
+function getLineAllocatedByOtherRows(rowId, docKey) {
+    const tbody = document.getElementById('detailsTableBody');
+    const row = document.getElementById('detailRow' + rowId);
+    if (!row) return 0;
+    const acCode = row.querySelector('.ac-code').value;
+    const subledger = row.querySelector('.subledger') ? row.querySelector('.subledger').value : '';
+    let total = 0;
+    Array.from(tbody.rows).forEach(function(r) {
+        if (r === row) return;
+        const otherRowId = r.id.replace('detailRow', '');
+        if (r.querySelector('.ac-code').value !== acCode) return;
+        const otherSubledger = r.querySelector('.subledger') ? r.querySelector('.subledger').value : '';
+        if (otherSubledger !== subledger) return;
+        total += (docKey ? findRowAllocation(otherRowId, docKey) : getRowAllocTotal(otherRowId));
+    });
+    return Math.round(total * 100) / 100;
+}
+
+// All allocations of the form (sent to the server so that allocations which are
+// not posted yet are added back to the pending amounts)
+function getAllFormAllocations() {
+    const list = [];
+    Object.keys(rowAllocations).forEach(function(rowId) {
+        (rowAllocations[rowId] || []).forEach(function(a) {
+            list.push({ toDocType: a.toDocType, toDocNo: a.toDocNo, toDocSrNo: a.toDocSrNo, amount: a.amount });
+        });
+    });
+    return list;
+}
+
+// Allocations of a detail row, ready for the save payload
+function getAllocationsForRow(rowId) {
+    return normalizeAllocationList(rowAllocations[rowId] || []);
+}
+
+// ============================================
 // ACCOUNTING ENTRY MODAL
 // ============================================
+
+// Refresh the allocation cell of a detail row
+function updateAllocCell(rowId) {
+    const row = document.getElementById('detailRow' + rowId);
+    if (!row) return;
+    const btn = row.querySelector('.alloc-btn');
+    const summary = row.querySelector('.alloc-summary');
+    const na = row.querySelector('.alloc-na');
+    if (!btn || !summary || !na) return;
+    
+    const info = getSubledgerInfo(row.querySelector('.ac-code').value);
+    const subledger = row.querySelector('.subledger') ? row.querySelector('.subledger').value : '';
+    if (!info.hasSubledger) {
+        btn.style.display = 'none';
+        summary.textContent = '';
+        na.style.display = '';
+        return;
+    }
+    na.style.display = 'none';
+    btn.style.display = 'inline-block';
+    const lineAmount = Math.abs(getSignedAmount(parseInt(rowId, 10)));
+    btn.disabled = !subledger || lineAmount <= 0.005;
+    btn.title = !subledger
+        ? 'Select a ' + info.partyType + ' first'
+        : (lineAmount <= 0.005
+            ? 'Enter the line amount first'
+            : 'Allocate this ' + info.allocType + ' line to the pending documents of ' + subledger);
+    if (!row.dataset.allocSubledger) row.dataset.allocSubledger = subledger;
+    
+    const count = (rowAllocations[rowId] || []).length;
+    const total = getRowAllocTotal(rowId);
+    if (count === 0) {
+        summary.textContent = '';
+        return;
+    }
+    const fullyAllocated = lineAmount > 0 && Math.abs(total - lineAmount) < 0.01;
+    summary.textContent = '🔗 ' + count + ' bill' + (count > 1 ? 's' : '') + ' / ' + total.toFixed(2);
+    summary.style.color = fullyAllocated ? '#27ae60' : '#e67e22';
+}
+
+// Subledger changed - the allocations of the row no longer apply
+function onSubledgerChange(rowId) {
+    const row = document.getElementById('detailRow' + rowId);
+    if (!row) return;
+    const subledger = row.querySelector('.subledger').value;
+    const previous = row.dataset.allocSubledger || '';
+    if (previous && previous !== subledger && rowAllocations[rowId]) {
+        delete rowAllocations[rowId];
+        showMessage('Allocation cleared because the ' + getSubledgerType(row.querySelector('.ac-code').value) + ' changed.', 'warning');
+    }
+    row.dataset.allocSubledger = subledger;
+    updateAllocCell(rowId);
+}
+
+// Load the allocations that were saved with the voucher
+function loadSavedAllocations(docNo) {
+    if (!docNo) return;
+    apiGetVoucherAllocations(VOUCHER_DOC_TYPE, docNo, function(response) {
+        if (response.status !== 'success') {
+            applySavedAllocations({});
+            return;
+        }
+        applySavedAllocations(response.allocationsBySrNo || {});
+    });
+}
+
+// Apply saved allocations to the rendered detail rows
+function applySavedAllocations(allocationsBySrNo) {
+    const tbody = document.getElementById('detailsTableBody');
+    Array.from(tbody.rows).forEach(function(row) {
+        const rowId = parseInt(row.id.replace('detailRow', ''), 10);
+        const docSrNo = row.dataset.docSrNo || '';
+        const list = normalizeAllocationList(allocationsBySrNo[String(docSrNo)] || []);
+        if (list.length > 0) {
+            rowAllocations[rowId] = list;
+        } else {
+            delete rowAllocations[rowId];
+        }
+        updateAllocCell(rowId);
+    });
+}
 
 // Show accounting entry modal
 function showAccountingEntry() {
@@ -1065,6 +1356,67 @@ function showAccountingEntry() {
         } else {
             document.getElementById('acctEntryEmpty').style.display = 'block';
         }
+    });
+}
+
+// Open the allocation modal for a detail row
+function openAllocationModal(rowId) {
+    const row = document.getElementById('detailRow' + rowId);
+    if (!row) return;
+    const acCode = row.querySelector('.ac-code').value;
+    const subledger = row.querySelector('.subledger') ? row.querySelector('.subledger').value : '';
+    const info = getSubledgerInfo(acCode);
+    if (!info.hasSubledger) {
+        showMessage('Allocation is allowed only for accounts that have a subledger of type AR or AP.', 'warning');
+        return;
+    }
+    if (!subledger) {
+        showMessage('Select a ' + info.partyType + ' before allocating.', 'warning');
+        return;
+    }
+    if (Math.abs(getSignedAmount(parseInt(rowId, 10))) <= 0.005) {
+        updateAllocCell(rowId);
+        showMessage('Enter the line amount before allocating.', 'warning');
+        return;
+    }
+    
+    allocModalRowId = rowId;
+    const lineAmount = Math.abs(getSignedAmount(parseInt(rowId, 10)));
+    const docNoField = document.getElementById('docNo');
+    document.getElementById('allocDocInfo').innerHTML =
+        '<strong>Voucher:</strong> ' + escapeHtml(docNoField.value || '(new)') +
+        ' | <strong>Line:</strong> ' + escapeHtml(row.cells[0] ? row.cells[0].textContent : '') +
+        ' | <strong>Account:</strong> ' + escapeHtml(acCode) + ' (' + escapeHtml(info.allocType) + ')' +
+        ' | <strong>' + escapeHtml(info.partyType) + ':</strong> ' + escapeHtml(subledger) +
+        ' | <strong>Line Amount:</strong> ' + lineAmount.toFixed(2);
+    document.getElementById('allocLineAmount').textContent = lineAmount.toFixed(2);
+    document.getElementById('allocLoading').style.display = 'block';
+    document.getElementById('allocEmpty').style.display = 'none';
+    document.getElementById('allocTableContainer').style.display = 'none';
+    document.getElementById('allocFooter').style.display = 'none';
+    document.getElementById('allocReadOnlyNote').style.display = viewMode ? 'block' : 'none';
+    document.getElementById('allocAutoBtn').style.display = viewMode ? 'none' : 'inline-block';
+    document.getElementById('allocClearBtn').style.display = viewMode ? 'none' : 'inline-block';
+    document.getElementById('allocSaveBtn').style.display = viewMode ? 'none' : 'inline-block';
+    document.getElementById('allocModal').style.display = 'block';
+    
+    apiGetAllocationOutstanding({
+        acCode: acCode,
+        subledgerDocNo: subledger,
+        docType: VOUCHER_DOC_TYPE,
+        docNo: docNoField.value || '',
+        fromAmount: getSignedAmount(parseInt(rowId, 10)),
+        excludeDocType: VOUCHER_DOC_TYPE,
+        excludeDocNo: docNoField.value || '',
+        currentAllocations: JSON.stringify(getAllFormAllocations())
+    }, function(response) {
+        document.getElementById('allocLoading').style.display = 'none';
+        if (response.status !== 'success') {
+            showMessage('Error loading pending documents: ' + response.message, 'error');
+            closeAllocationModal();
+            return;
+        }
+        renderAllocationTable(response);
     });
 }
 
@@ -1103,9 +1455,229 @@ function displayAcctEntries(entries) {
     document.getElementById('acctEntryEmpty').style.display = 'none';
 }
 
+// Explain why the pending document list is empty (account, direction rule,
+// target document types and whether the server is the latest version)
+function buildAllocEmptyMessage(response, rowId) {
+    const row = document.getElementById('detailRow' + rowId);
+    const acCode = row ? row.querySelector('.ac-code').value : '';
+    const subledger = (row && row.querySelector('.subledger')) ? row.querySelector('.subledger').value : '';
+    const signed = getSignedAmount(parseInt(rowId, 10));
+    const hasAmount = Math.abs(signed) > 0.005;
+    const direction = signed < 0 ? 'Debit' : 'Credit';
+    const targetTypes = (response && response.targetTypes) ? response.targetTypes.join(', ') : '';
+    let html = '<p style="font-size: 16px; margin-bottom: 10px;">No pending documents found for this party.</p>';
+    html += '<div style="display: inline-block; text-align: left; font-size: 13px; color: #555; line-height: 1.7;">';
+    html += '<div>Account: <strong>' + escapeHtml(acCode) + '</strong>' + (response && response.accountType ? ' (' + escapeHtml(response.accountType) + ')' : '') +
+            ' &nbsp;|&nbsp; ' + escapeHtml((response && response.subledgerType) || 'Party') + ': <strong>' + escapeHtml(subledger || (response && response.subledgerDocNo) || '') + '</strong></div>';
+    html += '<div>' + (hasAmount
+        ? 'This line is a <strong>' + direction + '</strong> of ' + Math.abs(signed).toFixed(2) + ' - only documents with the <strong>opposite direction</strong> are allocatable'
+        : 'This line has <strong>no amount yet</strong> (0.00) - enter the line amount first') + '</div>';
+    const similarDocs = (response && response.similarDocuments) ? response.similarDocuments : [];
+    if (similarDocs.length > 0) {
+        html += '<div style="color: #b9770e;">No document found for <strong>' + escapeHtml(subledger || (response && response.subledgerDocNo) || 'this party') + '</strong>, but the same account has pending documents of other parties: ' +
+                similarDocs.map(function(d) {
+                    return escapeHtml(String(d.toDocType || '') + ' ' + String(d.toDocNo || '')) +
+                           ' (' + escapeHtml(String(d.subledgerDocNo || '?')) + ', ' + (parseFloat(d.available) || 0).toFixed(2) + ')';
+                }).join(', ') +
+                '. ' + ((response && response.strictParty === false) ? '' : '<strong>The same-party rule prevents allocating them.</strong>') + '</div>';
+    }
+    if (targetTypes) {
+        html += '<div>Document types the server looked for: <strong>' + escapeHtml(targetTypes) + '</strong>' +
+                (response.allowVoucherDocs
+                    ? ' - voucher documents are enabled'
+                    : ' - voucher documents (CRV/BRV/CPV/BPV/JV) are <strong>disabled</strong>; add <em>AllocationAllowVoucherDocs = 1</em> to the SystemParameters sheet to include them') +
+                '</div>';
+    } else {
+        html += '<div style="color: #c0392b;">The server did not report the target document types - the deployed Apps Script is probably not the latest version. Paste the updated AppScript.txt and deploy a new version.</div>';
+    }
+    html += '<div>Other possible reasons: the document is not <strong>posted</strong> yet, it belongs to <strong>another party</strong>, it has no balance left, or no such document exists. Run <em>ALLOC_DIAGNOSTIC</em> in the Apps Script editor for the full ledger view.</div>';
+    html += '</div>';
+    return html;
+}
+
+// Build the pending document list of the modal. The allocations that are saved
+// on the row are merged in, because a fully allocated invoice is no longer
+// returned as outstanding by the server.
+function renderAllocationTable(response) {
+    const rowId = allocModalRowId;
+    const row = document.getElementById('detailRow' + rowId);
+    if (!row) return;
+    allocModalDocs = response.documents || [];
+    if (response.allowVoucherDocs) {
+        document.getElementById('allocDocInfo').innerHTML += ' | <em>Voucher documents (unapplied receipts/payments) are also listed</em>';
+    }
+    const lineAmount = Math.abs(getSignedAmount(parseInt(rowId, 10)));
+    const saved = normalizeAllocationList(rowAllocations[rowId] || []);
+    
+    const list = [];
+    allocModalDocs.forEach(function(doc) {
+        list.push({
+            toDocType: doc.toDocType, toDocNo: doc.toDocNo, toDocSrNo: doc.toDocSrNo,
+            date: doc.date, narration: doc.narration,
+            docAmount: doc.docAmount, available: doc.available
+        });
+    });
+    saved.forEach(function(a) {
+        const key = a.toDocType + '|' + a.toDocNo + '|' + a.toDocSrNo;
+        const found = list.some(function(x) { return (x.toDocType + '|' + x.toDocNo + '|' + x.toDocSrNo) === key; });
+        if (!found) {
+            list.push({
+                toDocType: a.toDocType, toDocNo: a.toDocNo, toDocSrNo: a.toDocSrNo,
+                date: '', narration: '(allocated)', docAmount: 0, available: a.amount
+            });
+        }
+    });
+    
+    const tbody = document.getElementById('allocTableBody');
+    if (list.length === 0) {
+        tbody.innerHTML = '';
+        document.getElementById('allocEmpty').innerHTML = buildAllocEmptyMessage(response, rowId);
+        document.getElementById('allocEmpty').style.display = 'block';
+        document.getElementById('allocTableContainer').style.display = 'none';
+        document.getElementById('allocFooter').style.display = 'none';
+        return;
+    }
+    
+    let html = '';
+    list.forEach(function(doc, index) {
+        const key = doc.toDocType + '|' + doc.toDocNo + '|' + doc.toDocSrNo;
+        const existing = findRowAllocation(rowId, key);
+        const max = getAllocMaxForDoc(rowId, key, doc.available, lineAmount);
+        html += '<tr>' +
+            '<td style="padding: 8px; border-bottom: 1px solid #eee;">' + (index + 1) + '</td>' +
+            '<td style="padding: 8px; border-bottom: 1px solid #eee;">' + escapeHtml(doc.toDocType) + '</td>' +
+            '<td style="padding: 8px; border-bottom: 1px solid #eee;"><strong>' + escapeHtml(doc.toDocNo) + '</strong></td>' +
+            '<td style="padding: 8px; border-bottom: 1px solid #eee;">' + escapeHtml(doc.date || '-') + '</td>' +
+            '<td style="padding: 8px; border-bottom: 1px solid #eee;">' + escapeHtml(doc.narration || '-') + '</td>' +
+            '<td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">' + (parseFloat(doc.docAmount) || 0).toFixed(2) + '</td>' +
+            '<td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">' + (parseFloat(doc.available) || 0).toFixed(2) + '</td>' +
+            '<td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">' +
+                '<input type="number" class="alloc-input" style="width: 110px; text-align: right;" min="0" step="0.01" ' +
+                    (viewMode ? 'disabled ' : '') +
+                    'data-key="' + escapeHtml(key) + '" data-max="' + max + '" ' +
+                    'value="' + (existing > 0 ? existing.toFixed(2) : '') + '" oninput="onAllocInputChange(this)">' +
+            '</td>' +
+            '</tr>';
+    });
+    tbody.innerHTML = html;
+    document.getElementById('allocEmpty').style.display = 'none';
+    document.getElementById('allocTableContainer').style.display = 'block';
+    document.getElementById('allocFooter').style.display = 'block';
+    recalcAllocTotals();
+}
+
 // Close accounting entry modal
 function closeAcctEntryModal() {
     document.getElementById('acctEntryModal').style.display = 'none';
+}
+
+// Maximum amount that may be allocated to one document on a row
+function getAllocMaxForDoc(rowId, docKey, available, lineAmount) {
+    const otherDocsInRow = Math.round((getRowAllocTotal(rowId) - findRowAllocation(rowId, docKey)) * 100) / 100;
+    const otherRowsSameLine = getLineAllocatedByOtherRows(rowId, docKey);
+    const capacityFromLine = Math.max(0, lineAmount - otherDocsInRow);
+    const capacityFromDoc = Math.max(0, (parseFloat(available) || 0) - otherRowsSameLine);
+    return Math.round(Math.min(capacityFromLine, capacityFromDoc) * 100) / 100;
+}
+
+// Clamp an allocation input to the maximum allocatable amount
+function onAllocInputChange(input) {
+    let value = parseFloat(input.value) || 0;
+    const max = parseFloat(input.dataset.max) || 0;
+    if (value < 0) value = 0;
+    if (value > max) {
+        value = max;
+        showMessage('Maximum allocatable amount for this document is ' + max.toFixed(2) + '.', 'warning');
+    }
+    input.value = value > 0 ? value.toFixed(2) : '';
+    recalcAllocTotals();
+}
+
+// Refresh the totals of the allocation modal
+function recalcAllocTotals() {
+    const rowId = allocModalRowId;
+    let total = 0;
+    Array.from(document.querySelectorAll('#allocTableBody .alloc-input')).forEach(function(input) {
+        total += Math.abs(parseFloat(input.value) || 0);
+    });
+    total = Math.round(total * 100) / 100;
+    const lineAmount = rowId === null ? 0 : Math.abs(getSignedAmount(parseInt(rowId, 10)));
+    const unallocated = Math.round((lineAmount - total) * 100) / 100;
+    document.getElementById('allocTotalAllocated').textContent = total.toFixed(2);
+    document.getElementById('allocUnallocated').textContent = unallocated.toFixed(2);
+    document.getElementById('allocUnallocated').style.color = unallocated <= 0.01 ? '#27ae60' : '#e74c3c';
+}
+
+// Allocate the line amount to the oldest pending documents first
+function autoAllocate() {
+    const rowId = allocModalRowId;
+    if (rowId === null) return;
+    const lineAmount = Math.abs(getSignedAmount(parseInt(rowId, 10)));
+    let remaining = Math.round((lineAmount - getLineAllocatedByOtherRows(rowId, '')) * 100) / 100;
+    Array.from(document.querySelectorAll('#allocTableBody .alloc-input')).forEach(function(input) {
+        const max = parseFloat(input.dataset.max) || 0;
+        const give = Math.max(0, Math.min(max, remaining));
+        input.value = give > 0 ? give.toFixed(2) : '';
+        remaining = Math.round((remaining - give) * 100) / 100;
+    });
+    recalcAllocTotals();
+    if (remaining > 0.01) {
+        showMessage('The pending documents do not cover the whole line amount. Remaining: ' + remaining.toFixed(2), 'warning');
+    }
+}
+
+// Clear all allocation inputs of the modal
+function clearAllocation() {
+    Array.from(document.querySelectorAll('#allocTableBody .alloc-input')).forEach(function(input) {
+        input.value = '';
+    });
+    recalcAllocTotals();
+}
+
+// Save the modal allocations into the detail row
+function saveAllocationFromModal() {
+    const rowId = allocModalRowId;
+    if (rowId === null) return;
+    const row = document.getElementById('detailRow' + rowId);
+    if (!row) return;
+    
+    const list = [];
+    Array.from(document.querySelectorAll('#allocTableBody .alloc-input')).forEach(function(input) {
+        const amount = Math.round((parseFloat(input.value) || 0) * 100) / 100;
+        if (amount <= 0) return;
+        const parts = String(input.dataset.key).split('|');
+        list.push({
+            toDocType: parts[0],
+            toDocNo: parts[1],
+            toDocSrNo: parseInt(parts[2], 10) || 0,
+            amount: amount
+        });
+    });
+    
+    const lineAmount = Math.abs(getSignedAmount(parseInt(rowId, 10)));
+    let total = 0;
+    list.forEach(function(a) { total += a.amount; });
+    if (total > lineAmount + 0.01) {
+        showMessage('Total allocation ' + total.toFixed(2) + ' exceeds the line amount ' + lineAmount.toFixed(2) + '.', 'error');
+        return;
+    }
+    
+    if (list.length > 0) {
+        rowAllocations[rowId] = list;
+    } else {
+        delete rowAllocations[rowId];
+    }
+    updateAllocCell(rowId);
+    closeAllocationModal();
+    showMessage(list.length > 0 ? 'Allocation updated. Save the voucher to keep it.' : 'Allocation cleared.', 'success');
+}
+
+// Close the allocation modal
+function closeAllocationModal() {
+    document.getElementById('allocModal').style.display = 'none';
+    document.getElementById('allocTableBody').innerHTML = '';
+    allocModalRowId = null;
+    allocModalDocs = [];
 }
 
 // ============================================

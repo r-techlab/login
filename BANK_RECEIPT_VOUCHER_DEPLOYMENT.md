@@ -153,3 +153,17 @@ GET ?action=getBankReceiptVoucherReport&sessionId={sessionId}&userId={userId}&fr
 - [ ] **JV regression check**: JV list and JV report show ONLY `JV` records (no BRV rows)
 - [ ] Trial Balance / Statement of Account include posted BRV amounts
 
+## Allocation (AR / AP) - added with the Allocation module
+- The BRV entry grid has a new **Allocation** column. It is active only for accounts that have a
+  subledger (`COA.SUBLEDGER_EXISTS = 1` and `COA.ACTYPE_DOCNO = AR`), i.e. the customer line of the
+  voucher, and only after the customer has been selected.
+- `🔗 Allocate` opens a modal with the pending Sales Invoices (SI) of that customer
+  (`AccountTransaction` rows with the same `AC_DOCNO` + `SUBLEDGER_DOCNO` and a remaining `BAL_AMOUNT`),
+  where the BRV amount can be applied to one or more invoices (partial allocation is allowed).
+- The allocation is saved with the voucher in the new `JournalVoucherDetails` column
+  `AllocationJSON` (M). It is written to the **Allocation** sheet and `BAL_AMOUNT` is updated on both
+  sides (BRV AR line `+=`, invoice AR line `-=`) when the voucher is **posted**; **Cancel Post**
+  removes the Allocation rows and restores the invoice balances.
+- New API functions: `apiGetAllocationOutstanding()` and `apiGetVoucherAllocations()`.
+  See **ALLOCATION_DEPLOYMENT.md** for the full guide.
+

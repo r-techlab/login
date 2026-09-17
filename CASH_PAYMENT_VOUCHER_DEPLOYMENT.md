@@ -155,3 +155,18 @@ GET ?action=getCashPaymentVoucherReport&sessionId={sessionId}&userId={userId}&fr
 - **JournalVoucherDetails** - one row per CPV detail line: `DocType` (`CPV`), `DocNo`, `DocSrNo`, `ACCode`, `ACDescription`, `Subledger`, `Amount` (negative = debit, positive = credit), `Narration`, `Mode`, `Bank`, `InstrumentNo`, `InstrumentDate` (the last 4 are stored as empty strings for cash-only vouchers)
 - **AccountTransaction** - created on Post with `DocType = 'CPV'`, exactly like JV/BRV/CRV entries. Cancel Post deletes only `CPV` rows for the document.
 - **No new sheets are required.** The `DocType` column already existed in all three sheets.
+
+## Allocation (AR / AP) - added with the Allocation module
+- The CPV entry grid has a new **Allocation** column. It is active only for accounts that have a
+  subledger (`COA.SUBLEDGER_EXISTS = 1` and `COA.ACTYPE_DOCNO = AP`), i.e. the supplier line of the
+  voucher, and only after the supplier has been selected.
+- `🔗 Allocate` opens a modal with the pending Purchase Invoices (PI) of that supplier
+  (`AccountTransaction` rows with the same `AC_DOCNO` + `SUBLEDGER_DOCNO` and a remaining `BAL_AMOUNT`),
+  where the CPV amount can be applied to one or more invoices (partial allocation is allowed).
+- The allocation is saved with the voucher in the new `JournalVoucherDetails` column
+  `AllocationJSON` (M). It is written to the **Allocation** sheet and `BAL_AMOUNT` is updated on both
+  sides (CPV AP line `+=`, invoice AP line `-=`) when the voucher is **posted**; **Cancel Post**
+  removes the Allocation rows and restores the invoice balances.
+- Saving a CPV whose AP line is not fully allocated asks for confirmation.
+- New API functions: `apiGetAllocationOutstanding()` and `apiGetVoucherAllocations()`.
+  See **ALLOCATION_DEPLOYMENT.md** for the full guide.

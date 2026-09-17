@@ -1180,6 +1180,10 @@ function doGet(e) {
     return handleCancelCPVAccountTransactionPostGet(e);
   } else if (action === "getCashPaymentVoucherReport") {
     return handleGetCashPaymentVoucherReportGet(e);
+  } else if (action === "getAllocationOutstanding") {
+    return handleGetAllocationOutstandingGet(e);
+  } else if (action === "getVoucherAllocations") {
+    return handleGetVoucherAllocationsGet(e);
   } else if (action === "getStatementOfAccount") {
     return handleGetStatementOfAccountGet(e);
   } else if (action === "getTrialBalance") {
@@ -8346,9 +8350,12 @@ function getSystemParameterValue(ss, paramCode, defaultValue) {
   if (defaultValue === undefined) defaultValue = '';
   var paramsSheet = ss.getSheetByName("SystemParameters");
   if (!paramsSheet) return defaultValue;
+  // Compare the parameter code ignoring spaces / case so a hand typed code
+  // (e.g. "AllocationAllowVoucherDocs ") is still found
+  var wantedParamCode = String(paramCode === undefined || paramCode === null ? '' : paramCode).replace(/\s+/g, '').toUpperCase();
   var paramsData = paramsSheet.getDataRange().getValues();
   for (var i = 1; i < paramsData.length; i++) {
-    if (paramsData[i][0] && paramsData[i][0].toString() == paramCode.toString()) {
+    if (paramsData[i][0] && String(paramsData[i][0]).replace(/\s+/g, '').toUpperCase() === wantedParamCode) {
       return paramsData[i][1] || defaultValue;
     }
   }
@@ -12034,6 +12041,18 @@ function handleCreateBankReceiptVoucherGet(e) {
     }
   }
   
+  // Validate the pending allocations (allocation is allowed only for accounts
+  // that have a subledger of type AR/AP)
+  var allocValidation = validateAllocationSet(ss, brvData.details);
+  if (!allocValidation.valid) {
+    var errorResult = { status: "error", message: allocValidation.message };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
   var newDocNo = 'BRV' + (maxNum + 1);
   
   // Add header
@@ -12081,6 +12100,9 @@ function handleCreateBankReceiptVoucherGet(e) {
       detail.instrumentDate || ''
     ]);
   }
+  
+  // Save the pending allocations of the voucher
+  saveAllocationDraftsToSheet(ss, 'BRV', newDocNo, brvData.details);
   
   var result = { status: "success", message: "Bank Receipt Voucher created successfully", docNo: newDocNo };
   if (callback) {
@@ -12134,6 +12156,17 @@ function handleUpdateBankReceiptVoucherGet(e) {
   }
   
   var docNo = brvData.header.docNo;
+  
+  // Validate the pending allocations before changing anything
+  var allocValidation = validateAllocationSet(ss, brvData.details);
+  if (!allocValidation.valid) {
+    var errorResult = { status: "error", message: allocValidation.message };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
   
   // Validate debit = credit balance
   var totalDebit = 0;
@@ -12234,6 +12267,9 @@ function handleUpdateBankReceiptVoucherGet(e) {
       detail.instrumentDate || ''
     ]);
   }
+  
+  // Save the pending allocations of the voucher
+  saveAllocationDraftsToSheet(ss, 'BRV', docNo, brvData.details);
   
   var result = { status: "success", message: "Bank Receipt Voucher updated successfully" };
   if (callback) {
@@ -12428,6 +12464,18 @@ function handlePostBRVToAccountTransactionGet(e) {
   var now = new Date();
   var postedTime = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
   
+  // Validate allocations before posting (allocation is only possible for
+  // accounts that have a subledger and the invoice balances must cover them)
+  var allocValidation = validateAllocationSet(ss, getAllocationDraftsForVoucher(ss, 'BRV', docNo));
+  if (!allocValidation.valid) {
+    var errorResult = { status: "error", message: allocValidation.message };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
   // Post each detail line to AccountTransaction
   for (var d = 0; d < brvDetails.length; d++) {
     var detail = brvDetails[d];
@@ -12455,7 +12503,19 @@ function handlePostBRVToAccountTransactionGet(e) {
   headerSheet.getRange(headerRow + 1, 11).setValue(validation.userName);
   headerSheet.getRange(headerRow + 1, 12).setValue(postedTime);
   
-  var result = { status: "success", message: "Bank Receipt Voucher posted to accounting successfully", postedBy: validation.userName, postedTime: postedTime };
+  // Apply the allocations: write them to the Allocation sheet and update the
+  // BAL_AMOUNT of both the voucher line and the allocated invoice line
+  var allocApplied = applyVoucherAllocations(ss, 'BRV', docNo);
+  if (!allocApplied.success) {
+    var allocError = { status: "error", message: "Voucher posted but allocation failed: " + allocApplied.message + " Please cancel the post, correct the allocation and post again." };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(allocError) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(allocError);
+  }
+  
+  var result = { status: "success", message: "Bank Receipt Voucher posted to accounting successfully", postedBy: validation.userName, postedTime: postedTime, allocatedRows: allocApplied.rows, allocatedAmount: allocApplied.amount };
   if (callback) {
     return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
       .setMimeType(ContentService.MimeType.JAVASCRIPT);
@@ -12511,6 +12571,10 @@ function handleCancelBRVAccountTransactionPostGet(e) {
   if (accountTransactionSheet) {
     var data = accountTransactionSheet.getDataRange().getValues();
     var deleted = false;
+    
+    // Reverse the allocations of this voucher (delete its Allocation rows and
+    // restore the invoice balances)
+    reverseVoucherAllocations(ss, 'BRV', docNo);
     
     for (var i = data.length - 1; i >= 1; i--) {
       if (data[i][0] && data[i][0].toString() == 'BRV' && data[i][1] && data[i][1].toString() == docNo.toString()) {
@@ -12975,6 +13039,18 @@ function handleCreateCashReceiptVoucherGet(e) {
     }
   }
   
+  // Validate the pending allocations (allocation is allowed only for accounts
+  // that have a subledger of type AR/AP)
+  var allocValidation = validateAllocationSet(ss, crvData.details);
+  if (!allocValidation.valid) {
+    var errorResult = { status: "error", message: allocValidation.message };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
   var newDocNo = 'CRV' + (maxNum + 1);
   
   // Add header
@@ -13022,6 +13098,9 @@ function handleCreateCashReceiptVoucherGet(e) {
       detail.instrumentDate || ''
     ]);
   }
+  
+  // Save the pending allocations of the voucher
+  saveAllocationDraftsToSheet(ss, 'CRV', newDocNo, crvData.details);
   
   var result = { status: "success", message: "Cash Receipt Voucher created successfully", docNo: newDocNo };
   if (callback) {
@@ -13075,6 +13154,17 @@ function handleUpdateCashReceiptVoucherGet(e) {
   }
   
   var docNo = crvData.header.docNo;
+  
+  // Validate the pending allocations before changing anything
+  var allocValidation = validateAllocationSet(ss, crvData.details);
+  if (!allocValidation.valid) {
+    var errorResult = { status: "error", message: allocValidation.message };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
   
   // Validate debit = credit balance
   var totalDebit = 0;
@@ -13175,6 +13265,9 @@ function handleUpdateCashReceiptVoucherGet(e) {
       detail.instrumentDate || ''
     ]);
   }
+  
+  // Save the pending allocations of the voucher
+  saveAllocationDraftsToSheet(ss, 'CRV', docNo, crvData.details);
   
   var result = { status: "success", message: "Cash Receipt Voucher updated successfully" };
   if (callback) {
@@ -13369,6 +13462,18 @@ function handlePostCRVToAccountTransactionGet(e) {
   var now = new Date();
   var postedTime = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
   
+  // Validate allocations before posting (allocation is only possible for
+  // accounts that have a subledger and the invoice balances must cover them)
+  var allocValidation = validateAllocationSet(ss, getAllocationDraftsForVoucher(ss, 'CRV', docNo));
+  if (!allocValidation.valid) {
+    var errorResult = { status: "error", message: allocValidation.message };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
   // Post each detail line to AccountTransaction
   for (var d = 0; d < crvDetails.length; d++) {
     var detail = crvDetails[d];
@@ -13396,7 +13501,19 @@ function handlePostCRVToAccountTransactionGet(e) {
   headerSheet.getRange(headerRow + 1, 11).setValue(validation.userName);
   headerSheet.getRange(headerRow + 1, 12).setValue(postedTime);
   
-  var result = { status: "success", message: "Cash Receipt Voucher posted to accounting successfully", postedBy: validation.userName, postedTime: postedTime };
+  // Apply the allocations: write them to the Allocation sheet and update the
+  // BAL_AMOUNT of both the voucher line and the allocated invoice line
+  var allocApplied = applyVoucherAllocations(ss, 'CRV', docNo);
+  if (!allocApplied.success) {
+    var allocError = { status: "error", message: "Voucher posted but allocation failed: " + allocApplied.message + " Please cancel the post, correct the allocation and post again." };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(allocError) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(allocError);
+  }
+  
+  var result = { status: "success", message: "Cash Receipt Voucher posted to accounting successfully", postedBy: validation.userName, postedTime: postedTime, allocatedRows: allocApplied.rows, allocatedAmount: allocApplied.amount };
   if (callback) {
     return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
       .setMimeType(ContentService.MimeType.JAVASCRIPT);
@@ -13452,6 +13569,10 @@ function handleCancelCRVAccountTransactionPostGet(e) {
   if (accountTransactionSheet) {
     var data = accountTransactionSheet.getDataRange().getValues();
     var deleted = false;
+    
+    // Reverse the allocations of this voucher (delete its Allocation rows and
+    // restore the invoice balances)
+    reverseVoucherAllocations(ss, 'CRV', docNo);
     
     for (var i = data.length - 1; i >= 1; i--) {
       if (data[i][0] && data[i][0].toString() == 'CRV' && data[i][1] && data[i][1].toString() == docNo.toString()) {
@@ -13909,6 +14030,18 @@ function handleCreateBankPaymentVoucherGet(e) {
     }
   }
   
+  // Validate the pending allocations (allocation is allowed only for accounts
+  // that have a subledger of type AR/AP)
+  var allocValidation = validateAllocationSet(ss, bpvData.details);
+  if (!allocValidation.valid) {
+    var errorResult = { status: "error", message: allocValidation.message };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
   var newDocNo = 'BPV' + (maxNum + 1);
   
   // Add header
@@ -13956,6 +14089,9 @@ function handleCreateBankPaymentVoucherGet(e) {
       detail.instrumentDate || ''
     ]);
   }
+  
+  // Save the pending allocations of the voucher
+  saveAllocationDraftsToSheet(ss, 'BPV', newDocNo, bpvData.details);
   
   var result = { status: "success", message: "Bank Payment Voucher created successfully", docNo: newDocNo };
   if (callback) {
@@ -14009,6 +14145,17 @@ function handleUpdateBankPaymentVoucherGet(e) {
   }
   
   var docNo = bpvData.header.docNo;
+  
+  // Validate the pending allocations before changing anything
+  var allocValidation = validateAllocationSet(ss, bpvData.details);
+  if (!allocValidation.valid) {
+    var errorResult = { status: "error", message: allocValidation.message };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
   
   // Validate debit = credit balance
   var totalDebit = 0;
@@ -14109,6 +14256,9 @@ function handleUpdateBankPaymentVoucherGet(e) {
       detail.instrumentDate || ''
     ]);
   }
+  
+  // Save the pending allocations of the voucher
+  saveAllocationDraftsToSheet(ss, 'BPV', docNo, bpvData.details);
   
   var result = { status: "success", message: "Bank Payment Voucher updated successfully" };
   if (callback) {
@@ -14303,6 +14453,18 @@ function handlePostBPVToAccountTransactionGet(e) {
   var now = new Date();
   var postedTime = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
   
+  // Validate allocations before posting (allocation is only possible for
+  // accounts that have a subledger and the invoice balances must cover them)
+  var allocValidation = validateAllocationSet(ss, getAllocationDraftsForVoucher(ss, 'BPV', docNo));
+  if (!allocValidation.valid) {
+    var errorResult = { status: "error", message: allocValidation.message };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
   // Post each detail line to AccountTransaction
   for (var d = 0; d < bpvDetails.length; d++) {
     var detail = bpvDetails[d];
@@ -14330,7 +14492,19 @@ function handlePostBPVToAccountTransactionGet(e) {
   headerSheet.getRange(headerRow + 1, 11).setValue(validation.userName);
   headerSheet.getRange(headerRow + 1, 12).setValue(postedTime);
   
-  var result = { status: "success", message: "Bank Payment Voucher posted to accounting successfully", postedBy: validation.userName, postedTime: postedTime };
+  // Apply the allocations: write them to the Allocation sheet and update the
+  // BAL_AMOUNT of both the voucher line and the allocated invoice line
+  var allocApplied = applyVoucherAllocations(ss, 'BPV', docNo);
+  if (!allocApplied.success) {
+    var allocError = { status: "error", message: "Voucher posted but allocation failed: " + allocApplied.message + " Please cancel the post, correct the allocation and post again." };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(allocError) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(allocError);
+  }
+  
+  var result = { status: "success", message: "Bank Payment Voucher posted to accounting successfully", postedBy: validation.userName, postedTime: postedTime, allocatedRows: allocApplied.rows, allocatedAmount: allocApplied.amount };
   if (callback) {
     return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
       .setMimeType(ContentService.MimeType.JAVASCRIPT);
@@ -14386,6 +14560,10 @@ function handleCancelBPVAccountTransactionPostGet(e) {
   if (accountTransactionSheet) {
     var data = accountTransactionSheet.getDataRange().getValues();
     var deleted = false;
+    
+    // Reverse the allocations of this voucher (delete its Allocation rows and
+    // restore the invoice balances)
+    reverseVoucherAllocations(ss, 'BPV', docNo);
     
     for (var i = data.length - 1; i >= 1; i--) {
       if (data[i][0] && data[i][0].toString() == 'BPV' && data[i][1] && data[i][1].toString() == docNo.toString()) {
@@ -14843,6 +15021,18 @@ function handleCreateCashPaymentVoucherGet(e) {
     }
   }
   
+  // Validate the pending allocations (allocation is allowed only for accounts
+  // that have a subledger of type AR/AP)
+  var allocValidation = validateAllocationSet(ss, cpvData.details);
+  if (!allocValidation.valid) {
+    var errorResult = { status: "error", message: allocValidation.message };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
   var newDocNo = 'CPV' + (maxNum + 1);
   
   // Add header
@@ -14890,6 +15080,9 @@ function handleCreateCashPaymentVoucherGet(e) {
       detail.instrumentDate || ''
     ]);
   }
+  
+  // Save the pending allocations of the voucher
+  saveAllocationDraftsToSheet(ss, 'CPV', newDocNo, cpvData.details);
   
   var result = { status: "success", message: "Cash Payment Voucher created successfully", docNo: newDocNo };
   if (callback) {
@@ -14943,6 +15136,17 @@ function handleUpdateCashPaymentVoucherGet(e) {
   }
   
   var docNo = cpvData.header.docNo;
+  
+  // Validate the pending allocations before changing anything
+  var allocValidation = validateAllocationSet(ss, cpvData.details);
+  if (!allocValidation.valid) {
+    var errorResult = { status: "error", message: allocValidation.message };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
   
   // Validate debit = credit balance
   var totalDebit = 0;
@@ -15043,6 +15247,9 @@ function handleUpdateCashPaymentVoucherGet(e) {
       detail.instrumentDate || ''
     ]);
   }
+  
+  // Save the pending allocations of the voucher
+  saveAllocationDraftsToSheet(ss, 'CPV', docNo, cpvData.details);
   
   var result = { status: "success", message: "Cash Payment Voucher updated successfully" };
   if (callback) {
@@ -15237,6 +15444,18 @@ function handlePostCPVToAccountTransactionGet(e) {
   var now = new Date();
   var postedTime = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
   
+  // Validate allocations before posting (allocation is only possible for
+  // accounts that have a subledger and the invoice balances must cover them)
+  var allocValidation = validateAllocationSet(ss, getAllocationDraftsForVoucher(ss, 'CPV', docNo));
+  if (!allocValidation.valid) {
+    var errorResult = { status: "error", message: allocValidation.message };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(errorResult);
+  }
+  
   // Post each detail line to AccountTransaction
   for (var d = 0; d < cpvDetails.length; d++) {
     var detail = cpvDetails[d];
@@ -15264,7 +15483,19 @@ function handlePostCPVToAccountTransactionGet(e) {
   headerSheet.getRange(headerRow + 1, 11).setValue(validation.userName);
   headerSheet.getRange(headerRow + 1, 12).setValue(postedTime);
   
-  var result = { status: "success", message: "Cash Payment Voucher posted to accounting successfully", postedBy: validation.userName, postedTime: postedTime };
+  // Apply the allocations: write them to the Allocation sheet and update the
+  // BAL_AMOUNT of both the voucher line and the allocated invoice line
+  var allocApplied = applyVoucherAllocations(ss, 'CPV', docNo);
+  if (!allocApplied.success) {
+    var allocError = { status: "error", message: "Voucher posted but allocation failed: " + allocApplied.message + " Please cancel the post, correct the allocation and post again." };
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + JSON.stringify(allocError) + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    return createJsonResponse(allocError);
+  }
+  
+  var result = { status: "success", message: "Cash Payment Voucher posted to accounting successfully", postedBy: validation.userName, postedTime: postedTime, allocatedRows: allocApplied.rows, allocatedAmount: allocApplied.amount };
   if (callback) {
     return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
       .setMimeType(ContentService.MimeType.JAVASCRIPT);
@@ -15320,6 +15551,10 @@ function handleCancelCPVAccountTransactionPostGet(e) {
   if (accountTransactionSheet) {
     var data = accountTransactionSheet.getDataRange().getValues();
     var deleted = false;
+    
+    // Reverse the allocations of this voucher (delete its Allocation rows and
+    // restore the invoice balances)
+    reverseVoucherAllocations(ss, 'CPV', docNo);
     
     for (var i = data.length - 1; i >= 1; i--) {
       if (data[i][0] && data[i][0].toString() == 'CPV' && data[i][1] && data[i][1].toString() == docNo.toString()) {
@@ -15490,6 +15725,747 @@ function handleGetCashPaymentVoucherReportGet(e) {
   return createJsonResponse(result);
 }
 // ============================================
+// DOCUMENT ALLOCATION (AR / AP) HANDLERS
+// ============================================
+// Allocation is possible only for accounts that have a subledger
+// (COA SUBLEDGER_EXISTS = 1) whose subledger type (COA ACTYPE_DOCNO) is:
+//   AR -> pending Sales Invoices (SI)    for the same account + customer
+//   AP -> pending Purchase Invoices (PI) for the same account + supplier
+// The voucher (From) keeps its unallocated amount and the invoice (To) keeps
+// its unsettled amount in AccountTransaction.BAL_AMOUNT:
+//   From line : BAL_AMOUNT += Amount   (AR lines are negative, AP are positive)
+//   To line   : BAL_AMOUNT -= Amount
+// Allocation rows are written to the "Allocation" sheet when the voucher is
+// posted, and removed again when the post is cancelled.
+// Pending allocations are kept in JournalVoucherDetails.AllocationJSON (col M).
+
+var ALLOCATION_COLUMN = 13; // JournalVoucherDetails column M = AllocationJSON
+var ALLOCATION_HEADERS = ["FromDocType", "FromDocNo", "FromDocSrNo", "FromDocSrSrNo", "AccountType", "SubledgerDocNo",
+                          "ToDocType", "ToDocNo", "ToDocSrNo", "ToDocSrSrNo", "Amount"];
+
+// Ensure Allocation sheet exists with proper headers
+function ensureAllocationSheet(ss) {
+  var sheet = ss.getSheetByName("Allocation");
+  if (!sheet) {
+    sheet = ss.insertSheet("Allocation");
+    sheet.appendRow(ALLOCATION_HEADERS);
+  }
+  return sheet;
+}
+
+// Ensure JournalVoucherDetails has the AllocationJSON column (column M)
+function ensureDetailAllocationColumn(ss, detailsSheet) {
+  if (!detailsSheet) return;
+  var headerCell = detailsSheet.getRange(1, ALLOCATION_COLUMN);
+  if (String(headerCell.getValue() || '') !== 'AllocationJSON') {
+    headerCell.setValue('AllocationJSON');
+  }
+}
+
+// Normalize a code (account, subledger, document type/number) for comparisons.
+// Handles stray spaces and letter case from manual entry in the sheet.
+function normalizeAllocationCode(value) {
+  if (value === undefined || value === null) return '';
+  return String(value).replace(/\s+/g, '').toUpperCase();
+}
+
+// Key of one ledger document line, used by every allocation lookup
+function allocationDocKey(docType, docNo, docSrNo) {
+  return normalizeAllocationCode(docType) + '|' + normalizeAllocationCode(docNo) + '|' + (parseInt(docSrNo, 10) || 0);
+}
+
+// Get COA meta (subledger flag + subledger type) for an account code
+function getAllocationAccountMeta(ss, acCode) {
+  var meta = { found: false, subledgerExists: 0, actypeDocno: '', description: '' };
+  if (!acCode) return meta;
+  var coaSheet = ss.getSheetByName("COA");
+  if (!coaSheet) return meta;
+  var coaData = coaSheet.getDataRange().getValues();
+  var wantedCode = normalizeAllocationCode(acCode);
+  for (var i = 1; i < coaData.length; i++) {
+    if (coaData[i][0] && normalizeAllocationCode(coaData[i][0]) === wantedCode) {
+      meta.found = true;
+      meta.subledgerExists = parseInt(coaData[i][8], 10) || 0;
+      meta.actypeDocno = normalizeAllocationCode(coaData[i][13]);
+      meta.description = coaData[i][2] || '';
+      return meta;
+    }
+  }
+  return meta;
+}
+
+// Allocation policy for an account: allowed + account/party/To-document types
+function getAllocationPolicy(ss, acCode) {
+  var meta = getAllocationAccountMeta(ss, acCode);
+  var policy = { allowed: false, hasSubledger: false, accountType: '', subledgerType: '', toDocType: '', targetTypes: [], strictParty: true, description: meta.description };
+  policy.hasSubledger = meta.subledgerExists === 1;
+  if (policy.hasSubledger && meta.actypeDocno === 'AR') {
+    policy.allowed = true;
+    policy.accountType = 'AR';
+    policy.subledgerType = 'Customer';
+    policy.toDocType = 'SI';
+  } else if (policy.hasSubledger && meta.actypeDocno === 'AP') {
+    policy.allowed = true;
+    policy.accountType = 'AP';
+    policy.subledgerType = 'Supplier';
+    policy.toDocType = 'PI';
+  }
+  if (policy.allowed) {
+    // The invoices of the account are always valid targets (SI for AR, PI for AP).
+    // Other ledger lines of the same account + subledger (unapplied receipts /
+    // payments, journal lines) can be enabled with the system parameter
+    // AllocationAllowVoucherDocs = 1.
+    policy.targetTypes = [policy.toDocType];
+    var allowVoucherDocsValue = String(getSystemParameterValue(ss, 'AllocationAllowVoucherDocs', '')).replace(/\s+/g, '').toUpperCase();
+    if (['1', 'Y', 'YES', 'TRUE', 'ON'].indexOf(allowVoucherDocsValue) !== -1) {
+      policy.targetTypes = policy.targetTypes.concat(['CRV', 'BRV', 'CPV', 'BPV', 'JV']);
+    }
+    // Same party rule: strict by default (a receipt can only settle documents of
+    // its own party). AllocationStrictParty = 0 allows any party of the account.
+    var strictPartyValue = String(getSystemParameterValue(ss, 'AllocationStrictParty', '')).replace(/\s+/g, '').toUpperCase();
+    policy.strictParty = ['0', 'N', 'NO', 'FALSE', 'OFF'].indexOf(strictPartyValue) === -1;
+  }
+  return policy;
+}
+
+// Is this document type a valid allocation target for the account?
+function isAllowedTargetType(policy, docType) {
+  if (!policy || !policy.allowed) return false;
+  var types = (policy.targetTypes && policy.targetTypes.length) ? policy.targetTypes : [policy.toDocType];
+  var wantedType = normalizeAllocationCode(docType);
+  if (!wantedType) return false;
+  for (var i = 0; i < types.length; i++) {
+    if (normalizeAllocationCode(types[i]) === wantedType) return true;
+  }
+  return false;
+}
+
+// Get the pending (unallocated) documents of a party: AccountTransaction rows
+// of the AR/AP control account + subledger that still have a BAL_AMOUNT.
+// addBackMap holds allocations that are not posted yet (this voucher's own
+// pending allocations) so they can be re-allocated while editing.
+function getOutstandingDocsForParty(ss, acCode, subledgerDocNo, policy, addBackMap, fromAmount, excludeDocType, excludeDocNo) {
+  var docs = [];
+  var accountTransactionSheet = ss.getSheetByName("AccountTransaction");
+  if (!accountTransactionSheet) return docs;
+  var data = accountTransactionSheet.getDataRange().getValues();
+  var wantedAccount = normalizeAllocationCode(acCode);
+  var wantedSubledger = normalizeAllocationCode(subledgerDocNo);
+  var wantedFromAmount = parseFloat(fromAmount) || 0;
+  var wantedExcludeType = normalizeAllocationCode(excludeDocType);
+  var wantedExcludeDocNo = normalizeAllocationCode(excludeDocNo);
+  for (var i = 1; i < data.length; i++) {
+    var docType = normalizeAllocationCode(data[i][0]);
+    if (!isAllowedTargetType(policy, docType)) continue;
+    // The voucher itself can never be its own target
+    if (wantedExcludeType && docType === wantedExcludeType && normalizeAllocationCode(data[i][1]) === wantedExcludeDocNo) continue;
+    if (normalizeAllocationCode(data[i][3]) !== wantedAccount) continue;
+    if (wantedSubledger && normalizeAllocationCode(data[i][4]) !== wantedSubledger) continue;
+    var docNo = String(data[i][1] || '');
+    var docSrNo = parseInt(data[i][2], 10) || 0;
+    var balAmount = Math.round((parseFloat(data[i][9]) || 0) * 100) / 100;
+    // Only a document with the opposite balance direction can be settled
+    // (a receipt settles a debit line, a payment settles a credit line)
+    if (Math.abs(wantedFromAmount) > 0.005 && balAmount * wantedFromAmount >= 0) continue;
+    var outstanding = Math.round(Math.abs(balAmount) * 100) / 100;
+    var addBack = Math.round((((addBackMap || {})[allocationDocKey(docType, docNo, docSrNo)]) || 0) * 100) / 100;
+    var available = Math.round((outstanding + addBack) * 100) / 100;
+    if (available <= 0) continue;
+    docs.push({
+      toDocType: docType,
+      toDocNo: docNo,
+      toDocSrNo: docSrNo,
+      subledgerDocNo: String(data[i][4] || ''),
+      date: data[i][6] ? Utilities.formatDate(new Date(data[i][6]), Session.getScriptTimeZone(), 'yyyy-MM-dd') : '',
+      narration: data[i][7] || '',
+      refNo: data[i][10] || '',
+      docAmount: Math.round(Math.abs(parseFloat(data[i][8]) || 0) * 100) / 100,
+      balance: balAmount,
+      outstanding: outstanding,
+      allocated: addBack,
+      available: available
+    });
+  }
+  docs.sort(function(a, b) {
+    if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+    if (a.toDocNo !== b.toDocNo) return a.toDocNo < b.toDocNo ? -1 : 1;
+    return a.toDocSrNo - b.toDocSrNo;
+  });
+  return docs;
+}
+
+// Read the pending allocation drafts of a voucher from
+// JournalVoucherDetails.AllocationJSON (returns [{docSrNo, acCode,
+// subledger, amount, narration, allocations[]}])
+function getAllocationDraftsForVoucher(ss, docType, docNo) {
+  var drafts = [];
+  var detailsSheet = ss.getSheetByName("JournalVoucherDetails");
+  if (!detailsSheet) return drafts;
+  var data = detailsSheet.getDataRange().getValues();
+  var wantedType = normalizeAllocationCode(docType);
+  var wantedDocNo = normalizeAllocationCode(docNo);
+  for (var i = 1; i < data.length; i++) {
+    if (normalizeAllocationCode(data[i][0]) !== wantedType) continue;
+    if (normalizeAllocationCode(data[i][1]) !== wantedDocNo) continue;
+    var allocations = [];
+    var rawJson = data[i][ALLOCATION_COLUMN - 1];
+    if (rawJson) {
+      try {
+        allocations = JSON.parse(rawJson) || [];
+      } catch (err) {
+        allocations = [];
+      }
+    }
+    drafts.push({
+      docSrNo: parseInt(data[i][2], 10) || 0,
+      acCode: data[i][3] || '',
+      subledger: data[i][5] || '',
+      amount: parseFloat(data[i][6]) || 0,
+      narration: data[i][7] || '',
+      allocations: allocations
+    });
+  }
+  return drafts;
+}
+
+// Store the pending allocations of a voucher into JournalVoucherDetails.AllocationJSON
+function saveAllocationDraftsToSheet(ss, docType, docNo, details) {
+  var detailsSheet = ss.getSheetByName("JournalVoucherDetails");
+  if (!detailsSheet) return;
+  ensureDetailAllocationColumn(ss, detailsSheet);
+  var data = detailsSheet.getDataRange().getValues();
+  var wantedType = normalizeAllocationCode(docType);
+  var wantedDocNo = normalizeAllocationCode(docNo);
+  for (var d = 0; d < (details || []).length; d++) {
+    var detail = details[d];
+    var docSrNo = parseInt(detail.docSrNo, 10) || (d + 1);
+    var allocations = detail.allocations || [];
+    var json = allocations.length > 0 ? JSON.stringify(allocations) : '';
+    for (var i = 1; i < data.length; i++) {
+      if (normalizeAllocationCode(data[i][0]) !== wantedType) continue;
+      if (normalizeAllocationCode(data[i][1]) !== wantedDocNo) continue;
+      if ((parseInt(data[i][2], 10) || 0) !== docSrNo) continue;
+      detailsSheet.getRange(i + 1, ALLOCATION_COLUMN).setValue(json);
+      break;
+    }
+  }
+}
+
+// Validate the pending allocations of a voucher (details[] entries must have
+// docSrNo, acCode, subledger, amount and allocations[]).
+// Rules: the From account must have a subledger of type AR/AP, the To document
+// must exist in the ledger for the same account + subledger, and neither the
+// line amount nor the invoice balance may be exceeded.
+function validateAllocationSet(ss, details) {
+  var accountTransactionSheet = ss.getSheetByName("AccountTransaction");
+  var atData = accountTransactionSheet ? accountTransactionSheet.getDataRange().getValues() : [];
+  var policyCache = {};
+  var toLineTotals = {}; // toKey -> { total, balance, docNo }
+  for (var d = 0; d < (details || []).length; d++) {
+    var detail = details[d];
+    var allocations = detail.allocations || [];
+    if (allocations.length === 0) continue;
+    var acCode = normalizeAllocationCode(detail.acCode);
+    if (!policyCache[acCode]) policyCache[acCode] = getAllocationPolicy(ss, acCode);
+    var policy = policyCache[acCode];
+    if (!policy.allowed) {
+      return { valid: false, message: 'Account ' + acCode + ' cannot be allocated. Allocation is allowed only for accounts that have a subledger of type AR or AP.' };
+    }
+    var subledger = String(detail.subledger || '');
+    if (!subledger) {
+      return { valid: false, message: 'Line ' + detail.docSrNo + ': select a ' + policy.subledgerType + ' before allocating.' };
+    }
+    var lineAmount = Math.round(Math.abs(parseFloat(detail.amount) || 0) * 100) / 100;
+    var lineTotal = 0;
+    for (var a = 0; a < allocations.length; a++) {
+      var alloc = allocations[a];
+      var allocAmount = Math.round(Math.abs(parseFloat(alloc.amount) || 0) * 100) / 100;
+      if (!alloc.toDocType || !alloc.toDocNo) {
+        return { valid: false, message: 'Line ' + detail.docSrNo + ': allocation is missing the document details.' };
+      }
+      if (allocAmount <= 0) {
+        return { valid: false, message: 'Line ' + detail.docSrNo + ': allocation amount must be greater than zero.' };
+      }
+      var toDocType = normalizeAllocationCode(alloc.toDocType);
+      if (!isAllowedTargetType(policy, toDocType)) {
+        return { valid: false, message: 'Line ' + detail.docSrNo + ': ' + toDocType + ' documents cannot be allocated for account ' + acCode + '.' };
+      }
+      var toDocNo = String(alloc.toDocNo);
+      var toDocSrNo = parseInt(alloc.toDocSrNo, 10) || 0;
+      var toKey = allocationDocKey(toDocType, toDocNo, toDocSrNo);
+      var atRow = -1;
+      for (var i = 1; i < atData.length; i++) {
+        if (normalizeAllocationCode(atData[i][0]) !== toDocType) continue;
+        if (normalizeAllocationCode(atData[i][1]) !== normalizeAllocationCode(toDocNo)) continue;
+        if ((parseInt(atData[i][2], 10) || 0) !== toDocSrNo) continue;
+        atRow = i;
+        break;
+      }
+      if (atRow === -1) {
+        return { valid: false, message: 'Line ' + detail.docSrNo + ': ' + toDocNo + ' line ' + toDocSrNo + ' was not found in the ledger.' };
+      }
+      if (normalizeAllocationCode(atData[atRow][3]) !== acCode) {
+        return { valid: false, message: 'Line ' + detail.docSrNo + ': ' + toDocNo + ' does not belong to account ' + acCode + '.' };
+      }
+      if (policy.strictParty && normalizeAllocationCode(atData[atRow][4]) !== normalizeAllocationCode(subledger)) {
+        return { valid: false, message: 'Line ' + detail.docSrNo + ': ' + toDocNo + ' does not belong to ' + subledger + '.' };
+      }
+      var balAmount = Math.round((parseFloat(atData[atRow][9]) || 0) * 100) / 100;
+      if (Math.abs(balAmount) < 0.005) {
+        return { valid: false, message: toDocNo + ' is already fully allocated.' };
+      }
+      if (balAmount * (parseFloat(detail.amount) || 0) >= 0) {
+        return { valid: false, message: 'Line ' + detail.docSrNo + ': ' + toDocNo + ' has the same balance direction as this line and cannot be settled by it.' };
+      }
+      if (!toLineTotals[toKey]) {
+        toLineTotals[toKey] = { total: 0, balance: Math.round(Math.abs(balAmount) * 100) / 100, docNo: toDocNo };
+      }
+      toLineTotals[toKey].total = Math.round((toLineTotals[toKey].total + allocAmount) * 100) / 100;
+      if (toLineTotals[toKey].total > toLineTotals[toKey].balance + 0.01) {
+        return { valid: false, message: 'Allocation to ' + toDocNo + ' exceeds its outstanding balance (' + toLineTotals[toKey].balance.toFixed(2) + ').' };
+      }
+      lineTotal = Math.round((lineTotal + allocAmount) * 100) / 100;
+    }
+    if (lineTotal > lineAmount + 0.01) {
+      return { valid: false, message: 'Line ' + detail.docSrNo + ': total allocation ' + lineTotal.toFixed(2) + ' exceeds the line amount ' + lineAmount.toFixed(2) + '.' };
+    }
+  }
+  return { valid: true, message: '' };
+}
+
+// Write the pending allocations of a posted voucher:
+//  - one row per allocation in the Allocation sheet
+//  - From line BAL_AMOUNT += Amount, To line BAL_AMOUNT -= Amount
+// Returns { success, rows, amount, message }
+function applyVoucherAllocations(ss, docType, docNo) {
+  var drafts = getAllocationDraftsForVoucher(ss, docType, docNo);
+  var list = [];
+  for (var d = 0; d < drafts.length; d++) {
+    var detail = drafts[d];
+    var allocations = detail.allocations || [];
+    if (allocations.length === 0) continue;
+    var policy = getAllocationPolicy(ss, detail.acCode);
+    if (!policy.allowed) {
+      return { success: false, rows: 0, amount: 0, message: 'Account ' + detail.acCode + ' cannot be allocated.' };
+    }
+    if (!String(detail.subledger || '')) {
+      return { success: false, rows: 0, amount: 0, message: 'Line ' + detail.docSrNo + ': a subledger is required for allocation.' };
+    }
+    // The allocation amount carries the opposite sign of the From line amount
+    // (receipt vouchers allocate negative amounts, payment vouchers positive)
+    var lineSign = (parseFloat(detail.amount) || 0) < 0 ? 1 : -1;
+    for (var a = 0; a < allocations.length; a++) {
+      var alloc = allocations[a];
+      var allocAmount = Math.round(Math.abs(parseFloat(alloc.amount) || 0) * 100) / 100;
+      if (allocAmount <= 0) continue;
+      list.push({
+        fromDocSrNo: parseInt(detail.docSrNo, 10) || 0,
+        accountType: policy.accountType,
+        subledgerDocNo: detail.subledger,
+        toDocType: String(alloc.toDocType).toUpperCase(),
+        toDocNo: String(alloc.toDocNo),
+        toDocSrNo: parseInt(alloc.toDocSrNo, 10) || 0,
+        amount: Math.round(lineSign * allocAmount * 100) / 100
+      });
+    }
+  }
+  if (list.length === 0) {
+    return { success: true, rows: 0, amount: 0, message: '' };
+  }
+  
+  var allocationSheet = ensureAllocationSheet(ss);
+  var fromSrSrCounters = {};
+  var toSrSrCounters = {};
+  var existing = allocationSheet.getDataRange().getValues();
+  for (var i = 1; i < existing.length; i++) {
+    if (!existing[i][0]) continue;
+    var seedFromKey = allocationDocKey(existing[i][0], existing[i][1], existing[i][2]);
+    var seedFromSrSr = parseInt(existing[i][3], 10) || 0;
+    if (!fromSrSrCounters[seedFromKey] || seedFromSrSr > fromSrSrCounters[seedFromKey]) fromSrSrCounters[seedFromKey] = seedFromSrSr;
+    var seedToKey = allocationDocKey(existing[i][6], existing[i][7], existing[i][8]);
+    var seedToSrSr = parseInt(existing[i][9], 10) || 0;
+    if (!toSrSrCounters[seedToKey] || seedToSrSr > toSrSrCounters[seedToKey]) toSrSrCounters[seedToKey] = seedToSrSr;
+  }
+  
+  var rows = [];
+  var fromDeltas = {};
+  var toDeltas = {};
+  var totalAmount = 0;
+  for (var n = 0; n < list.length; n++) {
+    var item = list[n];
+    var fromKey = allocationDocKey(docType, docNo, item.fromDocSrNo);
+    var toKey = allocationDocKey(item.toDocType, item.toDocNo, item.toDocSrNo);
+    fromSrSrCounters[fromKey] = (fromSrSrCounters[fromKey] || 0) + 1;
+    toSrSrCounters[toKey] = (toSrSrCounters[toKey] || 0) + 1;
+    rows.push([
+      docType, docNo, item.fromDocSrNo, fromSrSrCounters[fromKey],
+      item.accountType, item.subledgerDocNo,
+      item.toDocType, item.toDocNo, item.toDocSrNo, toSrSrCounters[toKey],
+      item.amount
+    ]);
+    fromDeltas[fromKey] = Math.round(((fromDeltas[fromKey] || 0) + item.amount) * 100) / 100;
+    toDeltas[toKey] = Math.round(((toDeltas[toKey] || 0) + item.amount) * 100) / 100;
+    totalAmount = Math.round((totalAmount + Math.abs(item.amount)) * 100) / 100;
+  }
+  
+  // Append the allocation rows
+  for (var r = 0; r < rows.length; r++) {
+    allocationSheet.appendRow(rows[r]);
+  }
+  
+  // Update the BAL_AMOUNT of both sides in AccountTransaction
+  var accountTransactionSheet = ensureAccountTransactionSheet(ss);
+  var atData = accountTransactionSheet.getDataRange().getValues();
+  var atKeyIndex = {};
+  for (var k = 1; k < atData.length; k++) {
+    if (!atData[k][0]) continue;
+    var atKey = allocationDocKey(atData[k][0], atData[k][1], atData[k][2]);
+    if (atKeyIndex[atKey] === undefined) atKeyIndex[atKey] = k;
+  }
+  var balanceChanged = false;
+  for (var f in fromDeltas) {
+    var fromIndex = atKeyIndex[f];
+    if (fromIndex === undefined) continue;
+    atData[fromIndex][9] = Math.round(((parseFloat(atData[fromIndex][9]) || 0) + fromDeltas[f]) * 100) / 100;
+    balanceChanged = true;
+  }
+  for (var t in toDeltas) {
+    var toIndex = atKeyIndex[t];
+    if (toIndex === undefined) continue;
+    atData[toIndex][9] = Math.round(((parseFloat(atData[toIndex][9]) || 0) - toDeltas[t]) * 100) / 100;
+    balanceChanged = true;
+  }
+  if (balanceChanged && atData.length > 1) {
+    var balanceValues = [];
+    for (var b = 1; b < atData.length; b++) {
+      balanceValues.push([atData[b][9]]);
+    }
+    accountTransactionSheet.getRange(2, 10, balanceValues.length, 1).setValues(balanceValues);
+  }
+  
+  return { success: true, rows: rows.length, amount: totalAmount, message: '' };
+}
+
+// Remove the allocation rows of a voucher and restore the invoice balances.
+// Called when the post of the voucher is cancelled.
+function reverseVoucherAllocations(ss, docType, docNo) {
+  var allocationSheet = ss.getSheetByName("Allocation");
+  if (!allocationSheet) return { success: true, rows: 0 };
+  var data = allocationSheet.getDataRange().getValues();
+  var toDeltas = {};
+  var rowsToDelete = [];
+  var wantedType = String(docType || '').toUpperCase();
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][0] || '').toUpperCase() !== wantedType) continue;
+    if (String(data[i][1] || '') !== String(docNo)) continue;
+    var amount = Math.round((parseFloat(data[i][10]) || 0) * 100) / 100;
+    var toKey = allocationDocKey(data[i][6], data[i][7], data[i][8]);
+    toDeltas[toKey] = Math.round(((toDeltas[toKey] || 0) + amount) * 100) / 100;
+    rowsToDelete.push(i + 1);
+  }
+  if (rowsToDelete.length === 0) return { success: true, rows: 0 };
+  
+  for (var r = rowsToDelete.length - 1; r >= 0; r--) {
+    allocationSheet.deleteRow(rowsToDelete[r]);
+  }
+  
+  // The invoice balance was reduced by the allocation amount, so add it back
+  var accountTransactionSheet = ss.getSheetByName("AccountTransaction");
+  if (accountTransactionSheet) {
+    var atData = accountTransactionSheet.getDataRange().getValues();
+    var changed = false;
+    for (var k = 1; k < atData.length; k++) {
+      if (!atData[k][0]) continue;
+      var atKey = allocationDocKey(atData[k][0], atData[k][1], atData[k][2]);
+      if (toDeltas[atKey] === undefined) continue;
+      atData[k][9] = Math.round(((parseFloat(atData[k][9]) || 0) + toDeltas[atKey]) * 100) / 100;
+      changed = true;
+    }
+    if (changed && atData.length > 1) {
+      var balanceValues = [];
+      for (var b = 1; b < atData.length; b++) {
+        balanceValues.push([atData[b][9]]);
+      }
+      accountTransactionSheet.getRange(2, 10, balanceValues.length, 1).setValues(balanceValues);
+    }
+  }
+  
+  return { success: true, rows: rowsToDelete.length };
+}
+
+// Shared error response for the allocation handlers
+function allocationErrorResponse(callback, message) {
+  var errorResult = { status: 'error', message: message };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(errorResult) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(errorResult);
+}
+
+// Get the pending documents of an account + subledger (SI for AR, PI for AP,
+// plus the voucher documents when AllocationAllowVoucherDocs = 1).
+// fromAmount is the signed amount of the voucher line (used to keep only the
+// documents with the opposite balance direction), excludeDocType/excludeDocNo
+// keep the voucher itself out of its own target list.
+// currentAllocations (optional JSON) holds the allocations the form has not
+// posted yet, so they can be re-allocated while editing.
+function handleGetAllocationOutstandingGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var acCode = e.parameter.acCode || '';
+  var subledgerDocNo = e.parameter.subledgerDocNo || '';
+  var docType = e.parameter.docType || '';
+  var docNo = e.parameter.docNo || '';
+  var fromAmount = e.parameter.fromAmount || '';
+  var currentAllocationsJson = e.parameter.currentAllocations || '';
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  // The voucher itself can never be one of its own allocation targets
+  var excludeDocType = e.parameter.excludeDocType || docType;
+  var excludeDocNo = e.parameter.excludeDocNo || docNo;
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    return allocationErrorResponse(callback, 'Invalid or expired session');
+  }
+  if (!acCode) {
+    return allocationErrorResponse(callback, 'Account code is required');
+  }
+  
+  var policy = getAllocationPolicy(ss, acCode);
+  if (!policy.allowed) {
+    return allocationErrorResponse(callback, 'Allocation is allowed only for accounts that have a subledger of type AR or AP');
+  }
+  if (!subledgerDocNo) {
+    return allocationErrorResponse(callback, 'Select a ' + policy.subledgerType + ' before allocating');
+  }
+  
+  // Collect the allocations that are not posted yet
+  var addBackMap = {};
+  var addBackFromClient = false;
+  if (currentAllocationsJson) {
+    try {
+      var clientAllocations = JSON.parse(currentAllocationsJson) || [];
+      addBackFromClient = true;
+      for (var c = 0; c < clientAllocations.length; c++) {
+        var clientKey = allocationDocKey(clientAllocations[c].toDocType, clientAllocations[c].toDocNo, clientAllocations[c].toDocSrNo);
+        addBackMap[clientKey] = Math.round(((addBackMap[clientKey] || 0) + Math.abs(parseFloat(clientAllocations[c].amount) || 0)) * 100) / 100;
+      }
+    } catch (err) {
+      addBackFromClient = false;
+      addBackMap = {};
+    }
+  }
+  if (!addBackFromClient && docType && docNo) {
+    var drafts = getAllocationDraftsForVoucher(ss, docType, docNo);
+    for (var d = 0; d < drafts.length; d++) {
+      var draftAllocations = drafts[d].allocations || [];
+      for (var a = 0; a < draftAllocations.length; a++) {
+        var draftKey = allocationDocKey(draftAllocations[a].toDocType, draftAllocations[a].toDocNo, draftAllocations[a].toDocSrNo);
+        addBackMap[draftKey] = Math.round(((addBackMap[draftKey] || 0) + Math.abs(parseFloat(draftAllocations[a].amount) || 0)) * 100) / 100;
+      }
+    }
+  }
+  
+  // Party filter: strict by default, any party of the account when
+  // AllocationStrictParty = 0
+  var wantedSubledger = policy.strictParty ? subledgerDocNo : '';
+  var documents = getOutstandingDocsForParty(ss, acCode, wantedSubledger, policy, addBackMap, fromAmount, excludeDocType, excludeDocNo);
+  
+  // When nothing is found for this party, also look for the same account +
+  // direction of any party so the form can explain the empty list
+  var similarDocuments = [];
+  if (documents.length === 0 && wantedSubledger) {
+    var otherDocuments = getOutstandingDocsForParty(ss, acCode, '', policy, addBackMap, fromAmount, excludeDocType, excludeDocNo);
+    for (var s = 0; s < otherDocuments.length && similarDocuments.length < 5; s++) {
+      similarDocuments.push(otherDocuments[s]);
+    }
+  }
+  
+  var result = {
+    status: 'success',
+    accountType: policy.accountType,
+    accountDescription: policy.description,
+    subledgerType: policy.subledgerType,
+    subledgerDocNo: subledgerDocNo,
+    toDocType: policy.toDocType,
+    targetTypes: policy.targetTypes,
+    allowVoucherDocs: policy.targetTypes.length > 1,
+    strictParty: policy.strictParty,
+    documents: documents,
+    similarDocuments: similarDocuments
+  };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// Get the saved (pending) allocations of a voucher, grouped by detail serial number
+function handleGetVoucherAllocationsGet(e) {
+  var sessionId = e.parameter.sessionId;
+  var userId = e.parameter.userId;
+  var docType = e.parameter.docType || '';
+  var docNo = e.parameter.docNo || '';
+  var callback = e.parameter.callback;
+  var ipAddress = getClientIP(e);
+  
+  // Validate session
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var validation = validateSession(ss, sessionId, userId, ipAddress);
+  
+  if (!validation.valid) {
+    return allocationErrorResponse(callback, 'Invalid or expired session');
+  }
+  if (!docType || !docNo) {
+    return allocationErrorResponse(callback, 'DocType and DocNo are required');
+  }
+  
+  var drafts = getAllocationDraftsForVoucher(ss, docType, docNo);
+  var allocationsBySrNo = {};
+  var total = 0;
+  var count = 0;
+  for (var d = 0; d < drafts.length; d++) {
+    var allocations = drafts[d].allocations || [];
+    var normalized = [];
+    for (var a = 0; a < allocations.length; a++) {
+      var amount = Math.round(Math.abs(parseFloat(allocations[a].amount) || 0) * 100) / 100;
+      if (amount <= 0) continue;
+      normalized.push({
+        toDocType: String(allocations[a].toDocType || '').toUpperCase(),
+        toDocNo: String(allocations[a].toDocNo || ''),
+        toDocSrNo: parseInt(allocations[a].toDocSrNo, 10) || 0,
+        amount: amount
+      });
+      total = Math.round((total + amount) * 100) / 100;
+      count++;
+    }
+    if (normalized.length > 0) {
+      allocationsBySrNo[String(drafts[d].docSrNo)] = normalized;
+    }
+  }
+  
+  var result = { status: 'success', docType: docType, docNo: docNo, allocationsBySrNo: allocationsBySrNo, count: count, total: total };
+  if (callback) {
+    return ContentService.createTextOutput(callback + "(" + JSON.stringify(result) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return createJsonResponse(result);
+}
+
+// ============================================
+// ALLOCATION DIAGNOSTIC (read only)
+// ============================================
+// Run this from the Apps Script editor (select ALLOC_DIAGNOSTIC and click Run)
+// to log every ledger line the allocation engine can use, exactly as the picker
+// reads it. Nothing is modified.
+function ALLOC_DIAGNOSTIC() {
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var L = [];
+  var CAP = 300;
+  
+  L.push('=== 1) COA rows with SUBLEDGER_EXISTS = 1  (AC_CODE | AC_TYPE | ACTYPE_DOCNO | DESCRIPTION) ===');
+  var coa = ss.getSheetByName('COA');
+  if (coa) {
+    var c = coa.getDataRange().getValues();
+    for (var i = 1; i < c.length; i++) {
+      if (parseInt(c[i][8], 10) === 1) {
+        L.push('  ' + [String(c[i][0] || ''), String(c[i][1] || ''), String(c[i][13] || ''), String(c[i][2] || '')].join(' | '));
+      }
+    }
+  } else {
+    L.push('  (no COA sheet)');
+  }
+  
+  var at = ss.getSheetByName('AccountTransaction');
+  L.push('');
+  L.push('=== 2a) Outstanding party lines grouped: DOCTYPE | AC_DOCNO | SUBLEDGER -> lines | total ===');
+  L.push('=== 2b) The same keys, marked as target / not a target ===');
+  L.push('=== 2c) Raw transactional rows (DOCTYPE | DOCNO | SR | AC_DOCNO | SUBLEDGER | AMOUNT | BAL_AMOUNT | REF_NO) ===');
+  if (at) {
+    var a = at.getDataRange().getValues();
+    var group = {};
+    var groupKeys = [];
+    var raw = [];
+    for (var j = 1; j < a.length; j++) {
+      var dt = normalizeAllocationCode(a[j][0]);
+      var ac = normalizeAllocationCode(a[j][3]);
+      var sub = normalizeAllocationCode(a[j][4]);
+      var amt = parseFloat(a[j][8]) || 0;
+      var bal = Math.round((parseFloat(a[j][9]) || 0) * 100) / 100;
+      var isTxnDoc = (dt === 'SI' || dt === 'PI' || dt === 'CRV' || dt === 'BRV' || dt === 'CPV' || dt === 'BPV' || dt === 'JV');
+      if ((isTxnDoc || sub !== '') && raw.length < CAP) {
+        raw.push([dt, String(a[j][1] || ''), a[j][2], ac, sub, amt, bal, String(a[j][10] || '')].join(' | '));
+      }
+      if (sub !== '' && Math.abs(bal) > 0.005) {
+        var key = dt + ' | ' + ac + ' | ' + sub;
+        if (!group[key]) {
+          group[key] = { n: 0, t: 0 };
+          groupKeys.push(key);
+        }
+        group[key].n++;
+        group[key].t = Math.round((group[key].t + Math.abs(bal)) * 100) / 100;
+      }
+    }
+    for (var g = 0; g < groupKeys.length; g++) {
+      var k1 = groupKeys[g];
+      L.push('  ' + k1 + '  -> lines=' + group[k1].n + '  total=' + group[k1].t);
+    }
+    L.push('--- 2b (AR targets = SI, AP targets = PI; voucher types only when AllocationAllowVoucherDocs = 1) ---');
+    for (var g2 = 0; g2 < groupKeys.length; g2++) {
+      var k2 = groupKeys[g2];
+      var first = k2.split(' | ')[0];
+      var isTarget = (first === 'SI' || first === 'PI');
+      L.push('  ' + k2 + (isTarget ? '   <-- INVOICE: valid target' : '   <-- voucher/other: target only with AllocationAllowVoucherDocs = 1'));
+    }
+    L.push('--- 2c (first ' + CAP + ' rows) ---');
+    for (var r = 0; r < raw.length; r++) L.push('  ' + raw[r]);
+  } else {
+    L.push('  (no AccountTransaction sheet)');
+  }
+  
+  L.push('');
+  L.push('=== 3) Voucher lines (TYPE | DOCNO | SR | AC | SUBLEDGER | AMOUNT | col M) ===');
+  var jvd = ss.getSheetByName('JournalVoucherDetails');
+  if (jvd) {
+    var d = jvd.getDataRange().getValues();
+    L.push('  header M1 = [' + String(d[0][12] || '(empty)') + ']   (total columns: ' + d[0].length + ')');
+    var n3 = 0;
+    for (var k = 1; k < d.length; k++) {
+      var sub3 = normalizeAllocationCode(d[k][5]);
+      if (sub3 !== '' || String(d[k][12] || '') !== '') {
+        L.push('  ' + [String(d[k][0] || ''), String(d[k][1] || ''), String(d[k][2] || ''), String(d[k][3] || ''), sub3, (parseFloat(d[k][6]) || 0), String(d[k][12] || '')].join(' | '));
+        n3++;
+      }
+      if (n3 > CAP) {
+        L.push('  ... (truncated)');
+        break;
+      }
+    }
+  } else {
+    L.push('  (no JournalVoucherDetails sheet)');
+  }
+  
+  L.push('');
+  L.push('=== 4) Allocation sheet ===');
+  var al = ss.getSheetByName('Allocation');
+  if (al) {
+    var r2 = al.getDataRange().getValues();
+    for (var m = 0; m < r2.length && m <= 100; m++) L.push('  ' + r2[m].join(' | '));
+    L.push('  rows = ' + Math.max(0, r2.length - 1));
+  } else {
+    L.push('  (no Allocation sheet yet)');
+  }
+  
+  Logger.log(L.join('\n'));
+}
+
+// ============================================
 // STATEMENT OF ACCOUNT HANDLER
 // ============================================
 
@@ -15596,6 +16572,8 @@ function handleGetStatementOfAccountGet(e) {
   var openingBalance = 0;
   var totalDebit = 0;
   var totalCredit = 0;
+  var totalOutstanding = 0;
+  var pendingBills = 0;
   
   // Collect all entries for this account (and party if provided) across all dates first
   for (var i = 1; i < data.length; i++) {
@@ -15604,7 +16582,7 @@ function handleGetStatementOfAccountGet(e) {
       // If partyCode provided, filter by subledger too
       if (partyCode) {
         var subledger = String(data[i][4] || '');
-        if (subledger !== partyCode) {
+        if (normalizeAllocationCode(subledger) !== normalizeAllocationCode(partyCode)) {
           continue;
         }
       }
@@ -15632,6 +16610,13 @@ function handleGetStatementOfAccountGet(e) {
         totalCredit += amount;
       }
       
+      // Pending amount of this document (allocation keeps BAL_AMOUNT up to date)
+      var balAmount = Math.round((parseFloat(data[i][9]) || 0) * 100) / 100;
+      if (partySubledger && Math.abs(balAmount) > 0.01) {
+        totalOutstanding = Math.round((totalOutstanding + Math.abs(balAmount)) * 100) / 100;
+        pendingBills++;
+      }
+      
       allEntries.push({
         docType: docType,
         docNo: String(data[i][1] || ''),
@@ -15642,7 +16627,9 @@ function handleGetStatementOfAccountGet(e) {
         narration: data[i][7] || '',
         amount: amount,
         debit: amount < 0 ? Math.abs(amount) : 0,
-        credit: amount > 0 ? amount : 0
+        credit: amount > 0 ? amount : 0,
+        balanceAmount: balAmount,
+        outstanding: partySubledger ? Math.abs(balAmount) : 0
       });
     }
   }
@@ -15671,7 +16658,9 @@ function handleGetStatementOfAccountGet(e) {
       openingBalance: Math.round(openingBalance * 100) / 100,
       totalDebit: Math.round(totalDebit * 100) / 100,
       totalCredit: Math.round(totalCredit * 100) / 100,
-      closingBalance: Math.round(closingBalance * 100) / 100
+      closingBalance: Math.round(closingBalance * 100) / 100,
+      totalOutstanding: Math.round(totalOutstanding * 100) / 100,
+      pendingBills: pendingBills
     }
   };
   

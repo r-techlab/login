@@ -153,3 +153,19 @@ GET ?action=getCashReceiptVoucherReport&sessionId={sessionId}&userId={userId}&fr
 - **JournalVoucherDetails** - one row per CRV detail line: `DocType` (`CRV`), `DocNo`, `DocSrNo`, `ACCode`, `ACDescription`, `Subledger`, `Amount` (negative = debit, positive = credit), `Narration`, `Mode`, `Bank`, `InstrumentNo`, `InstrumentDate` (the last 4 are stored as empty strings for cash-only vouchers)
 - **AccountTransaction** - created on Post with `DocType = 'CRV'`, exactly like JV/BRV entries. Cancel Post deletes only `CRV` rows for the document.
 - **No new sheets are required.** The `DocType` column already existed in all three sheets.
+
+## Allocation (AR / AP) - added with the Allocation module
+- The CRV entry grid has a new **Allocation** column. It is active only for accounts that have a
+  subledger (`COA.SUBLEDGER_EXISTS = 1` and `COA.ACTYPE_DOCNO = AR`), i.e. the customer line of the
+  voucher, and only after the customer has been selected.
+- `🔗 Allocate` opens a modal with the pending Sales Invoices (SI) of that customer
+  (`AccountTransaction` rows with the same `AC_DOCNO` + `SUBLEDGER_DOCNO` and a remaining `BAL_AMOUNT`),
+  where the CRV amount can be applied to one or more invoices (partial allocation is allowed).
+- The allocation is saved with the voucher in the new `JournalVoucherDetails` column
+  `AllocationJSON` (M). It is written to the **Allocation** sheet and `BAL_AMOUNT` is updated on both
+  sides (CRV AR line `+=`, invoice AR line `-=`) when the voucher is **posted**; **Cancel Post**
+  removes the Allocation rows and restores the invoice balances.
+- Saving a CRV whose AR line is not fully allocated asks for confirmation - the remainder stays as a
+  pending (unapplied) receipt.
+- New API functions: `apiGetAllocationOutstanding()` and `apiGetVoucherAllocations()`.
+  See **ALLOCATION_DEPLOYMENT.md** for the full guide.

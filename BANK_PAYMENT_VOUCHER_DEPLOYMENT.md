@@ -152,3 +152,17 @@ GET ?action=getBankPaymentVoucherReport&sessionId={sessionId}&userId={userId}&fr
 - [ ] **CRV regression check**: CRV list and CRV report show ONLY `CRV` records (no BPV rows)
 - [ ] Trial Balance / Statement of Account include posted BPV amounts
 
+## Allocation (AR / AP) - added with the Allocation module
+- The BPV entry grid has a new **Allocation** column. It is active only for accounts that have a
+  subledger (`COA.SUBLEDGER_EXISTS = 1` and `COA.ACTYPE_DOCNO = AP`), i.e. the supplier line of the
+  voucher, and only after the supplier has been selected.
+- `🔗 Allocate` opens a modal with the pending Purchase Invoices (PI) of that supplier
+  (`AccountTransaction` rows with the same `AC_DOCNO` + `SUBLEDGER_DOCNO` and a remaining `BAL_AMOUNT`),
+  where the BPV amount can be applied to one or more invoices (partial allocation is allowed).
+- The allocation is saved with the voucher in the new `JournalVoucherDetails` column
+  `AllocationJSON` (M). It is written to the **Allocation** sheet and `BAL_AMOUNT` is updated on both
+  sides (BPV AP line `+=`, invoice AP line `-=`) when the voucher is **posted**; **Cancel Post**
+  removes the Allocation rows and restores the invoice balances.
+- New API functions: `apiGetAllocationOutstanding()` and `apiGetVoucherAllocations()`.
+  See **ALLOCATION_DEPLOYMENT.md** for the full guide.
+
